@@ -15,6 +15,7 @@
 		A22F78F81C60B0CD00340FC0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A22F78F61C60B0CD00340FC0 /* LaunchScreen.storyboard */; };
 		A22F79031C60B0CD00340FC0 /* NewsSearchTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79021C60B0CD00340FC0 /* NewsSearchTests.m */; };
 		A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F790F1C60D32D00340FC0 /* ITBServerManager.m */; };
+		A22F79131C60E21000340FC0 /* ITBAccessToken.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79121C60E21000340FC0 /* ITBAccessToken.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,6 +44,8 @@
 		A22F79041C60B0CD00340FC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A22F790E1C60D32D00340FC0 /* ITBServerManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBServerManager.h; sourceTree = "<group>"; };
 		A22F790F1C60D32D00340FC0 /* ITBServerManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBServerManager.m; sourceTree = "<group>"; };
+		A22F79111C60E21000340FC0 /* ITBAccessToken.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBAccessToken.h; sourceTree = "<group>"; };
+		A22F79121C60E21000340FC0 /* ITBAccessToken.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBAccessToken.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +123,8 @@
 			children = (
 				A22F790E1C60D32D00340FC0 /* ITBServerManager.h */,
 				A22F790F1C60D32D00340FC0 /* ITBServerManager.m */,
+				A22F79111C60E21000340FC0 /* ITBAccessToken.h */,
+				A22F79121C60E21000340FC0 /* ITBAccessToken.m */,
 			);
 			name = API;
 			sourceTree = "<group>";
@@ -228,6 +233,7 @@
 			files = (
 				A22F78F01C60B0CD00340FC0 /* ViewController.m in Sources */,
 				A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */,
+				A22F79131C60E21000340FC0 /* ITBAccessToken.m in Sources */,
 				A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */,
 				A22F78EA1C60B0CD00340FC0 /* main.m in Sources */,
 			);
