@@ -11,36 +11,19 @@
 
 @interface ITBLoginViewController () <UIWebViewDelegate>
 
-@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
+//@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
 
 @property (strong, nonatomic) IBOutlet UIWebView *webView;
+
+@property (strong, nonatomic) ITBAccessToken *accessToken;
 
 @end
 
 @implementation ITBLoginViewController
 
-- (id)initWithCompletionBlock:(ITBLoginCompletionBlock) completionBlock {
-    
-    self = [super init];
-    
-    if (self) {
-        
-        self.completionBlock = completionBlock;
-    }
-    
-    return self;
-    
-    
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-    
-    // UIBarButtonItem cancel для отмены (будет находиться в navigationBar)
-    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(actionCancel:)];
-    
-    [self.navigationItem setRightBarButtonItem:item animated:NO];
     
     self.navigationItem.title = @"Login";
     
@@ -63,19 +46,9 @@
 
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
     
+    //
     
     return YES;
-}
-
-#pragma mark - Actions
-
-- (void)actionCancel:(UIBarButtonItem *)item {
-    
-    if (self.completionBlock) {
-        self.completionBlock(nil);
-    }
-    
-    [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 @end

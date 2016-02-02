@@ -53,6 +53,9 @@
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                     </view>
+                    <connections>
+                        <outlet property="webView" destination="gC2-09-PTg" id="O3f-o4-9X5"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="6Yx-eI-QZs" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
