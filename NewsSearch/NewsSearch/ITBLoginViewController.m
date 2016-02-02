@@ -13,7 +13,7 @@
 
 @property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
 
-@property (strong, nonatomic) UIWebView *webView;
+@property (strong, nonatomic) IBOutlet UIWebView *webView;
 
 @end
 
@@ -37,23 +37,16 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
-    CGRect r = self.view.bounds;
-    r.origin = CGPointZero;
-    
-    UIWebView *webView = [[UIWebView alloc] initWithFrame:r];
-    
-    webView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-    
-    [self.view addSubview:webView];
-    
-    self.webView = webView;
-    
     // UIBarButtonItem cancel для отмены (будет находиться в navigationBar)
     UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(actionCancel:)];
     
     [self.navigationItem setRightBarButtonItem:item animated:NO];
     
     self.navigationItem.title = @"Login";
+    
+    // ...
+    
+    self.webView.delegate = self;
 }
 
 - (void)didReceiveMemoryWarning {
