@@ -39,7 +39,7 @@
     
     return manager;
 }
-
+/*
 // 1.1.4
 - (id)init {
     
@@ -53,5 +53,20 @@
     
     return self;
 }
+*/
+
+- (id)initWithBaseURL:(NSURL* ) url {
+    
+    self = [super init];
+    
+    if (self) {
+        
+        self.baseUrl = url;
+        
+    }
+    
+    return self;
+}
+
 
 @end
