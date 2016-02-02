@@ -12,15 +12,14 @@
 
 - (id)initWithServerResponse:(NSDictionary *) responseObject {
     
-    self = [super initWithServerResponse:responseObject];
+    self = [super init];
     
     if (self) {
-        
-        
         
     }
     
     return self;
+    
 }
 
 @end

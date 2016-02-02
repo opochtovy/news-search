@@ -15,7 +15,6 @@
 		A22F79031C60B0CD00340FC0 /* NewsSearchTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79021C60B0CD00340FC0 /* NewsSearchTests.m */; };
 		A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F790F1C60D32D00340FC0 /* ITBServerManager.m */; };
 		A22F79131C60E21000340FC0 /* ITBAccessToken.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79121C60E21000340FC0 /* ITBAccessToken.m */; };
-		A22F79171C60E2CB00340FC0 /* ITBServerObject.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79161C60E2CB00340FC0 /* ITBServerObject.m */; };
 		A22F791A1C60E31E00340FC0 /* ITBUser.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79191C60E31E00340FC0 /* ITBUser.m */; };
 		A22F791D1C60E38700340FC0 /* ITBNews.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F791C1C60E38700340FC0 /* ITBNews.m */; };
 		A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */; };
@@ -48,8 +47,6 @@
 		A22F790F1C60D32D00340FC0 /* ITBServerManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBServerManager.m; sourceTree = "<group>"; };
 		A22F79111C60E21000340FC0 /* ITBAccessToken.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBAccessToken.h; sourceTree = "<group>"; };
 		A22F79121C60E21000340FC0 /* ITBAccessToken.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBAccessToken.m; sourceTree = "<group>"; };
-		A22F79151C60E2CB00340FC0 /* ITBServerObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBServerObject.h; sourceTree = "<group>"; };
-		A22F79161C60E2CB00340FC0 /* ITBServerObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBServerObject.m; sourceTree = "<group>"; };
 		A22F79181C60E31E00340FC0 /* ITBUser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBUser.h; sourceTree = "<group>"; };
 		A22F79191C60E31E00340FC0 /* ITBUser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBUser.m; sourceTree = "<group>"; };
 		A22F791B1C60E38700340FC0 /* ITBNews.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNews.h; sourceTree = "<group>"; };
@@ -144,8 +141,6 @@
 		A22F79141C60E2A300340FC0 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				A22F79151C60E2CB00340FC0 /* ITBServerObject.h */,
-				A22F79161C60E2CB00340FC0 /* ITBServerObject.m */,
 				A22F79181C60E31E00340FC0 /* ITBUser.h */,
 				A22F79191C60E31E00340FC0 /* ITBUser.m */,
 				A22F791B1C60E38700340FC0 /* ITBNews.h */,
@@ -272,7 +267,6 @@
 				A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */,
 				A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */,
 				A22F79131C60E21000340FC0 /* ITBAccessToken.m in Sources */,
-				A22F79171C60E2CB00340FC0 /* ITBServerObject.m in Sources */,
 				A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */,
 				A22F78EA1C60B0CD00340FC0 /* main.m in Sources */,
 				A22F79241C60E69100340FC0 /* ITBLoginViewController.m in Sources */,

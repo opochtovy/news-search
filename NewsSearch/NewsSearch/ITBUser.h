@@ -6,8 +6,8 @@
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
-#import "ITBServerObject.h"
+#import <Foundation/Foundation.h>
 
-@interface ITBUser : ITBServerObject
+@interface ITBUser : NSObject
 
 @end
