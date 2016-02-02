@@ -1,5 +1,5 @@
 //
-//  ViewController.h
+//  ITBNewsViewController.h
 //  NewsSearch
 //
 //  Created by Oleg Pochtovy on 02.02.16.
@@ -8,8 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
-
+@interface ITBNewsViewController : UITableViewController
 
 @end
-
