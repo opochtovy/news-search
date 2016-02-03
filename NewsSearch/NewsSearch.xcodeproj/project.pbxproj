@@ -9,11 +9,16 @@
 /* Begin PBXBuildFile section */
 		A22F78EA1C60B0CD00340FC0 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F78E91C60B0CD00340FC0 /* main.m */; };
 		A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F78EC1C60B0CD00340FC0 /* AppDelegate.m */; };
-		A22F78F01C60B0CD00340FC0 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F78EF1C60B0CD00340FC0 /* ViewController.m */; };
 		A22F78F31C60B0CD00340FC0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A22F78F11C60B0CD00340FC0 /* Main.storyboard */; };
 		A22F78F51C60B0CD00340FC0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A22F78F41C60B0CD00340FC0 /* Assets.xcassets */; };
 		A22F78F81C60B0CD00340FC0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A22F78F61C60B0CD00340FC0 /* LaunchScreen.storyboard */; };
 		A22F79031C60B0CD00340FC0 /* NewsSearchTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79021C60B0CD00340FC0 /* NewsSearchTests.m */; };
+		A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F790F1C60D32D00340FC0 /* ITBServerManager.m */; };
+		A22F79131C60E21000340FC0 /* ITBAccessToken.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79121C60E21000340FC0 /* ITBAccessToken.m */; };
+		A22F791A1C60E31E00340FC0 /* ITBUser.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79191C60E31E00340FC0 /* ITBUser.m */; };
+		A22F791D1C60E38700340FC0 /* ITBNews.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F791C1C60E38700340FC0 /* ITBNews.m */; };
+		A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */; };
+		A22F79241C60E69100340FC0 /* ITBLoginViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79231C60E69100340FC0 /* ITBLoginViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,8 +36,6 @@
 		A22F78E91C60B0CD00340FC0 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		A22F78EB1C60B0CD00340FC0 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A22F78EC1C60B0CD00340FC0 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
-		A22F78EE1C60B0CD00340FC0 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
-		A22F78EF1C60B0CD00340FC0 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
 		A22F78F21C60B0CD00340FC0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		A22F78F41C60B0CD00340FC0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A22F78F71C60B0CD00340FC0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -40,6 +43,18 @@
 		A22F78FE1C60B0CD00340FC0 /* NewsSearchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NewsSearchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A22F79021C60B0CD00340FC0 /* NewsSearchTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NewsSearchTests.m; sourceTree = "<group>"; };
 		A22F79041C60B0CD00340FC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A22F790E1C60D32D00340FC0 /* ITBServerManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBServerManager.h; sourceTree = "<group>"; };
+		A22F790F1C60D32D00340FC0 /* ITBServerManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBServerManager.m; sourceTree = "<group>"; };
+		A22F79111C60E21000340FC0 /* ITBAccessToken.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBAccessToken.h; sourceTree = "<group>"; };
+		A22F79121C60E21000340FC0 /* ITBAccessToken.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBAccessToken.m; sourceTree = "<group>"; };
+		A22F79181C60E31E00340FC0 /* ITBUser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBUser.h; sourceTree = "<group>"; };
+		A22F79191C60E31E00340FC0 /* ITBUser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBUser.m; sourceTree = "<group>"; };
+		A22F791B1C60E38700340FC0 /* ITBNews.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNews.h; sourceTree = "<group>"; };
+		A22F791C1C60E38700340FC0 /* ITBNews.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNews.m; sourceTree = "<group>"; };
+		A22F791F1C60E4BA00340FC0 /* ITBNewsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNewsViewController.h; sourceTree = "<group>"; };
+		A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNewsViewController.m; sourceTree = "<group>"; };
+		A22F79221C60E69100340FC0 /* ITBLoginViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBLoginViewController.h; sourceTree = "<group>"; };
+		A22F79231C60E69100340FC0 /* ITBLoginViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBLoginViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,10 +96,11 @@
 		A22F78E71C60B0CD00340FC0 /* NewsSearch */ = {
 			isa = PBXGroup;
 			children = (
+				A22F790D1C60D30000340FC0 /* API */,
+				A22F79141C60E2A300340FC0 /* Models */,
+				A22F791E1C60E46E00340FC0 /* ViewControllers */,
 				A22F78EB1C60B0CD00340FC0 /* AppDelegate.h */,
 				A22F78EC1C60B0CD00340FC0 /* AppDelegate.m */,
-				A22F78EE1C60B0CD00340FC0 /* ViewController.h */,
-				A22F78EF1C60B0CD00340FC0 /* ViewController.m */,
 				A22F78F11C60B0CD00340FC0 /* Main.storyboard */,
 				A22F78F41C60B0CD00340FC0 /* Assets.xcassets */,
 				A22F78F61C60B0CD00340FC0 /* LaunchScreen.storyboard */,
@@ -109,6 +125,39 @@
 				A22F79041C60B0CD00340FC0 /* Info.plist */,
 			);
 			path = NewsSearchTests;
+			sourceTree = "<group>";
+		};
+		A22F790D1C60D30000340FC0 /* API */ = {
+			isa = PBXGroup;
+			children = (
+				A22F790E1C60D32D00340FC0 /* ITBServerManager.h */,
+				A22F790F1C60D32D00340FC0 /* ITBServerManager.m */,
+				A22F79111C60E21000340FC0 /* ITBAccessToken.h */,
+				A22F79121C60E21000340FC0 /* ITBAccessToken.m */,
+			);
+			name = API;
+			sourceTree = "<group>";
+		};
+		A22F79141C60E2A300340FC0 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A22F79181C60E31E00340FC0 /* ITBUser.h */,
+				A22F79191C60E31E00340FC0 /* ITBUser.m */,
+				A22F791B1C60E38700340FC0 /* ITBNews.h */,
+				A22F791C1C60E38700340FC0 /* ITBNews.m */,
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
+		A22F791E1C60E46E00340FC0 /* ViewControllers */ = {
+			isa = PBXGroup;
+			children = (
+				A22F791F1C60E4BA00340FC0 /* ITBNewsViewController.h */,
+				A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */,
+				A22F79221C60E69100340FC0 /* ITBLoginViewController.h */,
+				A22F79231C60E69100340FC0 /* ITBLoginViewController.m */,
+			);
+			name = ViewControllers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -213,9 +262,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A22F78F01C60B0CD00340FC0 /* ViewController.m in Sources */,
+				A22F791D1C60E38700340FC0 /* ITBNews.m in Sources */,
+				A22F791A1C60E31E00340FC0 /* ITBUser.m in Sources */,
+				A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */,
 				A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */,
+				A22F79131C60E21000340FC0 /* ITBAccessToken.m in Sources */,
+				A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */,
 				A22F78EA1C60B0CD00340FC0 /* main.m in Sources */,
+				A22F79241C60E69100340FC0 /* ITBLoginViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -404,6 +458,7 @@
 				A22F79091C60B0CD00340FC0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		A22F790A1C60B0CD00340FC0 /* Build configuration list for PBXNativeTarget "NewsSearchTests" */ = {
 			isa = XCConfigurationList;
@@ -412,6 +467,7 @@
 				A22F790C1C60B0CD00340FC0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
