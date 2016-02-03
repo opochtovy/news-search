@@ -28,7 +28,13 @@
                             <outlet property="delegate" destination="qHQ-ha-2Qb" id="8jB-fb-4hB"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" id="EKS-6d-cnN"/>
+                    <navigationItem key="navigationItem" id="EKS-6d-cnN">
+                        <barButtonItem key="rightBarButtonItem" title="Login" id="Nz9-ro-3du">
+                            <connections>
+                                <segue destination="72k-it-a44" kind="presentation" id="Tkm-xF-Wxq"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="bGw-Fj-FmA" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
