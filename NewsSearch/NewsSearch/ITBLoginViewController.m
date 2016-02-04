@@ -11,11 +11,13 @@
 
 @interface ITBLoginViewController () <UIWebViewDelegate>
 
-//@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
+@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
 
 @property (strong, nonatomic) IBOutlet UIWebView *webView;
 
-@property (strong, nonatomic) ITBAccessToken *accessToken;
+//@property (strong, nonatomic) ITBAccessToken *accessToken;
+
+- (IBAction)actionCancel:(UIBarButtonItem *)sender;
 
 @end
 
@@ -27,9 +29,13 @@
     
     self.navigationItem.title = @"Login";
     
-    // ...
+    NSString *urlString;
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSURLRequest *request = [NSURLRequest requestWithURL:url];
     
     self.webView.delegate = self;
+    
+    [self.webView loadRequest:request];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -42,13 +48,29 @@
     self.webView.delegate = nil;
 }
 
+#pragma mark - Private Methods
+
+- (void)loginWithCompletionBlock:(ITBLoginCompletionBlock) completionBlock {
+    
+    self.completionBlock = completionBlock;
+}
+
 #pragma mark - UIWebViewDelegate
 
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
     
-    //
+    NSLog(@"%@", request);
+    
+//    [self dismissViewControllerAnimated:YES completion:nil];
     
     return YES;
+}
+
+#pragma mark - Actions
+
+- (IBAction)actionCancel:(UIBarButtonItem *)sender {
+    
+    [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 @end

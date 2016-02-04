@@ -10,10 +10,10 @@
 
 @class ITBAccessToken;
 
-//typedef void(^ITBLoginCompletionBlock)(ITBAccessToken *token);
+typedef void(^ITBLoginCompletionBlock)(ITBAccessToken *token);
 
 @interface ITBLoginViewController : UIViewController
 
-//- (id)initWithCompletionBlock:(ITBLoginCompletionBlock) completionBlock;
+- (void)loginWithCompletionBlock:(ITBLoginCompletionBlock) completionBlock;
 
 @end

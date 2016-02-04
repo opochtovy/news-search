@@ -10,4 +10,6 @@
 
 @interface ITBNewsViewController : UITableViewController
 
+@property (assign, nonatomic) BOOL isLogin;
+
 @end

@@ -10,9 +10,19 @@
 
 #import <Foundation/Foundation.h>
 
+@class ITBUser;
+@class ITBLoginViewController;
+
 @interface ITBServerManager : NSObject
 
 // 1.1.2 - конструктор singleton
 + (ITBServerManager *)sharedManager;
+
+- (void)authorizeUserForLogin:(ITBLoginViewController *) loginVC
+                             onSuccess:(void(^)(ITBUser *user)) success
+            onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)postUserOnSuccess:(void(^)(ITBUser *user))success
+                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
 @end

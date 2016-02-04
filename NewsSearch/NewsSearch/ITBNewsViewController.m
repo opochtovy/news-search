@@ -8,7 +8,19 @@
 
 #import "ITBNewsViewController.h"
 
+#import "ITBServerManager.h"
+
+#import "ITBLoginViewController.h"
+
+#import "ITBNews.h"
+#import "ITBUser.h"
+
 @interface ITBNewsViewController ()
+
+@property (strong, nonatomic) NSArray *newsArray;
+
+// эта property вместо метода -initWithCompletionBlock:
+@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
 
 @end
 
@@ -17,42 +29,131 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.newsArray = [NSArray array];
+    
     self.title = @"NEWS";
-    
-    // Uncomment the following line to preserve selection between presentations.
-    // self.clearsSelectionOnViewWillAppear = NO;
-    
-    // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-    // self.navigationItem.rightBarButtonItem = self.editButtonItem;
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
 }
-
-#pragma mark - Table view data source
-
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-#warning Incomplete implementation, return the number of sections
-    return 0;
-}
-
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-#warning Incomplete implementation, return the number of rows
-    return 0;
-}
-
 /*
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+- (void)prepareForSegue:(UIStoryboardSegue *)segue
+                 sender:(id)sender {
     
-    // Configure the cell...
+    if ([[segue identifier] isEqualToString:@"login"]) {
+        
+        ITBLoginViewController *loginVC = (ITBLoginViewController *) [segue destinationViewController];
+    }
     
-    return cell;
 }
 */
 
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    // Make sure your segue name in storyboard is the same as this line
+    if ([[segue identifier] isEqualToString:@"login"])
+    {
+        // Get reference to the destination view controller
+        UINavigationController *loginNavVC = [segue destinationViewController];
+        ITBLoginViewController* loginVC = (ITBLoginViewController* )loginNavVC.topViewController;
+        
+        // Pass any objects to the view controller here, like...
+//        [loginVC setCompletionBlock:self.completionBlock];
+/*
+        [[ITBServerManager sharedManager] authorizeUserForLogin:loginVC
+                                                      onSuccess:^(ITBUser *user) {
+            NSLog(@"TADA!!! AUTHORIZED!");
+            
+//            NSLog(@"%@ %@", user.firstName, user.lastName);
+        }
+                                              onFailure:^(NSError *error, NSInteger statusCode)
+        {
+        
+        }];
+*/
+        
+        // Code below is for signing up a new user
+        [[ITBServerManager sharedManager]
+         postUserOnSuccess:^(ITBUser *user)
+        {
+            NSLog(@"TADA!!! USER WAS CREATED!");
+        }
+         onFailure:^(NSError *error, NSInteger statusCode)
+        {
+        
+        }];
+
+    }
+}
+
+#pragma mark - Table view data source
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    
+    if (self.isLogin) {
+        
+        return [self.newsArray count];
+        
+    } else {
+        
+        return 1;
+    }
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+//    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+    
+    static NSString *identifier;
+    
+    UITableViewCell *cell;
+    
+    if (self.isLogin) {
+        
+        identifier = @"NewsCell";
+        
+    } else {
+        
+        identifier = @"NoLoginCell";
+        
+    }
+    
+    cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+    
+    if (!cell) {
+        
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
+    }
+    
+    if (self.isLogin) {
+        
+        ITBNews *news = [self.newsArray objectAtIndex:indexPath.row];
+//        cell.textLabel.text = news.
+        
+    } else {
+        
+        cell.textLabel.text = @"You need to login for using our news network!";
+        cell.textLabel.textAlignment = NSTextAlignmentCenter;
+    }
+    
+    return cell;
+}
+
+#pragma mark - UITableViewDelegate
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    if (self.isLogin) {
+        
+        return 88.0;
+        
+    } else {
+        
+        return 44.0;
+        
+    }
+}
 /*
 // Override to support conditional editing of the table view.
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {

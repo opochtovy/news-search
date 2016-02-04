@@ -15,7 +15,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <color key="backgroundColor" red="0.32549019610000002" green="0.61568627450000002" blue="0.97254901959999995" alpha="1" colorSpace="calibratedRGB"/>
                         <prototypes>
-                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" rowHeight="101" id="aLg-o3-4M1">
+                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="NewsCell" rowHeight="101" id="aLg-o3-4M1">
                                 <rect key="frame" x="0.0" y="92" width="600" height="101"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="aLg-o3-4M1" id="TZy-dn-nVi">
@@ -90,6 +90,14 @@
                                     </constraints>
                                 </tableViewCellContentView>
                             </tableViewCell>
+                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="NoLoginCell" id="aMc-wf-bPR">
+                                <rect key="frame" x="0.0" y="193" width="600" height="101"/>
+                                <autoresizingMask key="autoresizingMask"/>
+                                <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="aMc-wf-bPR" id="MWr-88-hrn">
+                                    <rect key="frame" x="0.0" y="0.0" width="600" height="100"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </tableViewCellContentView>
+                            </tableViewCell>
                         </prototypes>
                         <connections>
                             <outlet property="dataSource" destination="qHQ-ha-2Qb" id="NVf-PA-g0E"/>
@@ -99,7 +107,7 @@
                     <navigationItem key="navigationItem" id="EKS-6d-cnN">
                         <barButtonItem key="rightBarButtonItem" title="Login" id="Nz9-ro-3du">
                             <connections>
-                                <segue destination="72k-it-a44" kind="presentation" id="Tkm-xF-Wxq"/>
+                                <segue destination="f5f-w1-AoC" kind="presentation" identifier="login" id="Tkm-xF-Wxq"/>
                             </connections>
                         </barButtonItem>
                     </navigationItem>
@@ -127,13 +135,20 @@
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                     </view>
+                    <navigationItem key="navigationItem" id="t3S-Z4-anM">
+                        <barButtonItem key="leftBarButtonItem" systemItem="cancel" id="IdH-Vb-rOF">
+                            <connections>
+                                <action selector="actionCancel:" destination="72k-it-a44" id="hbs-NS-HQ3"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                     <connections>
                         <outlet property="webView" destination="gC2-09-PTg" id="O3f-o4-9X5"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="6Yx-eI-QZs" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1605" y="48"/>
+            <point key="canvasLocation" x="2417" y="48"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="gb1-6a-4fh">
@@ -152,6 +167,24 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="KeQ-rU-qzP" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="129" y="297"/>
+        </scene>
+        <!--Navigation Controller-->
+        <scene sceneID="m8E-9b-zQN">
+            <objects>
+                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="f5f-w1-AoC" sceneMemberID="viewController">
+                    <toolbarItems/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="xAx-i0-hsA">
+                        <rect key="frame" x="0.0" y="0.0" width="320" height="44"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                    </navigationBar>
+                    <nil name="viewControllers"/>
+                    <connections>
+                        <segue destination="72k-it-a44" kind="relationship" relationship="rootViewController" id="tbH-qD-VVY"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="JTE-XP-pqg" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1605" y="48"/>
         </scene>
     </scenes>
 </document>
