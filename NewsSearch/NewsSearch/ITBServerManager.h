@@ -11,7 +11,6 @@
 #import <Foundation/Foundation.h>
 
 @class ITBUser;
-@class ITBLoginViewController;
 
 @interface ITBServerManager : NSObject
 
@@ -19,13 +18,9 @@
 
 + (ITBServerManager *)sharedManager;
 
-- (void)authorizeUserByRequest;
-
-
-- (void)authorizeUserOnSuccess:(void(^)(ITBUser* user)) success
-                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-- (void)logoutUserOnSuccess:(void(^)(ITBUser* user)) success
+- (void)authorizeWithUsername:(NSString* ) username
+         withPassword:(NSString* ) password
+            onSuccess:(void(^)(ITBUser* user)) success
                      onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
 - (void)getNewsOnSuccess:(void(^)(NSArray *news)) success

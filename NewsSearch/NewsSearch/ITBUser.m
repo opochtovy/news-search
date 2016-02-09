@@ -22,6 +22,9 @@
         self.createdAt = [responseObject objectForKey:@"createdAt"];
         self.updatedAt = [responseObject objectForKey:@"updatedAt"];
         
+        self.code = [responseObject objectForKey:@"code"];
+        self.error = [responseObject objectForKey:@"error"];
+        
     }
     
     return self;

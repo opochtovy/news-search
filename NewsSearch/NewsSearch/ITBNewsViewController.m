@@ -10,19 +10,20 @@
 
 #import "ITBServerManager.h"
 
-#import "ITBLoginViewController.h"
+#import "ITBLoginTableViewController.h"
 
 #import "ITBNews.h"
 #import "ITBUser.h"
 
 #import "ITBNewsCell.h"
 
-@interface ITBNewsViewController () <ITBLoginViewControllerDelegate>
+@interface ITBNewsViewController () <ITBLoginTableViewControllerDelegate>
 
-//@property (strong, nonatomic) NSMutableArray *newsArray;
 @property (strong, nonatomic) NSArray *newsArray;
 
 @property (strong, nonatomic) NSMutableSet *categoriesSet;
+
+@property (assign, nonatomic) BOOL isLogin;
 
 @end
 
@@ -31,7 +32,6 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-//    self.newsArray = [NSMutableArray array];
     self.newsArray = [NSArray array];
     
     self.categoriesSet = [NSMutableSet set];
@@ -43,10 +43,14 @@
     
     [super viewWillAppear:animated];
     
-    if ([ITBServerManager sharedManager].currentUser.sessionToken) {
+    if (self.isLogin) {
+        
+        [self.tableView reloadData];
         
         [self getNewsFromServer];
+        
     }
+
 }
 
 - (void)didReceiveMemoryWarning {
@@ -58,19 +62,15 @@
 
 - (void)getNewsFromServer {
     
-    // 12.3
     [[ITBServerManager sharedManager]
      getNewsOnSuccess:^(NSArray *news) {
          
-//         [self.newsArray addObjectsFromArray:news];
          self.newsArray = news;
          
          for (ITBNews* newsItem in news) {
              
              [self.categoriesSet addObject:newsItem.category];
          }
-         
-#warning ? - вопрос Жене - не получается удалить cell c другим identifier при получении массива новостей - точнее удаление старой ячейки с идентификатором noData
          
          [self.tableView reloadData];
          
@@ -81,13 +81,32 @@
     
 }
 
+- (BOOL)shouldPerformSegueWithIdentifier:(NSString *)identifier sender:(nullable id)sender {
+    
+    if ([self.loginButton.title isEqualToString:@"Logout"]) {
+        
+        self.loginButton.title = @"Login";
+        
+        self.isLogin = NO;
+        
+        self.newsArray = nil;
+        
+        [self.tableView reloadData];
+        
+        return NO;
+    }
+    
+    return YES;
+}
+
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
     if ([[segue identifier] isEqualToString:@"login"])
     {
-        
+
         UINavigationController *loginNavVC = [segue destinationViewController];
-        ITBLoginViewController* loginVC = (ITBLoginViewController* )loginNavVC.topViewController;
+        
+        ITBLoginTableViewController* loginVC = (ITBLoginTableViewController* )loginNavVC.topViewController;
         
         loginVC.delegate = self;
         
@@ -98,7 +117,7 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
-    if ([self.newsArray count]) {
+    if (self.isLogin) {
         
         return [self.newsArray count];
         
@@ -109,18 +128,8 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-   
-/*
- UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
- 
- if (!cell) {
- 
- cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
- }
-*/
 
-
-    if ([self.newsArray count]) {
+    if (self.isLogin) {
         
         static NSString *identifier = @"NewsCell";
         
@@ -128,11 +137,7 @@
         
         ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
         
-        // that method sets all needed frames for my outlets depending of current newsItem for this cell
-        [cell countFramesForNews:news];
-        
         cell.titleLabel.text = news.title;
-//        cell.titleLabel.textAlignment = NSTextAlignmentJustified;
         
         cell.categoryLabel.text = news.category;
         
@@ -142,9 +147,7 @@
         
     } else {
         
-        UITableViewCell *cell;
-        
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"noData"];
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"noData"];
         
         cell.textLabel.text = @"You need to login for using our news network!";
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
@@ -160,78 +163,24 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    if ([self.newsArray count]) {
-        
-//        return 88.0;
-        
-        // that method counts current cell height depending of current newsItem for this cell
-        ITBNews *news = [self.newsArray objectAtIndex:indexPath.row];
-        
-        return [ITBNewsCell heightForNews:news];
-        
-        
-    } else {
-        
-        return 44.0;
-        
-    }
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 400.0;
+    
+    return self.tableView.rowHeight;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
-/*
-// Override to support conditional editing of the table view.
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the specified item to be editable.
-    return YES;
-}
-*/
 
-/*
-// Override to support editing the table view.
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // Delete the row from the data source
-        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-    }   
-}
-*/
-
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath {
-}
-*/
-
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
-
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
-
-#pragma mark - ITBLoginViewControllerDelegate
-
-- (void)changeTitleForLoginButton:(ITBLoginViewController *)vc {
+#pragma mark - ITBLoginTableViewControllerDelegate
+- (void)changeTitleForLoginButton:(ITBLoginTableViewController *)vc {
     
     self.loginButton.title = @"Logout";
     
-    self.loginButton.enabled = NO;
+    self.isLogin = YES;
+    
 }
 
 @end

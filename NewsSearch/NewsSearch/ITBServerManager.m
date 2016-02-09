@@ -13,8 +13,6 @@
 #import "ITBUser.h"
 #import "ITBNews.h"
 
-#import "ITBLoginViewController.h"
-
 NSString *const appId = @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn";
 NSString *const restApiKey = @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B";
 NSString *const contentApi = @"application/json";
@@ -63,11 +61,24 @@ NSString *const baseUrl = @"https://api.parse.com";
     return self;
 }
 
-- (void)authorizeUserOnSuccess:(void(^)(ITBUser* user)) success
+- (void)authorizeWithUsername:(NSString* ) username
+                 withPassword:(NSString* ) password
+                    onSuccess:(void(^)(ITBUser* user)) success
                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
 {
+    //    baseUrl
+    //    @"/1/login?&username="
+    //    self.usernameField.text
+    //    @"&password="
+    //    self.passwordField.text
     
-    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/login?&username=user1&password=11111111"];
+    NSString *urlString = [NSString stringWithFormat: @"%@%@%@%@%@",
+                           baseUrl,
+                           @"/1/login?&username=",
+                           username,
+                           @"&password=",
+                           password];
+    
     NSURL *url = [NSURL URLWithString: urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
                                                            cachePolicy:NSURLRequestUseProtocolCachePolicy
@@ -102,12 +113,6 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     [task resume];
     
-}
-
-- (void)logoutUserOnSuccess:(void(^)(ITBUser* user)) success
-                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
-{
-    // ?
 }
 
 // getting news after login as user
@@ -152,38 +157,6 @@ NSString *const baseUrl = @"https://api.parse.com";
             
         } else {
             
-            // Failure
-            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
-        }
-    }];
-    
-    [task resume];
-}
-
-- (void)sendRequestForUrlString:(NSString* ) urlString
-                        headers:(NSDictionary* ) headers
-                     methodType:(NSString* ) methodType
-{
-    
-    NSURL *url = [NSURL URLWithString: urlString];
-    
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
-                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
-                                                       timeoutInterval:10.0];
-    
-    request.HTTPMethod = methodType;
-    
-    [request setAllHTTPHeaderFields:headers];
-    
-    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        
-        if (error == nil) {
-            
-            NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
-            
-            NSLog(@"got response: %@", responseBody);
-            
-        } else {
             // Failure
             NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
         }

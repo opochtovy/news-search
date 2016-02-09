@@ -16,8 +16,4 @@
 @property (weak, nonatomic) IBOutlet UILabel *categoryLabel;
 @property (weak, nonatomic) IBOutlet UILabel *ratingLabel;
 
-+ (CGFloat) heightForNews:(ITBNews *)news;
-
-- (void) countFramesForNews:(ITBNews *)news;
-
 @end

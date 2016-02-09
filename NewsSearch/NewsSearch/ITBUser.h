@@ -16,6 +16,9 @@
 @property (strong, nonatomic) NSDate* createdAt;
 @property (strong, nonatomic) NSDate* updatedAt;
 
+@property (assign, nonatomic) NSNumber* code;
+@property (strong, nonatomic) NSString* error;
+
 - (id)initWithServerResponse:(NSDictionary *) responseObject;
 
 @end
