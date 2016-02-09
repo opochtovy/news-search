@@ -16,6 +16,15 @@
     
     if (self) {
         
+        self.objectId = [responseObject objectForKey:@"objectId"];
+        self.newsURL = [responseObject objectForKey:@"newsURL"];
+        self.title = [responseObject objectForKey:@"title"];
+        self.message = [responseObject objectForKey:@"message"];
+        self.category = [responseObject objectForKey:@"category"];
+        self.rating = [responseObject objectForKey:@"rating"];
+        self.createdAt = [responseObject objectForKey:@"createdAt"];
+        self.updatedAt = [responseObject objectForKey:@"updatedAt"];
+        
     }
     
     return self;

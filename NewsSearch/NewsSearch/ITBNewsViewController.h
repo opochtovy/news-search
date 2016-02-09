@@ -10,6 +10,6 @@
 
 @interface ITBNewsViewController : UITableViewController
 
-@property (assign, nonatomic) BOOL isLogin;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
 
 @end

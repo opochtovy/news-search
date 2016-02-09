@@ -10,4 +10,12 @@
 
 @interface ITBUser : NSObject
 
+@property (strong, nonatomic) NSString* username;
+@property (strong, nonatomic) NSString* objectId;
+@property (strong, nonatomic) NSString* sessionToken;
+@property (strong, nonatomic) NSDate* createdAt;
+@property (strong, nonatomic) NSDate* updatedAt;
+
+- (id)initWithServerResponse:(NSDictionary *) responseObject;
+
 @end

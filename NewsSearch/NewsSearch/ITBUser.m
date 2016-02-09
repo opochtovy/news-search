@@ -16,6 +16,12 @@
     
     if (self) {
         
+        self.username = [responseObject objectForKey:@"username"];
+        self.objectId = [responseObject objectForKey:@"objectId"];
+        self.sessionToken = [responseObject objectForKey:@"sessionToken"];
+        self.createdAt = [responseObject objectForKey:@"createdAt"];
+        self.updatedAt = [responseObject objectForKey:@"updatedAt"];
+        
     }
     
     return self;

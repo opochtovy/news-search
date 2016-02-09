@@ -15,12 +15,14 @@
 #import "ITBNews.h"
 #import "ITBUser.h"
 
-@interface ITBNewsViewController ()
+#import "ITBNewsCell.h"
 
+@interface ITBNewsViewController () <ITBLoginViewControllerDelegate>
+
+//@property (strong, nonatomic) NSMutableArray *newsArray;
 @property (strong, nonatomic) NSArray *newsArray;
 
-// эта property вместо метода -initWithCompletionBlock:
-@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
+@property (strong, nonatomic) NSMutableSet *categoriesSet;
 
 @end
 
@@ -29,62 +31,66 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+//    self.newsArray = [NSMutableArray array];
     self.newsArray = [NSArray array];
     
+    self.categoriesSet = [NSMutableSet set];
+    
     self.title = @"NEWS";
+}
+
+- (void) viewWillAppear:(BOOL)animated {
+    
+    [super viewWillAppear:animated];
+    
+    if ([ITBServerManager sharedManager].currentUser.sessionToken) {
+        
+        [self getNewsFromServer];
+    }
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
 }
-/*
-- (void)prepareForSegue:(UIStoryboardSegue *)segue
-                 sender:(id)sender {
+
+#pragma mark - API
+
+- (void)getNewsFromServer {
     
-    if ([[segue identifier] isEqualToString:@"login"]) {
-        
-        ITBLoginViewController *loginVC = (ITBLoginViewController *) [segue destinationViewController];
-    }
+    // 12.3
+    [[ITBServerManager sharedManager]
+     getNewsOnSuccess:^(NSArray *news) {
+         
+//         [self.newsArray addObjectsFromArray:news];
+         self.newsArray = news;
+         
+         for (ITBNews* newsItem in news) {
+             
+             [self.categoriesSet addObject:newsItem.category];
+         }
+         
+#warning ? - вопрос Жене - не получается удалить cell c другим identifier при получении массива новостей - точнее удаление старой ячейки с идентификатором noData
+         
+         [self.tableView reloadData];
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode) {
+         
+     }];
     
 }
-*/
 
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
-    // Make sure your segue name in storyboard is the same as this line
     if ([[segue identifier] isEqualToString:@"login"])
     {
-        // Get reference to the destination view controller
+        
         UINavigationController *loginNavVC = [segue destinationViewController];
         ITBLoginViewController* loginVC = (ITBLoginViewController* )loginNavVC.topViewController;
         
-        // Pass any objects to the view controller here, like...
-//        [loginVC setCompletionBlock:self.completionBlock];
-/*
-        [[ITBServerManager sharedManager] authorizeUserForLogin:loginVC
-                                                      onSuccess:^(ITBUser *user) {
-            NSLog(@"TADA!!! AUTHORIZED!");
-            
-//            NSLog(@"%@ %@", user.firstName, user.lastName);
-        }
-                                              onFailure:^(NSError *error, NSInteger statusCode)
-        {
+        loginVC.delegate = self;
         
-        }];
-*/
-        
-        // Code below is for signing up a new user
-        [[ITBServerManager sharedManager]
-         postUserOnSuccess:^(ITBUser *user)
-        {
-            NSLog(@"TADA!!! USER WAS CREATED!");
-        }
-         onFailure:^(NSError *error, NSInteger statusCode)
-        {
-        
-        }];
-
     }
 }
 
@@ -92,7 +98,7 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
-    if (self.isLogin) {
+    if ([self.newsArray count]) {
         
         return [self.newsArray count];
         
@@ -103,56 +109,77 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-//    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
-    
-    static NSString *identifier;
-    
-    UITableViewCell *cell;
-    
-    if (self.isLogin) {
+   
+/*
+ UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+ 
+ if (!cell) {
+ 
+ cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
+ }
+*/
+
+
+    if ([self.newsArray count]) {
         
-        identifier = @"NewsCell";
+        static NSString *identifier = @"NewsCell";
+        
+        ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+        
+        ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
+        
+        // that method sets all needed frames for my outlets depending of current newsItem for this cell
+        [cell countFramesForNews:news];
+        
+        cell.titleLabel.text = news.title;
+//        cell.titleLabel.textAlignment = NSTextAlignmentJustified;
+        
+        cell.categoryLabel.text = news.category;
+        
+        cell.ratingLabel.text = [NSString stringWithFormat:@"%@", news.rating];
+        
+        return cell;
         
     } else {
         
-        identifier = @"NoLoginCell";
+        UITableViewCell *cell;
         
-    }
-    
-    cell = [tableView dequeueReusableCellWithIdentifier:identifier];
-    
-    if (!cell) {
-        
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
-    }
-    
-    if (self.isLogin) {
-        
-        ITBNews *news = [self.newsArray objectAtIndex:indexPath.row];
-//        cell.textLabel.text = news.
-        
-    } else {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"noData"];
         
         cell.textLabel.text = @"You need to login for using our news network!";
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
+        cell.textLabel.numberOfLines = 0;
+        cell.textLabel.textColor = [UIColor lightGrayColor];
+        
+        return cell;
+        
     }
-    
-    return cell;
 }
 
 #pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    if (self.isLogin) {
+    if ([self.newsArray count]) {
         
-        return 88.0;
+//        return 88.0;
+        
+        // that method counts current cell height depending of current newsItem for this cell
+        ITBNews *news = [self.newsArray objectAtIndex:indexPath.row];
+        
+        return [ITBNewsCell heightForNews:news];
+        
         
     } else {
         
         return 44.0;
         
     }
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 /*
 // Override to support conditional editing of the table view.
@@ -197,5 +224,14 @@
     // Pass the selected object to the new view controller.
 }
 */
+
+#pragma mark - ITBLoginViewControllerDelegate
+
+- (void)changeTitleForLoginButton:(ITBLoginViewController *)vc {
+    
+    self.loginButton.title = @"Logout";
+    
+    self.loginButton.enabled = NO;
+}
 
 @end

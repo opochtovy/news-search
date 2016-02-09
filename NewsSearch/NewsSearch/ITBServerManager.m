@@ -11,27 +11,20 @@
 #import "ITBServerManager.h"
 
 #import "ITBUser.h"
+#import "ITBNews.h"
 
 #import "ITBLoginViewController.h"
-#import "ITBAccessToken.h"
 
-#define APPID   @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn"
-#define RESTAPIKEY   @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B"
-#define CONTENT_API   @"application/json"
+NSString *const appId = @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn";
+NSString *const restApiKey = @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B";
+NSString *const contentApi = @"application/json";
+NSString *const baseUrl = @"https://api.parse.com";
 
-#define BASE_URL   @"https://api.parse.com"
+@interface ITBServerManager ()
 
-@interface ITBServerManager () <NSURLConnectionDelegate, NSXMLParserDelegate>
+//@property (strong, nonatomic) NSURL *baseUrl;
 
-@property (strong, nonatomic) NSURL *baseUrl;
-
-@property (strong, nonatomic) ITBAccessToken *accessToken;
-
-@property (strong, nonatomic) NSURLConnection *currentConnection;
-@property (strong, nonatomic) NSMutableData *apiReturnXMLData;
-
-@property (strong, nonatomic) NSXMLParser *xmlParser;
-@property (copy, nonatomic) NSString *currentElement;
+@property (strong, nonatomic) NSURLSession *session;
 
 @end
 
@@ -47,121 +40,156 @@
     dispatch_once(&onceToken, ^{
         
         manager = [[ITBServerManager alloc] init];
-        
     });
     
     return manager;
 }
 
-- (id)initWithBaseURL:(NSURL* ) url {
+- (id)init {
     
     self = [super init];
     
     if (self) {
+
+//        NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
         
-        self.baseUrl = url;
+        NSURLSessionConfiguration *sessionConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
         
+        self.session = [NSURLSession sessionWithConfiguration:sessionConfig
+                                                              delegate:nil
+                                                         delegateQueue:nil];
     }
     
     return self;
 }
 
-- (void)authorizeUserForLogin:(ITBLoginViewController *) loginVC
-                    onSuccess:(void(^)(ITBUser *user)) success
+- (void)authorizeUserOnSuccess:(void(^)(ITBUser* user)) success
                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
 {
-    [loginVC loginWithCompletionBlock:^(ITBAccessToken *token) {
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/login?&username=user1&password=11111111"];
+    NSURL *url = [NSURL URLWithString: urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
+                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
+                                                       timeoutInterval:10.0];
+    
+    request.HTTPMethod = @"GET";
+    
+    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
+                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B" };
+    [request setAllHTTPHeaderFields:headers];
+    
+    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         
-        self.accessToken = token;
+        NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
         
+        NSLog(@"JSON during authorization UserOnSuccess: %@", responseBody);
+        
+        if (error == nil) {
+            
+            ITBUser *user = [[ITBUser alloc] initWithServerResponse:responseBody];
+            
+            self.currentUser = user;
+            
+            success(user);
+            
+        } else {
+            
+            // Failure
+            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+        }
     }];
+    
+    [task resume];
     
 }
 
-- (void)postUserOnSuccess:(void(^)(ITBUser *user))success
+- (void)logoutUserOnSuccess:(void(^)(ITBUser* user)) success
+                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
+{
+    // ?
+}
+
+// getting news after login as user
+- (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
 {
     
-    NSString *restCallString = [NSString stringWithFormat:@"%@/1/users?X-Parse-Application-Id=%@&X-Parse-REST-API-Key=%@&Content-Type=%@&", BASE_URL, APPID, RESTAPIKEY, CONTENT_API];
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews"];
+    NSURL *url = [NSURL URLWithString: urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
+                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
+                                                       timeoutInterval:10.0];
     
-    NSURL *restURL = [NSURL URLWithString:restCallString];
+    request.HTTPMethod = @"GET";
     
-//    NSURLRequest *restRequest = [NSURLRequest requestWithURL:restURL];
-
-    NSMutableURLRequest *restRequest = [NSMutableURLRequest requestWithURL:restURL                                                       cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData                                                   timeoutInterval:10];
-
-    [restRequest setHTTPMethod:@"POST"];
+    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
+                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B" };
+    [request setAllHTTPHeaderFields:headers];
     
-    // HTTPBody
-    NSString *postString = @"username=user2&password=1111";
-    [restRequest setHTTPBody:[postString dataUsingEncoding:NSUTF8StringEncoding]];
+    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        
+        NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
+        
+        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+        
+        NSArray* dictsArray = [responseBody objectForKey:@"results"];
+        
+        if (error == nil) {
+            
+            NSMutableArray *objectsArray = [NSMutableArray array];
+            
+            for (NSDictionary *dict in dictsArray) {
+                
+                ITBNews *news = [[ITBNews alloc] initWithServerResponse:dict];
+                
+                [objectsArray addObject:news];
+            }
+            
+            if (success) {
+                success([objectsArray copy]);
+            }
+            
+        } else {
+            
+            // Failure
+            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+        }
+    }];
     
-    if (self.currentConnection)
-    {
-        [self.currentConnection cancel];
-        self.currentConnection = nil;
-        self.apiReturnXMLData = nil;
-    }
-    
-    self.currentConnection = [[NSURLConnection alloc] initWithRequest:restRequest delegate:self];
-    
-    self.apiReturnXMLData = [NSMutableData data];
-    
+    [task resume];
 }
 
-#pragma mark - NSURLConnectionDelegate
-
-- (void)connection:(NSURLConnection*)connection didReceiveResponse:(NSURLResponse *)response {
+- (void)sendRequestForUrlString:(NSString* ) urlString
+                        headers:(NSDictionary* ) headers
+                     methodType:(NSString* ) methodType
+{
     
-    [self.apiReturnXMLData setLength:0];
-}
-
-- (void)connection:(NSURLConnection*)connection didReceiveData:(NSData*)data {
+    NSURL *url = [NSURL URLWithString: urlString];
     
-    [self.apiReturnXMLData appendData:data];
-}
-
-- (void)connection:(NSURLConnection*)connection didFailWithError:(NSError*)error {
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
+                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
+                                                       timeoutInterval:10.0];
     
-    NSLog(@"URL Connection Failed!");
-    self.currentConnection = nil;
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-
-    self.xmlParser = [[NSXMLParser alloc] initWithData:self.apiReturnXMLData];
+    request.HTTPMethod = methodType;
     
-    [self.xmlParser setDelegate:self];
+    [request setAllHTTPHeaderFields:headers];
     
-    [self.xmlParser parse];
-
-    self.currentConnection = nil;
-}
-
-#pragma mark - NSXMLParserDelegate
-
-- (void)parser:(NSXMLParser *)parser didStartElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString*)qualifiedName attributes:(NSDictionary *)attributeDict {
+    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        
+        if (error == nil) {
+            
+            NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
+            
+            NSLog(@"got response: %@", responseBody);
+            
+        } else {
+            // Failure
+            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+        }
+    }];
     
-    if( [elementName isEqualToString:@"Error"])
-    {
-        NSLog(@"Web API Error!");
-    }
-    
-    //
-}
-
-- (void)parser:(NSXMLParser*)parser foundCharacters:(NSString*)string {
-    
-    //
-}
-
--(void)parser:(NSXMLParser *)parser didEndElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString *)qName {
-    
-}
-
--(void)parserDidEndDocument:(NSXMLParser *)parser {
-    
-    self.apiReturnXMLData = nil;
+    [task resume];
 }
 
 @end

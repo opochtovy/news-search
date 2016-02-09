@@ -7,15 +7,12 @@
 //
 
 #import "ITBLoginViewController.h"
-#import "ITBAccessToken.h"
 
-@interface ITBLoginViewController () <UIWebViewDelegate>
+#import "ITBServerManager.h"
 
-@property (copy, nonatomic) ITBLoginCompletionBlock completionBlock;
+#import "ITBUser.h"
 
-@property (strong, nonatomic) IBOutlet UIWebView *webView;
-
-//@property (strong, nonatomic) ITBAccessToken *accessToken;
+@interface ITBLoginViewController ()
 
 - (IBAction)actionCancel:(UIBarButtonItem *)sender;
 
@@ -23,19 +20,28 @@
 
 @implementation ITBLoginViewController
 
+- (id)initWithCoder:(NSCoder *)aDecoder {
+    
+    self = [super initWithCoder:aDecoder];
+    
+    if (self) {
+        
+//        [self authorizeUser];
+    }
+    
+    return self;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
     self.navigationItem.title = @"Login";
     
-    NSString *urlString;
-    NSURL *url = [NSURL URLWithString:urlString];
-    NSURLRequest *request = [NSURLRequest requestWithURL:url];
+    [self authorizeUser];
     
-    self.webView.delegate = self;
+//    [self.delegate changeTitleForLoginButton:self];
     
-    [self.webView loadRequest:request];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -43,27 +49,23 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)dealloc {
-    
-    self.webView.delegate = nil;
-}
+#pragma mark - API
 
-#pragma mark - Private Methods
-
-- (void)loginWithCompletionBlock:(ITBLoginCompletionBlock) completionBlock {
+- (void)authorizeUser {
     
-    self.completionBlock = completionBlock;
-}
-
-#pragma mark - UIWebViewDelegate
-
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
+    [[ITBServerManager sharedManager]
+     authorizeUserOnSuccess:^(ITBUser *user)
+    {
+        [self.delegate changeTitleForLoginButton:self];
+        
+        [self dismissViewControllerAnimated:YES completion:nil];
+        
+    }
+     onFailure:^(NSError *error, NSInteger statusCode)
+    {
+        
+    }];
     
-    NSLog(@"%@", request);
-    
-//    [self dismissViewControllerAnimated:YES completion:nil];
-    
-    return YES;
 }
 
 #pragma mark - Actions

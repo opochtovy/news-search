@@ -8,12 +8,18 @@
 
 #import <UIKit/UIKit.h>
 
-@class ITBAccessToken;
-
-typedef void(^ITBLoginCompletionBlock)(ITBAccessToken *token);
+@protocol ITBLoginViewControllerDelegate;
 
 @interface ITBLoginViewController : UIViewController
 
-- (void)loginWithCompletionBlock:(ITBLoginCompletionBlock) completionBlock;
+@property (weak, nonatomic) id <ITBLoginViewControllerDelegate> delegate;
+
+@end
+
+@protocol ITBLoginViewControllerDelegate //<NSObject>
+
+@optional
+
+- (void)changeTitleForLoginButton:(ITBLoginViewController *)vc;
 
 @end

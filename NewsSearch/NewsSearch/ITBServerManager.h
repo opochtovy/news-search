@@ -6,7 +6,7 @@
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
-// 1.1.1 - это класс singleton для общения с сервером
+// класс singleton для общения с сервером
 
 #import <Foundation/Foundation.h>
 
@@ -15,14 +15,21 @@
 
 @interface ITBServerManager : NSObject
 
-// 1.1.2 - конструктор singleton
+@property (strong, nonatomic) ITBUser *currentUser;
+
 + (ITBServerManager *)sharedManager;
 
-- (void)authorizeUserForLogin:(ITBLoginViewController *) loginVC
-                             onSuccess:(void(^)(ITBUser *user)) success
-            onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+- (void)authorizeUserByRequest;
 
-- (void)postUserOnSuccess:(void(^)(ITBUser *user))success
-                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)authorizeUserOnSuccess:(void(^)(ITBUser* user)) success
+                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)logoutUserOnSuccess:(void(^)(ITBUser* user)) success
+                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
+                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
 
 @end
