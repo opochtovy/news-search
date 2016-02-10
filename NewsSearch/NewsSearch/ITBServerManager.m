@@ -250,6 +250,14 @@ NSString *const baseUrl = @"https://api.parse.com";
                 
                 ITBNews *news = [[ITBNews alloc] initWithServerResponse:dict];
                 
+                for (ITBUser* user in news.likedUsers) {
+                    
+                    if ([user isEqual:self.currentUser]) {
+                        
+                        news.isLikedByCurrentUser = YES;
+                    }
+                }
+                
                 [objectsArray addObject:news];
             }
             
@@ -262,6 +270,58 @@ NSString *const baseUrl = @"https://api.parse.com";
             // Failure
             NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
         }
+    }];
+    
+    [task resume];
+}
+
+// update ITBNews object with specified fields in parameters 
+- (void)updateObject:(NSString* ) objectId
+                withFields:(NSDictionary* ) parameters
+        forUrlString:(NSString* ) urlString
+                   onSuccess:(void(^)(NSDate* updatedAt)) success
+                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
+{
+    
+//    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/users"];
+    NSURL *url = [NSURL URLWithString: urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
+                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
+                                                       timeoutInterval:10.0];
+    
+    request.HTTPMethod = @"PUT";
+    
+    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
+                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B",
+                               @"content-type": @"application/json" };
+/*
+    NSDictionary *parameters = @{ @"username": username,
+                                  @"password": password };
+*/
+    NSData *postData = [NSJSONSerialization dataWithJSONObject:parameters options:0 error:nil];
+    
+    [request setAllHTTPHeaderFields:headers];
+    
+    [request setHTTPBody:postData];
+    
+    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        
+        NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
+        
+//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+        
+        if (error == nil) {
+            
+            NSDate* updatedAt = [responseBody objectForKey:@"updatedAt"];
+            
+            success(updatedAt);
+            
+        } else {
+            
+            // Failure
+            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+        }
+        
     }];
     
     [task resume];

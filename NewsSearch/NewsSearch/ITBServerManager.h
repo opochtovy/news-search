@@ -34,5 +34,11 @@
 - (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
+- (void)updateObject:(NSString* ) objectId
+          withFields:(NSDictionary* ) parameters
+        forUrlString:(NSString* ) urlString
+           onSuccess:(void(^)(NSDate* updatedAt)) success
+           onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
 
 @end

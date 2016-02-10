@@ -25,6 +25,10 @@
 
 @property (assign, nonatomic) BOOL isLogin;
 
+@property (strong, nonatomic) NSArray *buttonsArray;
+
+@property (strong, nonatomic) ITBUser *currentUser;
+
 @end
 
 @implementation ITBNewsViewController
@@ -40,12 +44,13 @@
     
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 400.0;
+    
 }
 
 - (void) viewWillAppear:(BOOL)animated {
     
     [super viewWillAppear:animated];
-    
+
     if (self.isLogin) {
         
         [self.tableView reloadData];
@@ -61,6 +66,28 @@
     // Dispose of any resources that can be recreated.
 }
 
+#pragma mark - Private Methods
+
+- (ITBNews* ) getNewsCellForSender:(UIButton* )sender {
+    
+    UIView* parentView;
+    
+    UIView* childView = sender;
+    
+    while (![parentView isKindOfClass:[ITBNewsCell class]]) {
+        
+        parentView = childView.superview;
+        
+        childView = parentView;
+    }
+    
+    NSIndexPath* indexPath = [self.tableView indexPathForCell:(ITBNewsCell* )parentView];
+    
+    ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
+    
+    return news;
+}
+
 #pragma mark - API
 
 - (void)getNewsFromServer {
@@ -68,14 +95,28 @@
     [[ITBServerManager sharedManager]
      getNewsOnSuccess:^(NSArray *news) {
          
+         self.currentUser = [ITBServerManager sharedManager].currentUser;
+         
          self.newsArray = news;
          
          for (ITBNews* newsItem in news) {
              
              [self.categoriesSet addObject:newsItem.category];
+             
+             if ([newsItem.likedUsers containsObject:self.currentUser.objectId]) {
+                 
+                 newsItem.isLikedByCurrentUser = YES;
+             }
+             
          }
          
-         [self.tableView reloadData];
+//         [self.tableView reloadData];
+         
+         dispatch_async(dispatch_get_main_queue(), ^{
+             
+             [self.tableView reloadData];
+             
+         });
          
      }
      onFailure:^(NSError *error, NSInteger statusCode) {
@@ -83,6 +124,28 @@
      }];
     
 }
+
+- (void)updateNewsObject:(NSString* ) objectId
+              withFields:(NSDictionary* ) parameters
+            forUrlString:(NSString* ) urlString {
+    
+    [[ITBServerManager sharedManager] updateObject:objectId
+                                        withFields:parameters
+                                      forUrlString:urlString
+                                         onSuccess:^(NSDate *updatedAt)
+     {
+         
+         NSLog(@"SUCCESS !!! ");
+     }
+                                         onFailure:^(NSError *error, NSInteger statusCode)
+     {
+         
+         
+     }];
+    
+}
+
+#pragma mark - UIViewController methods
 
 - (BOOL)shouldPerformSegueWithIdentifier:(NSString *)identifier sender:(nullable id)sender {
     
@@ -116,7 +179,7 @@
     }
 }
 
-#pragma mark - Table view data source
+#pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
@@ -144,7 +207,20 @@
         
         cell.categoryLabel.text = news.category;
         
-        cell.ratingLabel.text = [NSString stringWithFormat:@"%@", news.rating];
+//        cell.ratingLabel.text = [NSString stringWithFormat:@"%@", news.rating];
+        cell.ratingLabel.text = [NSString stringWithFormat:@"%ld", (long)[news.likedUsers count]];
+        
+        if (news.isLikedByCurrentUser) {
+            
+            cell.addLikeButton.enabled = NO;
+            cell.subtractLikeButton.enabled = YES;
+            
+        } else {
+            
+            cell.addLikeButton.enabled = YES;
+            cell.subtractLikeButton.enabled = NO;
+            
+        }
         
         return cell;
         
@@ -177,5 +253,84 @@
     self.isLogin = YES;
     
 }
+
+#pragma mark - Actions
+
+- (IBAction)actionAddLike:(UIButton *)sender {
+    
+    ITBNews* news = [self getNewsCellForSender:sender];
+    
+    NSLog(@"news.title = %@", news.title);
+    
+    NSMutableArray* updatedLikedUsers;
+    
+    if ([news.likedUsers count]) {
+        
+        updatedLikedUsers = [news.likedUsers mutableCopy];
+        
+    } else {
+
+        updatedLikedUsers = [NSMutableArray array];
+    }
+    
+    [updatedLikedUsers addObject:self.currentUser.objectId];
+    
+    news.isLikedByCurrentUser = YES;
+
+    news.likedUsers = [updatedLikedUsers copy];
+    
+    [self.tableView reloadData];
+    
+    // осталось отправить на сервер новый news.likedUsers
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews/%@", news.objectId];
+    
+    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": @"AddUnique", @"objects": @[ self.currentUser.objectId ] } };
+
+    [self updateNewsObject:news.objectId
+                withFields:parameters
+              forUrlString:urlString];
+
+}
+
+- (IBAction)actionSubtractLike:(UIButton *)sender {
+    
+    ITBNews* news = [self getNewsCellForSender:sender];
+    
+    NSMutableArray* updatedLikedUsers;
+    
+    if ([news.likedUsers count]) {
+        
+        updatedLikedUsers = [news.likedUsers mutableCopy];
+        
+    } else {
+        
+        updatedLikedUsers = [NSMutableArray array]; // я здесь оставляю чтобы это подходило для обоих методов (addLike and subtractLike)
+    }
+    
+//    ITBUser* currentUser = [ITBServerManager sharedManager].currentUser;
+    
+    [updatedLikedUsers removeObject:self.currentUser.objectId];
+    
+    news.isLikedByCurrentUser = NO;
+    
+    news.likedUsers = [updatedLikedUsers copy];
+    
+    [self.tableView reloadData];
+    
+    // осталось отправить на сервер новый news.likedUsers
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews/%@", news.objectId];
+    
+    // change 3
+    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": @"Remove", @"objects": @[ self.currentUser.objectId ] } };
+    
+    [self updateNewsObject:news.objectId
+                withFields:parameters
+              forUrlString:urlString];
+    
+    
+}
+
 
 @end

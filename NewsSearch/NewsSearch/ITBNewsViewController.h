@@ -12,4 +12,8 @@
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
 
+
+- (IBAction)actionAddLike:(UIButton *)sender;
+- (IBAction)actionSubtractLike:(UIButton *)sender;
+
 @end

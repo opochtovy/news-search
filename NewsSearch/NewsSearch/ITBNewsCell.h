@@ -16,4 +16,7 @@
 @property (weak, nonatomic) IBOutlet UILabel *categoryLabel;
 @property (weak, nonatomic) IBOutlet UILabel *ratingLabel;
 
+@property (weak, nonatomic) IBOutlet UIButton *addLikeButton;
+@property (weak, nonatomic) IBOutlet UIButton *subtractLikeButton;
+
 @end
