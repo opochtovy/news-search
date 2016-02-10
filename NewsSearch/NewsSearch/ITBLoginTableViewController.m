@@ -59,7 +59,7 @@
              
          } else {
              
-             dispatch_sync(dispatch_get_main_queue(), ^{
+             dispatch_async(dispatch_get_main_queue(), ^{
                  
                  self.usernameField.placeholder = @"invalid login parameters";
                  
@@ -68,6 +68,7 @@
                  [self.activityIndicator stopAnimating];
                  
              });
+             
          }
          
      }

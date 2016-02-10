@@ -37,6 +37,9 @@
     self.categoriesSet = [NSMutableSet set];
     
     self.title = @"NEWS";
+    
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 400.0;
 }
 
 - (void) viewWillAppear:(BOOL)animated {
@@ -160,14 +163,6 @@
 }
 
 #pragma mark - UITableViewDelegate
-
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    
-    self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 400.0;
-    
-    return self.tableView.rowHeight;
-}
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     

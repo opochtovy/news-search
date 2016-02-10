@@ -21,7 +21,15 @@
 - (void)authorizeWithUsername:(NSString* ) username
          withPassword:(NSString* ) password
             onSuccess:(void(^)(ITBUser* user)) success
-                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)registerWithUsername:(NSString* ) username
+                 withPassword:(NSString* ) password
+                    onSuccess:(void(^)(ITBUser* user)) success
+                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)getUsersOnSuccess:(void(^)(NSArray *users)) success
+               onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
 - (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;

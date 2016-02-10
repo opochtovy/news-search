@@ -19,6 +19,7 @@
 		A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */; };
 		A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */; };
 		A2D5D9A41C69D6B000AAB625 /* ITBLoginTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */; };
+		A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,6 +56,8 @@
 		A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNewsCell.m; sourceTree = "<group>"; };
 		A2D5D9A21C69D6B000AAB625 /* ITBLoginTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBLoginTableViewController.h; sourceTree = "<group>"; };
 		A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBLoginTableViewController.m; sourceTree = "<group>"; };
+		A2F08EAF1C6B1FC10008B932 /* ITBSignInTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBSignInTableViewController.h; sourceTree = "<group>"; };
+		A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBSignInTableViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +158,8 @@
 				A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */,
 				A2D5D9A21C69D6B000AAB625 /* ITBLoginTableViewController.h */,
 				A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */,
+				A2F08EAF1C6B1FC10008B932 /* ITBSignInTableViewController.h */,
+				A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */,
 			);
 			name = ViewControllers;
 			sourceTree = "<group>";
@@ -277,6 +282,7 @@
 				A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */,
 				A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */,
 				A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */,
+				A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */,
 				A22F78EA1C60B0CD00340FC0 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
