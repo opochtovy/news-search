@@ -25,6 +25,8 @@
         self.code = [responseObject objectForKey:@"code"];
         self.error = [responseObject objectForKey:@"error"];
         
+        self.categories = [responseObject objectForKey:@"categories"];
+        
     }
     
     return self;

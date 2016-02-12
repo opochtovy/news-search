@@ -19,6 +19,8 @@
 @property (assign, nonatomic) NSNumber* code;
 @property (strong, nonatomic) NSString* error;
 
+@property (strong, nonatomic) NSArray* categories;
+
 - (id)initWithServerResponse:(NSDictionary *) responseObject;
 
 @end

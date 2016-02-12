@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A2295E881C6C97500019892A /* ITBCategoriesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2295E871C6C97500019892A /* ITBCategoriesViewController.m */; };
 		A22F78EA1C60B0CD00340FC0 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F78E91C60B0CD00340FC0 /* main.m */; };
 		A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F78EC1C60B0CD00340FC0 /* AppDelegate.m */; };
 		A22F78F31C60B0CD00340FC0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A22F78F11C60B0CD00340FC0 /* Main.storyboard */; };
@@ -33,6 +34,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A2295E861C6C97500019892A /* ITBCategoriesViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBCategoriesViewController.h; sourceTree = "<group>"; };
+		A2295E871C6C97500019892A /* ITBCategoriesViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBCategoriesViewController.m; sourceTree = "<group>"; };
 		A22F78E51C60B0CD00340FC0 /* NewsSearch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewsSearch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A22F78E91C60B0CD00340FC0 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		A22F78EB1C60B0CD00340FC0 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -78,6 +81,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A2295E821C6C81A50019892A /* Popover */ = {
+			isa = PBXGroup;
+			children = (
+				A2295E861C6C97500019892A /* ITBCategoriesViewController.h */,
+				A2295E871C6C97500019892A /* ITBCategoriesViewController.m */,
+			);
+			name = Popover;
+			sourceTree = "<group>";
+		};
 		A22F78DC1C60B0CD00340FC0 = {
 			isa = PBXGroup;
 			children = (
@@ -160,6 +172,7 @@
 				A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */,
 				A2F08EAF1C6B1FC10008B932 /* ITBSignInTableViewController.h */,
 				A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */,
+				A2295E821C6C81A50019892A /* Popover */,
 			);
 			name = ViewControllers;
 			sourceTree = "<group>";
@@ -280,6 +293,7 @@
 				A22F791A1C60E31E00340FC0 /* ITBUser.m in Sources */,
 				A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */,
 				A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */,
+				A2295E881C6C97500019892A /* ITBCategoriesViewController.m in Sources */,
 				A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */,
 				A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */,
 				A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */,

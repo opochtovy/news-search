@@ -17,7 +17,9 @@
 
 #import "ITBNewsCell.h"
 
-@interface ITBNewsViewController () <ITBLoginTableViewControllerDelegate>
+#import "ITBCategoriesViewController.h"
+
+@interface ITBNewsViewController () <ITBLoginTableViewControllerDelegate, ITBCategoriesPickerDelegate>
 
 @property (strong, nonatomic) NSArray *newsArray;
 
@@ -45,6 +47,7 @@
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 400.0;
     
+    self.categoriesPickerButton.enabled = self.isLogin;
 }
 
 - (void) viewWillAppear:(BOOL)animated {
@@ -55,9 +58,12 @@
         
         [self.tableView reloadData];
         
-        [self getNewsFromServer];
+//        [self getNewsFromServer];
+        [self getNewsFromServerByCategories];
         
     }
+    
+    self.categoriesPickerButton.enabled = self.isLogin;
 
 }
 
@@ -68,7 +74,7 @@
 
 #pragma mark - Private Methods
 
-- (ITBNews* ) getNewsCellForSender:(UIButton* )sender {
+- (void) getNewsCellForSender:(UIButton* )sender {
     
     UIView* parentView;
     
@@ -85,7 +91,44 @@
     
     ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
     
-    return news;
+    NSMutableArray* updatedLikedUsers;
+    
+    if ([news.likedUsers count]) {
+        
+        updatedLikedUsers = [news.likedUsers mutableCopy];
+        
+    } else {
+        
+        updatedLikedUsers = [NSMutableArray array];
+    }
+    
+    if (news.isLikedByCurrentUser) {
+        
+        [updatedLikedUsers removeObject:self.currentUser.objectId];
+        
+//        news.isLikedByCurrentUser = NO;
+        
+    } else {
+        
+        [updatedLikedUsers addObject:self.currentUser.objectId];
+        
+//        news.isLikedByCurrentUser = YES;
+        
+    }
+    
+    news.likedUsers = [updatedLikedUsers copy];
+    
+    news.isLikedByCurrentUser = !news.isLikedByCurrentUser;
+    
+//    [self.tableView reloadData];
+    
+    [self.tableView beginUpdates];
+    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    [self.tableView endUpdates];
+    
+    // осталось отправить на сервер новый news.likedUsers
+    [self updateRatingForNewsItem:news];
+    
 }
 
 #pragma mark - API
@@ -125,24 +168,83 @@
     
 }
 
-- (void)updateNewsObject:(NSString* ) objectId
-              withFields:(NSDictionary* ) parameters
-            forUrlString:(NSString* ) urlString {
+- (void)getNewsFromServerByCategories {
     
-    [[ITBServerManager sharedManager] updateObject:objectId
-                                        withFields:parameters
-                                      forUrlString:urlString
-                                         onSuccess:^(NSDate *updatedAt)
-     {
+    [[ITBServerManager sharedManager]
+     getNewsOnSuccess:^(NSArray *news) {
          
-         NSLog(@"SUCCESS !!! ");
+         self.currentUser = [ITBServerManager sharedManager].currentUser;
+         
+//         self.newsArray = news;
+         
+         NSMutableArray* choosedNews = [NSMutableArray array];
+         
+         for (NSString* category in self.currentUser.categories) {
+             
+             for (ITBNews* newsItem in news) {
+                 
+                 if ([category isEqualToString:newsItem.category]) {
+                     
+                     [choosedNews addObject:newsItem];
+                 }
+             }
+         }
+         
+         self.newsArray = [choosedNews copy];
+         
+         for (ITBNews* newsItem in news) {
+             
+             [self.categoriesSet addObject:newsItem.category];
+             
+             if ([newsItem.likedUsers containsObject:self.currentUser.objectId]) {
+                 
+                 newsItem.isLikedByCurrentUser = YES;
+             }
+             
+         }
+         
+//         [self.tableView reloadData];
+         
+         dispatch_async(dispatch_get_main_queue(), ^{
+             
+             [self.tableView reloadData];
+             
+         });
+         
      }
-                                         onFailure:^(NSError *error, NSInteger statusCode)
-     {
-         
+     onFailure:^(NSError *error, NSInteger statusCode) {
          
      }];
     
+}
+
+- (void) updateRatingForNewsItem:(ITBNews* ) news {
+    
+    [[ITBServerManager sharedManager]
+     updateRatingFromUserForNewsItem: news
+     onSuccess:^(NSDate *updatedAt)
+     {
+         
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode)
+     {
+         
+     }];
+}
+
+- (void) updateCategories {
+    
+    [[ITBServerManager sharedManager]
+     updateCategoriesFromUserOnSuccess:^(NSDate *updatedAt)
+     {
+         
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode)
+     {
+         
+     }];
 }
 
 #pragma mark - UIViewController methods
@@ -156,6 +258,10 @@
         self.isLogin = NO;
         
         self.newsArray = nil;
+        
+        self.categoriesPickerButton.enabled = self.isLogin;
+        
+        self.currentUser = nil;
         
         [self.tableView reloadData];
         
@@ -194,9 +300,8 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-
-    if (self.isLogin) {
-        
+    
+    if ([self.newsArray count]) {
         static NSString *identifier = @"NewsCell";
         
         ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
@@ -207,20 +312,10 @@
         
         cell.categoryLabel.text = news.category;
         
-//        cell.ratingLabel.text = [NSString stringWithFormat:@"%@", news.rating];
         cell.ratingLabel.text = [NSString stringWithFormat:@"%ld", (long)[news.likedUsers count]];
         
-        if (news.isLikedByCurrentUser) {
-            
-            cell.addLikeButton.enabled = NO;
-            cell.subtractLikeButton.enabled = YES;
-            
-        } else {
-            
-            cell.addLikeButton.enabled = YES;
-            cell.subtractLikeButton.enabled = NO;
-            
-        }
+        cell.addLikeButton.enabled = !news.isLikedByCurrentUser;
+        cell.subtractLikeButton.enabled = news.isLikedByCurrentUser;
         
         return cell;
         
@@ -254,83 +349,69 @@
     
 }
 
+#pragma mark - ITBCategoriesPickerDelegate
+
+- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC {
+    
+    self.currentUser.categories = categoriesVC.categoriesOfCurrentUserArray;
+    
+    [self.tableView reloadData];
+    
+    // осталось отправить на сервер новый self.currentUser.categories
+    [self updateCategories];
+    
+    // вызов этого метода нужен чтобы обновить список новостей в соответствии с выбранными категориями
+    [self getNewsFromServerByCategories];
+}
+
 #pragma mark - Actions
 
 - (IBAction)actionAddLike:(UIButton *)sender {
     
-    ITBNews* news = [self getNewsCellForSender:sender];
-    
-    NSLog(@"news.title = %@", news.title);
-    
-    NSMutableArray* updatedLikedUsers;
-    
-    if ([news.likedUsers count]) {
-        
-        updatedLikedUsers = [news.likedUsers mutableCopy];
-        
-    } else {
-
-        updatedLikedUsers = [NSMutableArray array];
-    }
-    
-    [updatedLikedUsers addObject:self.currentUser.objectId];
-    
-    news.isLikedByCurrentUser = YES;
-
-    news.likedUsers = [updatedLikedUsers copy];
-    
-    [self.tableView reloadData];
-    
-    // осталось отправить на сервер новый news.likedUsers
-    
-    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews/%@", news.objectId];
-    
-    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": @"AddUnique", @"objects": @[ self.currentUser.objectId ] } };
-
-    [self updateNewsObject:news.objectId
-                withFields:parameters
-              forUrlString:urlString];
-
+    [self getNewsCellForSender:sender];
 }
 
 - (IBAction)actionSubtractLike:(UIButton *)sender {
     
-    ITBNews* news = [self getNewsCellForSender:sender];
+    [self getNewsCellForSender:sender];
+}
+
+- (IBAction)actionChooseCategories:(UIBarButtonItem *)sender {
     
-    NSMutableArray* updatedLikedUsers;
+    ITBCategoriesViewController *vc = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCategoriesViewController"];
     
-    if ([news.likedUsers count]) {
+    NSLog(@"[self.currentUser.categories count] = %ld", (long)[self.currentUser.categories count]);
+    
+    vc.allCategoriesArray = [self.categoriesSet allObjects];
+    vc.categoriesOfCurrentUserArray = self.currentUser.categories;
+    
+    vc.delegate = self;
+    
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         
-        updatedLikedUsers = [news.likedUsers mutableCopy];
+        if (!sender) {
+            return;
+        }
+        
+        nav.modalPresentationStyle = UIModalPresentationPopover;
+//        nav.preferredContentSize = CGSizeMake(300, 400);
+        
+        [self presentViewController:nav animated:YES completion:nil];
+        
+        UIPopoverPresentationController* popoverPresentationController = nav.popoverPresentationController;
+        
+        popoverPresentationController.sourceView = self.view;
+        
+        [popoverPresentationController setPermittedArrowDirections:UIPopoverArrowDirectionUp];
+        
         
     } else {
         
-        updatedLikedUsers = [NSMutableArray array]; // я здесь оставляю чтобы это подходило для обоих методов (addLike and subtractLike)
+        [self presentViewController:nav animated:YES completion:nil];
     }
     
-//    ITBUser* currentUser = [ITBServerManager sharedManager].currentUser;
-    
-    [updatedLikedUsers removeObject:self.currentUser.objectId];
-    
-    news.isLikedByCurrentUser = NO;
-    
-    news.likedUsers = [updatedLikedUsers copy];
-    
-    [self.tableView reloadData];
-    
-    // осталось отправить на сервер новый news.likedUsers
-    
-    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews/%@", news.objectId];
-    
-    // change 3
-    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": @"Remove", @"objects": @[ self.currentUser.objectId ] } };
-    
-    [self updateNewsObject:news.objectId
-                withFields:parameters
-              forUrlString:urlString];
-    
-    
 }
-
 
 @end

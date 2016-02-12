@@ -11,6 +11,7 @@
 #import <Foundation/Foundation.h>
 
 @class ITBUser;
+@class ITBNews;
 
 @interface ITBServerManager : NSObject
 
@@ -29,16 +30,18 @@
                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
 - (void)getUsersOnSuccess:(void(^)(NSArray *users)) success
-               onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
 - (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
-                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+               onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
-- (void)updateObject:(NSString* ) objectId
-          withFields:(NSDictionary* ) parameters
-        forUrlString:(NSString* ) urlString
-           onSuccess:(void(^)(NSDate* updatedAt)) success
-           onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+- (void)updateRatingFromUserForNewsItem:(ITBNews* ) news
+                              onSuccess:(void(^)(NSDate* updatedAt)) success
+                              onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)updateCategoriesFromUserOnSuccess:(void(^)(NSDate* updatedAt)) success
+                                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
 
 
 @end

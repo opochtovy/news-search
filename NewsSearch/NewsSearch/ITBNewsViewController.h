@@ -12,8 +12,11 @@
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
 
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;
 
 - (IBAction)actionAddLike:(UIButton *)sender;
 - (IBAction)actionSubtractLike:(UIButton *)sender;
+
+- (IBAction)actionChooseCategories:(UIBarButtonItem *)sender;
 
 @end

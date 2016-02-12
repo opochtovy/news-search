@@ -6,7 +6,7 @@
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
-// 1.1.1 - это класс singleton для общения с сервером
+// класс singleton для общения с сервером
 
 #import "ITBServerManager.h"
 
@@ -15,7 +15,8 @@
 
 NSString *const appId = @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn";
 NSString *const restApiKey = @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B";
-NSString *const contentApi = @"application/json";
+NSString *const json = @"application/json";
+
 NSString *const baseUrl = @"https://api.parse.com";
 
 @interface ITBServerManager ()
@@ -28,7 +29,6 @@ NSString *const baseUrl = @"https://api.parse.com";
 
 @implementation ITBServerManager
 
-// 1.1.3
 + (ITBServerManager *)sharedManager {
     
     static ITBServerManager *manager = nil;
@@ -72,9 +72,8 @@ NSString *const baseUrl = @"https://api.parse.com";
     //    @"&password="
     //    self.passwordField.text
     
-    NSString *urlString = [NSString stringWithFormat: @"%@%@%@%@%@",
-                           baseUrl,
-                           @"/1/login?&username=",
+    NSString *urlString = [NSString stringWithFormat: @"%@%@%@%@",
+                           @"https://api.parse.com/1/login?&username=",
                            username,
                            @"&password=",
                            password];
@@ -86,15 +85,15 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     request.HTTPMethod = @"GET";
     
-    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
-                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B" };
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey };
     [request setAllHTTPHeaderFields:headers];
     
     NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         
         NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
         
-        NSLog(@"JSON during authorization UserOnSuccess: %@", responseBody);
+//        NSLog(@"JSON during authorization UserOnSuccess: %@", responseBody);
         
         if (error == nil) {
 
@@ -131,16 +130,16 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     request.HTTPMethod = @"POST";
     
-    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
-                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B",
-                               @"content-type": @"application/json" };
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey,
+                               @"content-type": json };
+    
+    [request setAllHTTPHeaderFields:headers];
     
     NSDictionary *parameters = @{ @"username": username,
                                   @"password": password };
     
     NSData *postData = [NSJSONSerialization dataWithJSONObject:parameters options:0 error:nil];
-    
-    [request setAllHTTPHeaderFields:headers];
     
     [request setHTTPBody:postData];
     
@@ -148,7 +147,7 @@ NSString *const baseUrl = @"https://api.parse.com";
         
         NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
         
-        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
         
         if (error == nil) {
             
@@ -180,15 +179,15 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     request.HTTPMethod = @"GET";
     
-    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
-                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B" };
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey };
     [request setAllHTTPHeaderFields:headers];
     
     NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         
         NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
         
-        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
         
         NSArray* dictsArray = [responseBody objectForKey:@"results"];
         
@@ -230,15 +229,15 @@ NSString *const baseUrl = @"https://api.parse.com";
  
     request.HTTPMethod = @"GET";
     
-    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
-                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B" };
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey };
     [request setAllHTTPHeaderFields:headers];
     
     NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         
         NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
         
-        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
         
         NSArray* dictsArray = [responseBody objectForKey:@"results"];
         
@@ -275,15 +274,14 @@ NSString *const baseUrl = @"https://api.parse.com";
     [task resume];
 }
 
-// update ITBNews object with specified fields in parameters 
+// this method is universal for updating ANY object with ANY fields by ANY urlString
 - (void)updateObject:(NSString* ) objectId
-                withFields:(NSDictionary* ) parameters
+         withHeaders:(NSDictionary* ) headers
+          withFields:(NSDictionary* ) parameters
         forUrlString:(NSString* ) urlString
-                   onSuccess:(void(^)(NSDate* updatedAt)) success
-                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
+           onSuccess:(void(^)(NSDate* updatedAt)) success
+           onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
 {
-    
-//    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/users"];
     NSURL *url = [NSURL URLWithString: urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
                                                            cachePolicy:NSURLRequestUseProtocolCachePolicy
@@ -291,13 +289,6 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     request.HTTPMethod = @"PUT";
     
-    NSDictionary *headers = @{ @"x-parse-application-id": @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn",
-                               @"x-parse-rest-api-key": @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B",
-                               @"content-type": @"application/json" };
-/*
-    NSDictionary *parameters = @{ @"username": username,
-                                  @"password": password };
-*/
     NSData *postData = [NSJSONSerialization dataWithJSONObject:parameters options:0 error:nil];
     
     [request setAllHTTPHeaderFields:headers];
@@ -325,6 +316,71 @@ NSString *const baseUrl = @"https://api.parse.com";
     }];
     
     [task resume];
+}
+
+- (void)updateRatingFromUserForNewsItem:(ITBNews* ) news
+                              onSuccess:(void(^)(NSDate* updatedAt)) success
+                              onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews/%@", news.objectId];
+    
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey,
+                               @"content-type": json };
+    
+    NSString* operation = news.isLikedByCurrentUser ? @"AddUnique" : @"Remove"; // здесь идет наоборот т.к. к этому моменту news.isLikedByCurrentUser уже поменялся а я смотрел по старому значению (до нажатия на кнопку + или -)
+    
+    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": operation, @"objects": @[ self.currentUser.objectId ] } };
+    
+    [self updateObject:news.objectId
+           withHeaders:headers
+            withFields:parameters
+          forUrlString:urlString
+             onSuccess:^(NSDate *updatedAt)
+     {
+         
+         NSLog(@"SUCCESS !!! ");
+         success(updatedAt);
+         
+     }
+             onFailure:^(NSError *error, NSInteger statusCode)
+     {
+         
+         
+     }];
+    
+}
+
+- (void)updateCategoriesFromUserOnSuccess:(void(^)(NSDate* updatedAt)) success
+                                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/users/%@", self.currentUser.objectId];
+    
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey,
+                               @"x-parse-session-token": self.currentUser.sessionToken,
+                               @"content-type": json };
+    
+    NSDictionary *parameters = @{ @"categories": self.currentUser.categories };
+    
+    [self updateObject:self.currentUser.objectId
+           withHeaders:headers
+            withFields:parameters
+          forUrlString:urlString
+             onSuccess:^(NSDate *updatedAt)
+     {
+         
+         NSLog(@"SUCCESS !!! ");
+         success(updatedAt);
+         
+     }
+             onFailure:^(NSError *error, NSInteger statusCode)
+     {
+         
+         
+     }];
+    
+    
 }
 
 @end
