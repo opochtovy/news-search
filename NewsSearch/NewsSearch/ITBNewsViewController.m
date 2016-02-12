@@ -19,6 +19,8 @@
 
 #import "ITBCategoriesViewController.h"
 
+#import "ITBNewsDetailViewController.h"
+
 NSString *const login = @"Login";
 NSString *const logout = @"Logout";
 NSString *const newsTitle = @"NEWS";
@@ -366,6 +368,24 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 - (void)newsCellDidTapSubtract:(ITBNewsCell *) cell {
     
     [self getNewsCellForSender: cell];
+}
+
+- (void)newsCellDidTapDetail:(ITBNewsCell *) cell {
+    
+    ITBNewsDetailViewController *newsDetailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBNewsDetailViewController"];
+    
+    NSIndexPath* indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
+    
+    newsDetailVC.title = news.title;
+    
+    NSURL *url = [NSURL URLWithString: news.newsURL];
+    newsDetailVC.url = url;
+    
+    [self.navigationController pushViewController:newsDetailVC animated:YES];
+    
+    
 }
 
 #pragma mark - Actions

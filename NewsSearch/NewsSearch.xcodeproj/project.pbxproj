@@ -19,6 +19,7 @@
 		A22F791D1C60E38700340FC0 /* ITBNews.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F791C1C60E38700340FC0 /* ITBNews.m */; };
 		A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */; };
 		A236F17D1C6E0C0D001D0902 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A236F17C1C6E0C0D001D0902 /* Localizable.strings */; };
+		A236F1801C6E2861001D0902 /* ITBNewsDetailViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A236F17F1C6E2861001D0902 /* ITBNewsDetailViewController.m */; };
 		A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */; };
 		A2D5D9A41C69D6B000AAB625 /* ITBLoginTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */; };
 		A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */; };
@@ -57,6 +58,8 @@
 		A22F791F1C60E4BA00340FC0 /* ITBNewsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNewsViewController.h; sourceTree = "<group>"; };
 		A22F79201C60E4BA00340FC0 /* ITBNewsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNewsViewController.m; sourceTree = "<group>"; };
 		A236F17C1C6E0C0D001D0902 /* Localizable.strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
+		A236F17E1C6E2861001D0902 /* ITBNewsDetailViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNewsDetailViewController.h; sourceTree = "<group>"; };
+		A236F17F1C6E2861001D0902 /* ITBNewsDetailViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNewsDetailViewController.m; sourceTree = "<group>"; };
 		A2689EDF1C68BFFB0081E8BE /* ITBNewsCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNewsCell.h; sourceTree = "<group>"; };
 		A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNewsCell.m; sourceTree = "<group>"; };
 		A2D5D9A21C69D6B000AAB625 /* ITBLoginTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBLoginTableViewController.h; sourceTree = "<group>"; };
@@ -176,6 +179,8 @@
 				A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */,
 				A2F08EAF1C6B1FC10008B932 /* ITBSignInTableViewController.h */,
 				A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */,
+				A236F17E1C6E2861001D0902 /* ITBNewsDetailViewController.h */,
+				A236F17F1C6E2861001D0902 /* ITBNewsDetailViewController.m */,
 				A2295E821C6C81A50019892A /* Popover */,
 			);
 			name = ViewControllers;
@@ -312,6 +317,7 @@
 				A22F791D1C60E38700340FC0 /* ITBNews.m in Sources */,
 				A22F791A1C60E31E00340FC0 /* ITBUser.m in Sources */,
 				A22F79211C60E4BA00340FC0 /* ITBNewsViewController.m in Sources */,
+				A236F1801C6E2861001D0902 /* ITBNewsDetailViewController.m in Sources */,
 				A22F78ED1C60B0CD00340FC0 /* AppDelegate.m in Sources */,
 				A2295E881C6C97500019892A /* ITBCategoriesViewController.m in Sources */,
 				A22F79101C60D32D00340FC0 /* ITBServerManager.m in Sources */,

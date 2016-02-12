@@ -14,6 +14,7 @@
 
 - (void)newsCellDidTapAdd:(ITBNewsCell *) cell;
 - (void)newsCellDidTapSubtract:(ITBNewsCell *) cell;
+- (void)newsCellDidTapDetail:(ITBNewsCell *) cell;
 
 @end
 
@@ -30,5 +31,6 @@
 
 - (IBAction)actionAddLike:(UIButton *)sender;
 - (IBAction)actionSubtractLike:(UIButton *)sender;
+- (IBAction)actionShowNewsPage:(UIButton *)sender;
 
 @end

@@ -80,6 +80,9 @@
                                             <state key="normal" title="&gt;">
                                                 <color key="titleColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                             </state>
+                                            <connections>
+                                                <action selector="actionShowNewsPage:" destination="aLg-o3-4M1" eventType="touchUpInside" id="72L-gy-xhp"/>
+                                            </connections>
                                         </button>
                                     </subviews>
                                     <constraints>
@@ -171,7 +174,50 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="hn6-uc-KvP" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1605" y="47"/>
+            <point key="canvasLocation" x="941" y="-351"/>
+        </scene>
+        <!--News Detail View Controller-->
+        <scene sceneID="FsK-JG-uAj">
+            <objects>
+                <viewController storyboardIdentifier="ITBNewsDetailViewController" id="35k-rv-jeZ" customClass="ITBNewsDetailViewController" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="R3D-ae-IuJ"/>
+                        <viewControllerLayoutGuide type="bottom" id="wGK-fX-UqT"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="ttV-7Y-9jC">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <webView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="oBH-8g-hqH">
+                                <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                                <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="deviceRGB"/>
+                                <connections>
+                                    <outlet property="delegate" destination="35k-rv-jeZ" id="4xa-kP-rw9"/>
+                                </connections>
+                            </webView>
+                            <activityIndicatorView hidden="YES" opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="5Cu-Wi-dzT">
+                                <rect key="frame" x="282" y="281" width="37" height="37"/>
+                                <color key="color" red="0.1529411765" green="0.47058823529999999" blue="0.98431372549999996" alpha="1" colorSpace="calibratedRGB"/>
+                            </activityIndicatorView>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstItem="oBH-8g-hqH" firstAttribute="top" secondItem="ttV-7Y-9jC" secondAttribute="top" id="1hX-Go-O42"/>
+                            <constraint firstItem="5Cu-Wi-dzT" firstAttribute="centerX" secondItem="ttV-7Y-9jC" secondAttribute="centerX" id="3Hj-kQ-YQa"/>
+                            <constraint firstAttribute="trailing" secondItem="oBH-8g-hqH" secondAttribute="trailing" id="8SK-i6-jgq"/>
+                            <constraint firstItem="wGK-fX-UqT" firstAttribute="top" secondItem="oBH-8g-hqH" secondAttribute="bottom" id="C0z-56-71h"/>
+                            <constraint firstItem="oBH-8g-hqH" firstAttribute="leading" secondItem="ttV-7Y-9jC" secondAttribute="leading" id="J0i-vp-ByA"/>
+                            <constraint firstItem="5Cu-Wi-dzT" firstAttribute="centerY" secondItem="ttV-7Y-9jC" secondAttribute="centerY" id="RJH-Dy-JY2"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="indicator" destination="5Cu-Wi-dzT" id="FuI-0I-N3Z"/>
+                        <outlet property="webView" destination="oBH-8g-hqH" id="qpw-YB-zcl"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="85m-uZ-Eol" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1673" y="-351"/>
         </scene>
         <!--Login Table View Controller-->
         <scene sceneID="OGb-Z8-v8b">

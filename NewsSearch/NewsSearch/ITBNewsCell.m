@@ -32,4 +32,9 @@
     
     [self.delegate newsCellDidTapSubtract:self];
 }
+
+- (IBAction)actionShowNewsPage:(UIButton *)sender {
+    
+    [self.delegate newsCellDidTapDetail:self];
+}
 @end
