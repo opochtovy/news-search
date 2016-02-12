@@ -19,7 +19,12 @@
 
 #import "ITBCategoriesViewController.h"
 
-@interface ITBNewsViewController () <ITBLoginTableViewControllerDelegate, ITBCategoriesPickerDelegate>
+NSString *const login = @"Login";
+NSString *const logout = @"Logout";
+NSString *const newsTitle = @"NEWS";
+NSString *const beforeLogin = @"You need to login for using our news network!";
+
+@interface ITBNewsViewController () <ITBLoginTableViewControllerDelegate, ITBCategoriesPickerDelegate, ITBNewsCellDelegate>
 
 @property (strong, nonatomic) NSArray *newsArray;
 
@@ -42,7 +47,7 @@
     
     self.categoriesSet = [NSMutableSet set];
     
-    self.title = @"NEWS";
+    self.title = newsTitle;
     
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 400.0;
@@ -74,26 +79,15 @@
 
 #pragma mark - Private Methods
 
-- (void) getNewsCellForSender:(UIButton* )sender {
+- (void) getNewsCellForSender:(ITBNewsCell* ) cell {
     
-    UIView* parentView;
-    
-    UIView* childView = sender;
-    
-    while (![parentView isKindOfClass:[ITBNewsCell class]]) {
-        
-        parentView = childView.superview;
-        
-        childView = parentView;
-    }
-    
-    NSIndexPath* indexPath = [self.tableView indexPathForCell:(ITBNewsCell* )parentView];
+    NSIndexPath* indexPath = [self.tableView indexPathForCell:cell];
     
     ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
     
     NSMutableArray* updatedLikedUsers;
     
-    if ([news.likedUsers count]) {
+    if ([news.likedUsers count] != 0) {
         
         updatedLikedUsers = [news.likedUsers mutableCopy];
         
@@ -106,13 +100,9 @@
         
         [updatedLikedUsers removeObject:self.currentUser.objectId];
         
-//        news.isLikedByCurrentUser = NO;
-        
     } else {
         
         [updatedLikedUsers addObject:self.currentUser.objectId];
-        
-//        news.isLikedByCurrentUser = YES;
         
     }
     
@@ -120,8 +110,7 @@
     
     news.isLikedByCurrentUser = !news.isLikedByCurrentUser;
     
-//    [self.tableView reloadData];
-    
+    //    [self.tableView reloadData];
     [self.tableView beginUpdates];
     [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
     [self.tableView endUpdates];
@@ -251,9 +240,9 @@
 
 - (BOOL)shouldPerformSegueWithIdentifier:(NSString *)identifier sender:(nullable id)sender {
     
-    if ([self.loginButton.title isEqualToString:@"Logout"]) {
+    if ([self.loginButton.title isEqualToString:logout]) {
         
-        self.loginButton.title = @"Login";
+        self.loginButton.title = login;
         
         self.isLogin = NO;
         
@@ -301,10 +290,13 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    if ([self.newsArray count]) {
+    if ([self.newsArray count] != 0) {
+        
         static NSString *identifier = @"NewsCell";
         
         ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+        
+        cell.delegate = self;
         
         ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
         
@@ -323,7 +315,7 @@
         
         UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"noData"];
         
-        cell.textLabel.text = @"You need to login for using our news network!";
+        cell.textLabel.text = beforeLogin;
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
         cell.textLabel.numberOfLines = 0;
         cell.textLabel.textColor = [UIColor lightGrayColor];
@@ -343,7 +335,7 @@
 #pragma mark - ITBLoginTableViewControllerDelegate
 - (void)changeTitleForLoginButton:(ITBLoginTableViewController *)vc {
     
-    self.loginButton.title = @"Logout";
+    self.loginButton.title = logout;
     
     self.isLogin = YES;
     
@@ -364,23 +356,25 @@
     [self getNewsFromServerByCategories];
 }
 
+#pragma mark - ITBNewsCellDelegate
+
+- (void)newsCellDidTapAdd:(ITBNewsCell *) cell {
+    
+    [self getNewsCellForSender: cell];
+}
+
+- (void)newsCellDidTapSubtract:(ITBNewsCell *) cell {
+    
+    [self getNewsCellForSender: cell];
+}
+
 #pragma mark - Actions
-
-- (IBAction)actionAddLike:(UIButton *)sender {
-    
-    [self getNewsCellForSender:sender];
-}
-
-- (IBAction)actionSubtractLike:(UIButton *)sender {
-    
-    [self getNewsCellForSender:sender];
-}
 
 - (IBAction)actionChooseCategories:(UIBarButtonItem *)sender {
     
     ITBCategoriesViewController *vc = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCategoriesViewController"];
     
-    NSLog(@"[self.currentUser.categories count] = %ld", (long)[self.currentUser.categories count]);
+//    NSLog(@"[self.currentUser.categories count] = %ld", (long)[self.currentUser.categories count]);
     
     vc.allCategoriesArray = [self.categoriesSet allObjects];
     vc.categoriesOfCurrentUserArray = self.currentUser.categories;
@@ -391,7 +385,7 @@
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         
-        if (!sender) {
+        if (sender == nil) {
             return;
         }
         

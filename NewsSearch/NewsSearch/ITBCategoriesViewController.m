@@ -8,6 +8,9 @@
 
 #import "ITBCategoriesViewController.h"
 
+NSString *const categoriesTitle = @"Categories";
+NSString *const allCell = @"All categories";
+
 @interface ITBCategoriesViewController ()
 
 @property (strong, nonatomic) NSMutableArray *checkBoxes; // количество элементов этого нового массива такое же как в self.allCategoriesArray + 1 (из-за поля All)
@@ -21,7 +24,7 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
-    self.title = @"Categories";
+    self.title = categoriesTitle;
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
         
@@ -35,7 +38,6 @@
     
     [self.navigationItem setLeftBarButtonItem:cancelButton animated:YES];
     
-    // ? 2 - у меня другая схема (не один может быть выбран а 2 секции - либо в первой all стоит галочка тогда и во второй выбираются все галочки либо в первой пусто а я выбираю от 1 до всех)
     [self.categoriesTableView selectRowAtIndexPath:self.checkmarkIndexPath animated:YES scrollPosition:UITableViewScrollPositionMiddle];
     
     self.checkBoxes = [[NSMutableArray alloc] init];
@@ -66,7 +68,7 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
-    if (section) {
+    if (section != 0) {
         
         return [self.allCategoriesArray count];
         
@@ -86,13 +88,13 @@
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.backgroundColor = [UIColor whiteColor];
     
-    if (indexPath.section) {
+    if (indexPath.section != 0) {
         
         cell = [tableView dequeueReusableCellWithIdentifier:identifier];
         
         cell.accessoryType = UITableViewCellAccessoryNone;
         
-        if (!cell) {
+        if (cell == nil) {
             
             cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                           reuseIdentifier:identifier];
@@ -118,7 +120,7 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                       reuseIdentifier:allIdentifier];
         
-        cell.textLabel.text = @"All categories";
+        cell.textLabel.text = allCell;
         
         if (self.isAllChecked) {
             
@@ -140,7 +142,7 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    if (indexPath.section) {
+    if (indexPath.section != 0) {
         
         NSNumber *number = [self.checkBoxes objectAtIndex:indexPath.row];
         BOOL hasCheckBox = [number boolValue];

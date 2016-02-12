@@ -14,7 +14,7 @@
     
     self = [super init];
     
-    if (self) {
+    if (self != nil) {
         
         self.objectId = [responseObject objectForKey:@"objectId"];
         self.newsURL = [responseObject objectForKey:@"newsURL"];

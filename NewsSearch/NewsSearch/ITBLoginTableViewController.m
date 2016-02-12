@@ -12,6 +12,8 @@
 
 #import "ITBUser.h"
 
+NSString *const invalidLogin = @"invalid login parameters";
+
 @interface ITBLoginTableViewController () <UITextFieldDelegate>
 
 @end
@@ -49,9 +51,9 @@
 
          NSInteger code = [user.code integerValue];
 
-         if (!code) {
+         if (code == 0) {
              
-             NSLog(@"Login was successful!!!");
+//             NSLog(@"Login was successful!!!");
              
              [self.delegate changeTitleForLoginButton:self];
              
@@ -61,9 +63,9 @@
              
              dispatch_async(dispatch_get_main_queue(), ^{
                  
-                 self.usernameField.placeholder = @"invalid login parameters";
+                 self.usernameField.placeholder = invalidLogin;
                  
-                 self.passwordField.placeholder = @"invalid login parameters";
+                 self.passwordField.placeholder = invalidLogin;
                  
                  [self.activityIndicator stopAnimating];
                  
@@ -92,6 +94,13 @@
     }
     
     return YES;
+}
+
+#pragma mark - UITableViewDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
 #pragma mark - Actions

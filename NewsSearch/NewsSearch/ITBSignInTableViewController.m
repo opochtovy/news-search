@@ -12,6 +12,13 @@
 
 #import "ITBUser.h"
 
+NSString *const signinTitle = @"Sign In";
+NSString *const waitUnique = @"Please wait...";
+NSString *const noUnique = @"Such username already exists...";
+NSString *const okUnique = @"Such username is available !";
+NSString *const noPassConfirm = @"Password confirmation is not successful...";
+NSString *const okPassConfirm = @"Password confirmation is successful !";
+
 @interface ITBSignInTableViewController () <UITextFieldDelegate>
 
 @property (strong, nonatomic) NSMutableSet* usernamesSet;
@@ -29,7 +36,7 @@
     self.passwordField.delegate = self;
     self.passwordConfirmationField.delegate = self;
     
-    self.navigationItem.title = @"Sign In";
+    self.navigationItem.title = signinTitle;
     
     [self getUsersFromServer];
 }
@@ -78,7 +85,7 @@
     
     [self.activityIndicator startAnimating];
     
-    self.uniqueUsernameLabel.text = @"Please wait...";
+    self.uniqueUsernameLabel.text = waitUnique;
     
     [[ITBServerManager sharedManager]
      getUsersOnSuccess:^(NSArray *users) {
@@ -94,11 +101,11 @@
              self.passwordField.enabled = YES;
              self.passwordConfirmationField.enabled = YES;
              
-             self.uniqueUsernameLabel.text = @" ";
+             self.uniqueUsernameLabel.text = nil;
              
              [self.activityIndicator stopAnimating];
              
-             NSLog(@"%@", self.usernamesSet);
+//             NSLog(@"%@", self.usernamesSet);
              
          });
          
@@ -138,12 +145,12 @@
         
         if ([self.usernamesSet containsObject:result]) {
             
-            self.uniqueUsernameLabel.text = @"Such username already exists...";
+            self.uniqueUsernameLabel.text = noUnique;
             self.uniqueUsernameLabel.textColor = [UIColor redColor];
             
         } else {
             
-            self.uniqueUsernameLabel.text = @"Such username is available !";
+            self.uniqueUsernameLabel.text = okUnique;
             self.uniqueUsernameLabel.textColor = [UIColor greenColor];
             
         }
@@ -152,12 +159,12 @@
         
         if ([result isEqual:self.passwordField.text]) {
             
-            self.passwordConfirmationLabel.text = @"Password confirmation is successful !";
+            self.passwordConfirmationLabel.text = okPassConfirm;
             self.passwordConfirmationLabel.textColor = [UIColor greenColor];
             
         } else {
             
-            self.passwordConfirmationLabel.text = @"Password confirmation is not successful...";
+            self.passwordConfirmationLabel.text = noPassConfirm;
             self.passwordConfirmationLabel.textColor = [UIColor redColor];
         }
     }

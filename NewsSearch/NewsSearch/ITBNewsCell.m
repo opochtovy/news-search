@@ -23,4 +23,13 @@
     // Configure the view for the selected state
 }
 
+- (IBAction)actionAddLike:(UIButton *)sender {
+    
+    [self.delegate newsCellDidTapAdd:self];
+}
+
+- (IBAction)actionSubtractLike:(UIButton *)sender {
+    
+    [self.delegate newsCellDidTapSubtract:self];
+}
 @end

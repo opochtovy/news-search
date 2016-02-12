@@ -14,7 +14,7 @@
     
     self = [super init];
     
-    if (self) {
+    if (self != nil) {
         
         self.username = [responseObject objectForKey:@"username"];
         self.objectId = [responseObject objectForKey:@"objectId"];

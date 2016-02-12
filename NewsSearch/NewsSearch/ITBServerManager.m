@@ -47,7 +47,7 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     self = [super init];
     
-    if (self) {
+    if (self != nil) {
 
 //        NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
         
@@ -202,7 +202,7 @@ NSString *const baseUrl = @"https://api.parse.com";
                 [objectsArray addObject:user];
             }
             
-            if (success) {
+            if (success != nil) {
                 success([objectsArray copy]);
             }
             
@@ -260,7 +260,7 @@ NSString *const baseUrl = @"https://api.parse.com";
                 [objectsArray addObject:news];
             }
             
-            if (success) {
+            if (success != nil) {
                 success([objectsArray copy]);
             }
             

@@ -30,7 +30,7 @@
                                             <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                             <state key="normal" title="+"/>
                                             <connections>
-                                                <action selector="actionAddLike:" destination="qHQ-ha-2Qb" eventType="touchUpInside" id="T5f-1A-rT5"/>
+                                                <action selector="actionAddLike:" destination="aLg-o3-4M1" eventType="touchUpInside" id="brI-nZ-eKK"/>
                                             </connections>
                                         </button>
                                         <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="vsj-3p-wIc">
@@ -52,7 +52,7 @@
                                             <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                             <state key="normal" title="-"/>
                                             <connections>
-                                                <action selector="actionSubtractLike:" destination="qHQ-ha-2Qb" eventType="touchUpInside" id="wCR-Uz-B7u"/>
+                                                <action selector="actionSubtractLike:" destination="aLg-o3-4M1" eventType="touchUpInside" id="vnm-GI-AvG"/>
                                             </connections>
                                         </button>
                                         <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="751" verticalHuggingPriority="751" horizontalCompressionResistancePriority="751" verticalCompressionResistancePriority="751" text="Title" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Rr2-MU-mh9">
@@ -373,7 +373,7 @@
                                                     <constraints>
                                                         <constraint firstAttribute="height" constant="21" id="msg-wD-Si4"/>
                                                     </constraints>
-                                                    <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                                    <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                                     <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                                     <nil key="highlightedColor"/>
                                                 </label>
