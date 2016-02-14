@@ -10,4 +10,10 @@
 
 @interface ITBNewsViewController : UITableViewController
 
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
+
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;
+
+- (IBAction)actionChooseCategories:(UIBarButtonItem *)sender;
+
 @end

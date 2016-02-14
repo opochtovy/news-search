@@ -14,7 +14,21 @@
     
     self = [super init];
     
-    if (self) {
+    if (self != nil) {
+        
+        self.objectId = [responseObject objectForKey:@"objectId"];
+        self.newsURL = [responseObject objectForKey:@"newsURL"];
+        self.title = [responseObject objectForKey:@"title"];
+        self.message = [responseObject objectForKey:@"message"];
+        self.category = [responseObject objectForKey:@"category"];
+        
+//        self.rating = [responseObject objectForKey:@"rating"];
+        
+        self.createdAt = [responseObject objectForKey:@"createdAt"];
+        self.updatedAt = [responseObject objectForKey:@"updatedAt"];
+        
+        self.likedUsers = [responseObject objectForKey:@"likedUsers"];
+//        self.rating = [self.likedUsers count]; // отпадает необходимость в этой проперти т.к. у меня есть [likedUsers count]
         
     }
     

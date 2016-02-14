@@ -6,13 +6,42 @@
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
-// 1.1.1 - это класс singleton для общения с сервером
+// класс singleton для общения с сервером
 
 #import <Foundation/Foundation.h>
 
+@class ITBUser;
+@class ITBNews;
+
 @interface ITBServerManager : NSObject
 
-// 1.1.2 - конструктор singleton
+@property (strong, nonatomic) ITBUser *currentUser;
+
 + (ITBServerManager *)sharedManager;
+
+- (void)authorizeWithUsername:(NSString* ) username
+         withPassword:(NSString* ) password
+            onSuccess:(void(^)(ITBUser* user)) success
+                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)registerWithUsername:(NSString* ) username
+                 withPassword:(NSString* ) password
+                    onSuccess:(void(^)(ITBUser* user)) success
+                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)getUsersOnSuccess:(void(^)(NSArray *users)) success
+                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
+               onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)updateRatingFromUserForNewsItem:(ITBNews* ) news
+                              onSuccess:(void(^)(NSDate* updatedAt)) success
+                              onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)updateCategoriesFromUserOnSuccess:(void(^)(NSDate* updatedAt)) success
+                                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+
 
 @end
