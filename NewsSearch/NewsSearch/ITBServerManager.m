@@ -12,12 +12,17 @@
 
 #import "ITBUser.h"
 #import "ITBNews.h"
+//#import "ITBUserCD.h"
 
 NSString *const appId = @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn";
 NSString *const restApiKey = @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B";
 NSString *const json = @"application/json";
 
 NSString *const baseUrl = @"https://api.parse.com";
+
+static NSString *const kSettingsUsername = @"username";
+static NSString *const kSettingsObjectId = @"objectId";
+static NSString *const kSettingsSessionToken = @"sessionToken";
 
 @interface ITBServerManager ()
 
@@ -38,6 +43,7 @@ NSString *const baseUrl = @"https://api.parse.com";
     dispatch_once(&onceToken, ^{
         
         manager = [[ITBServerManager alloc] init];
+        
     });
     
     return manager;
@@ -56,10 +62,45 @@ NSString *const baseUrl = @"https://api.parse.com";
         self.session = [NSURLSession sessionWithConfiguration:sessionConfig
                                                               delegate:nil
                                                          delegateQueue:nil];
+        
+        self.currentUser = [[ITBUser alloc] init];
+        
+//        [self loadSettings];
     }
     
     return self;
 }
+
+#pragma mark - NSUserDefaults
+
+- (void)saveSettings {
+    
+    NSLog(@"QQQ : self.currentUser.username : %@", self.currentUser.username);
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    [userDefaults setObject:self.currentUser.username forKey:kSettingsUsername];
+    [userDefaults setObject:self.currentUser.objectId forKey:kSettingsObjectId];
+    [userDefaults setObject:self.currentUser.sessionToken forKey:kSettingsSessionToken];
+    
+    NSLog(@"Username for currentUser was saved to NSUserDefaults : %@", self.currentUser.username);
+    
+    [userDefaults synchronize];
+    
+}
+
+- (void)loadSettings {
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    self.currentUser.username = [userDefaults objectForKey:kSettingsUsername];
+    self.currentUser.objectId = [userDefaults objectForKey:kSettingsObjectId];
+    self.currentUser.sessionToken = [userDefaults objectForKey:kSettingsSessionToken];
+    
+    NSLog(@"sessionToken for currentUser was loaded from NSUserDefaults : %@", self.currentUser.sessionToken);
+}
+
+#pragma mark - Client-Server API
 
 - (void)authorizeWithUsername:(NSString* ) username
                  withPassword:(NSString* ) password
@@ -99,7 +140,8 @@ NSString *const baseUrl = @"https://api.parse.com";
 
             ITBUser *user = [[ITBUser alloc] initWithServerResponse:responseBody];
             
-            self.currentUser = user;
+//            self.currentUser = user;
+//            [self saveSettings];
             
             success(user);
 
@@ -215,18 +257,117 @@ NSString *const baseUrl = @"https://api.parse.com";
     
     [task resume];
 }
-
-// getting news after login as user
+/*
+// оригинальная версия этого метода - getting news after login as user - my first successful realization (SERVER)
 - (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
 {
- 
+    
     NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews"];
     NSURL *url = [NSURL URLWithString: urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
                                                            cachePolicy:NSURLRequestUseProtocolCachePolicy
                                                        timeoutInterval:10.0];
- 
+    
+    request.HTTPMethod = @"GET";
+    
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey };
+    [request setAllHTTPHeaderFields:headers];
+    
+    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        
+        NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
+        
+//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+        
+        NSArray* dictsArray = [responseBody objectForKey:@"results"];
+        
+         if (error == nil) {
+         
+             NSMutableArray *objectsArray = [NSMutableArray array];
+             
+             for (NSDictionary *dict in dictsArray) {
+                 
+                 ITBNews *news = [[ITBNews alloc] initWithServerResponse:dict];
+                 
+                 for (ITBUser* user in news.likedUsers) {
+                     
+                     if ([user isEqual:self.currentUser]) {
+                         
+                         news.isLikedByCurrentUser = YES;
+                     }
+                 }
+                 
+                 [objectsArray addObject:news];
+             }
+             
+             if (success != nil) {
+                 success([objectsArray copy]);
+             }
+         
+         } else {
+         
+         // Failure
+         NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+         }
+    }];
+    
+    [task resume];
+}
+*/
+
+// getting news after login as user
+- (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
+               onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure
+{
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBNews"];
+    NSURL *url = [NSURL URLWithString: urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
+                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
+                                                       timeoutInterval:10.0];
+    
+    request.HTTPMethod = @"GET";
+    
+    NSDictionary *headers = @{ @"x-parse-application-id": appId,
+                               @"x-parse-rest-api-key": restApiKey };
+    [request setAllHTTPHeaderFields:headers];
+    
+    NSURLSessionDataTask* task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        
+        NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
+        
+        //        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
+        
+        NSArray* dictsArray = [responseBody objectForKey:@"results"];
+        
+        if (error == nil) {
+            
+            // уберу код из оригинального метода т.к. я перехожу от загрузки новостей с сервера к загрузке с локальной БД -> и мне нужен array of dicts вместо array of models (ITBNews)
+            if (success != nil) {
+                success(dictsArray);
+            }
+            
+        } else {
+            
+            // Failure
+            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+        }
+    }];
+    
+    [task resume];
+}
+
+- (void)getCategoriesOnSuccess:(void(^)(NSArray *categories)) success
+                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
+    
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/classes/ITBCategory"];
+    NSURL *url = [NSURL URLWithString: urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url
+                                                           cachePolicy:NSURLRequestUseProtocolCachePolicy
+                                                       timeoutInterval:10.0];
+    
     request.HTTPMethod = @"GET";
     
     NSDictionary *headers = @{ @"x-parse-application-id": appId,
@@ -243,25 +384,8 @@ NSString *const baseUrl = @"https://api.parse.com";
         
         if (error == nil) {
             
-            NSMutableArray *objectsArray = [NSMutableArray array];
-            
-            for (NSDictionary *dict in dictsArray) {
-                
-                ITBNews *news = [[ITBNews alloc] initWithServerResponse:dict];
-                
-                for (ITBUser* user in news.likedUsers) {
-                    
-                    if ([user isEqual:self.currentUser]) {
-                        
-                        news.isLikedByCurrentUser = YES;
-                    }
-                }
-                
-                [objectsArray addObject:news];
-            }
-            
             if (success != nil) {
-                success([objectsArray copy]);
+                success(dictsArray);
             }
             
         } else {
@@ -272,6 +396,8 @@ NSString *const baseUrl = @"https://api.parse.com";
     }];
     
     [task resume];
+    
+    
 }
 
 // this method is universal for updating ANY object with ANY fields by ANY urlString

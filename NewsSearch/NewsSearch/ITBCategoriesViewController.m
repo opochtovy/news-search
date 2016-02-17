@@ -9,7 +9,7 @@
 #import "ITBCategoriesViewController.h"
 
 NSString *const categoriesTitle = @"Categories";
-NSString *const allCell = @"All categories";
+NSString *const allCatsCell = @"All categories";
 
 @interface ITBCategoriesViewController ()
 
@@ -24,7 +24,8 @@ NSString *const allCell = @"All categories";
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
-    self.title = categoriesTitle;
+//    self.title = categoriesTitle;
+    self.title = NSLocalizedString(categoriesTitle, nil);
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
         
@@ -120,7 +121,8 @@ NSString *const allCell = @"All categories";
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
                                       reuseIdentifier:allIdentifier];
         
-        cell.textLabel.text = allCell;
+//        cell.textLabel.text = allCatsCell;
+        cell.textLabel.text = NSLocalizedString(allCatsCell, nil);
         
         if (self.isAllChecked) {
             

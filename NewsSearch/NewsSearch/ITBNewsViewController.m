@@ -9,6 +9,7 @@
 #import "ITBNewsViewController.h"
 
 #import "ITBServerManager.h"
+#import "ITBDataManager.h"
 
 #import "ITBLoginTableViewController.h"
 
@@ -42,6 +43,16 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 @implementation ITBNewsViewController
 
+- (NSManagedObjectContext *)managedObjectContext {
+    
+    if (!_managedObjectContext) {
+        
+        _managedObjectContext = [[ITBDataManager sharedManager] managedObjectContext];
+    }
+    
+    return _managedObjectContext;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     
@@ -49,29 +60,32 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
     self.categoriesSet = [NSMutableSet set];
     
-    self.title = newsTitle;
+    self.currentUser = [[ITBUser alloc] init];
+    
+//    self.title = newsTitle;
+    self.title = NSLocalizedString(newsTitle, nil);
     
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 400.0;
     
     self.categoriesPickerButton.enabled = self.isLogin;
-}
-
-- (void) viewWillAppear:(BOOL)animated {
+   
+    ITBServerManager* manager = [ITBServerManager sharedManager];
+    [manager loadSettings];
     
-    [super viewWillAppear:animated];
-
-    if (self.isLogin) {
+    if (manager.currentUser.sessionToken != nil) {
         
-        [self.tableView reloadData];
+        NSLog(@"username != 0 -> загружаются новости из локальной БД");
         
-//        [self getNewsFromServer];
-        [self getNewsFromServerByCategories];
+        ITBDataManager* dataManager = [ITBDataManager sharedManager];
+        
+        // here I initialize a property currentUserCD of ITBDataManager
+        [dataManager fetchCurrentUserForObjectId:manager.currentUser.objectId];
+        
+//        [dataManager printAllObjects];
         
     }
     
-    self.categoriesPickerButton.enabled = self.isLogin;
-
 }
 
 - (void)didReceiveMemoryWarning {
@@ -112,7 +126,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
     news.isLikedByCurrentUser = !news.isLikedByCurrentUser;
     
-    //    [self.tableView reloadData];
+//    [self.tableView reloadData];
     [self.tableView beginUpdates];
     [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
     [self.tableView endUpdates];
@@ -124,25 +138,32 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 #pragma mark - API
 
+- (void) getCurrentUserFromServer {
+
+    [[ITBDataManager sharedManager] addCurrentUserToLocalDB];
+    
+}
+
+- (void)getCategoriesFromServer {
+    
+    [[ITBServerManager sharedManager]
+     getCategoriesOnSuccess:^(NSArray *categories) {
+         
+         [[ITBDataManager sharedManager] addCategoriesToLocalDBFromLoadedArray:categories];
+        
+     }
+     onFailure:^(NSError *error, NSInteger statusCode) {
+         
+     }];
+    
+}
+
 - (void)getNewsFromServer {
     
     [[ITBServerManager sharedManager]
      getNewsOnSuccess:^(NSArray *news) {
          
-         self.currentUser = [ITBServerManager sharedManager].currentUser;
-         
-         self.newsArray = news;
-         
-         for (ITBNews* newsItem in news) {
-             
-             [self.categoriesSet addObject:newsItem.category];
-             
-             if ([newsItem.likedUsers containsObject:self.currentUser.objectId]) {
-                 
-                 newsItem.isLikedByCurrentUser = YES;
-             }
-             
-         }
+         [[ITBDataManager sharedManager] addNewsToLocalDBFromLoadedArray:news];
          
 //         [self.tableView reloadData];
          
@@ -164,13 +185,13 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     [[ITBServerManager sharedManager]
      getNewsOnSuccess:^(NSArray *news) {
          
-         self.currentUser = [ITBServerManager sharedManager].currentUser;
+//         self.currentUser = [ITBServerManager sharedManager].currentUser;
          
 //         self.newsArray = news;
          
          NSMutableArray* choosedNews = [NSMutableArray array];
          
-         for (NSString* category in self.currentUser.categories) {
+         for (NSString* category in [ITBServerManager sharedManager].currentUser.categories) {
              
              for (ITBNews* newsItem in news) {
                  
@@ -242,9 +263,12 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 - (BOOL)shouldPerformSegueWithIdentifier:(NSString *)identifier sender:(nullable id)sender {
     
-    if ([self.loginButton.title isEqualToString:logout]) {
+//    if ([self.loginButton.title isEqualToString:logout]) {
+    
+    if ([self.loginButton.title isEqualToString:NSLocalizedString(logout, nil)]) {
         
-        self.loginButton.title = login;
+//        self.loginButton.title = login;
+        self.loginButton.title = NSLocalizedString(login, nil);
         
         self.isLogin = NO;
         
@@ -253,6 +277,13 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         self.categoriesPickerButton.enabled = self.isLogin;
         
         self.currentUser = nil;
+        
+        ITBServerManager* serverManager = [ITBServerManager sharedManager];
+        
+        serverManager.currentUser = nil;
+        [serverManager saveSettings];
+//        [self saveSettings];
+        
         
         [self.tableView reloadData];
         
@@ -317,7 +348,8 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         
         UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"noData"];
         
-        cell.textLabel.text = beforeLogin;
+//        cell.textLabel.text = beforeLogin;
+        cell.textLabel.text = NSLocalizedString(beforeLogin, nil);
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
         cell.textLabel.numberOfLines = 0;
         cell.textLabel.textColor = [UIColor lightGrayColor];
@@ -335,11 +367,18 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 }
 
 #pragma mark - ITBLoginTableViewControllerDelegate
-- (void)changeTitleForLoginButton:(ITBLoginTableViewController *)vc {
+
+- (void) loginDidPassSuccessful:(ITBLoginTableViewController *)vc {
     
-    self.loginButton.title = logout;
+    self.loginButton.title = NSLocalizedString(logout, nil);
     
     self.isLogin = YES;
+    
+    [self.tableView reloadData];
+    
+//        [self getNewsFromServer];
+    [self getNewsFromServerByCategories];
+    
     
 }
 

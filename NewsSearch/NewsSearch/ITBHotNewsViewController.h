@@ -1,21 +1,19 @@
 //
-//  ITBNewsViewController.h
+//  ITBHotNewsViewController.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 02.02.16.
+//  Created by Oleg Pochtovy on 16.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
+#import <CoreData/CoreData.h>
 
-@interface ITBNewsViewController : UITableViewController
+@interface ITBHotNewsViewController : UITableViewController <NSFetchedResultsControllerDelegate>
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
-
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *refreshButton;
 
 - (IBAction)actionChooseCategories:(UIBarButtonItem *)sender;
-
-@property (nonatomic, strong) NSManagedObjectContext *managedObjectContext;
-
 @end

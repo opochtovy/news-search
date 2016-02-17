@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="9531" systemVersion="15D21" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" initialViewController="CUb-6o-erQ">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="9531" systemVersion="15D21" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" initialViewController="eJM-me-ENu">
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="9529"/>
+        <capability name="Navigation items with more than one left or right bar item" minToolsVersion="7.0"/>
     </dependencies>
     <scenes>
         <!--News View Controller-->
@@ -331,6 +332,40 @@
                                             </constraints>
                                         </tableViewCellContentView>
                                     </tableViewCell>
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" id="a5o-13-7kC">
+                                        <rect key="frame" x="0.0" y="196" width="600" height="44"/>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="a5o-13-7kC" id="nrp-fW-emZ">
+                                            <rect key="frame" x="0.0" y="0.0" width="600" height="43"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="axD-Kd-ms5">
+                                                    <rect key="frame" x="20" y="6" width="51" height="31"/>
+                                                    <constraints>
+                                                        <constraint firstAttribute="height" constant="31" id="TRP-ON-BsC"/>
+                                                        <constraint firstAttribute="width" constant="49" id="lZC-Jw-9Ql"/>
+                                                    </constraints>
+                                                    <color key="onTintColor" red="0.1529411765" green="0.47058823529999999" blue="0.98431372549999996" alpha="1" colorSpace="calibratedRGB"/>
+                                                </switch>
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="remember username and password" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="WTQ-4f-2rm">
+                                                    <rect key="frame" x="91" y="11" width="489" height="21"/>
+                                                    <constraints>
+                                                        <constraint firstAttribute="height" constant="21" id="fAm-6R-G2j"/>
+                                                    </constraints>
+                                                    <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                                    <color key="textColor" red="0.1529411765" green="0.47058823529999999" blue="0.98431372549999996" alpha="1" colorSpace="calibratedRGB"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                            </subviews>
+                                            <constraints>
+                                                <constraint firstAttribute="trailing" secondItem="WTQ-4f-2rm" secondAttribute="trailing" constant="20" id="6M5-eY-YNG"/>
+                                                <constraint firstItem="WTQ-4f-2rm" firstAttribute="centerY" secondItem="nrp-fW-emZ" secondAttribute="centerY" id="JLF-L0-uWU"/>
+                                                <constraint firstItem="axD-Kd-ms5" firstAttribute="top" secondItem="nrp-fW-emZ" secondAttribute="top" constant="6" id="QdR-v2-el6"/>
+                                                <constraint firstItem="axD-Kd-ms5" firstAttribute="leading" secondItem="nrp-fW-emZ" secondAttribute="leading" constant="20" id="Tty-hl-fcP"/>
+                                                <constraint firstItem="WTQ-4f-2rm" firstAttribute="leading" secondItem="axD-Kd-ms5" secondAttribute="trailing" constant="22" id="gB3-s7-bJt"/>
+                                            </constraints>
+                                        </tableViewCellContentView>
+                                    </tableViewCell>
                                 </cells>
                             </tableViewSection>
                         </sections>
@@ -354,12 +389,13 @@
                     <connections>
                         <outlet property="activityIndicator" destination="FCD-fR-3T1" id="EnS-PS-6z0"/>
                         <outlet property="passwordField" destination="0wA-t2-baC" id="inR-fB-duE"/>
+                        <outlet property="rememberSwitch" destination="axD-Kd-ms5" id="VLa-cC-Lm0"/>
                         <outlet property="usernameField" destination="66y-5a-yA9" id="cWD-Ua-n4d"/>
                     </connections>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="E2T-vM-Oam" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="2417" y="737"/>
+            <point key="canvasLocation" x="3229" y="737"/>
         </scene>
         <!--Sign In Table View Controller-->
         <scene sceneID="Ucr-MG-GeQ">
@@ -579,7 +615,7 @@
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="h34-0D-cJz" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="3106" y="737"/>
+            <point key="canvasLocation" x="3918" y="737"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="gb1-6a-4fh">
@@ -599,6 +635,54 @@
             </objects>
             <point key="canvasLocation" x="129" y="297"/>
         </scene>
+        <!--Hot News View Controller-->
+        <scene sceneID="Rcg-F9-fsl">
+            <objects>
+                <tableViewController id="1KA-Xc-Wxy" customClass="ITBHotNewsViewController" sceneMemberID="viewController">
+                    <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" id="MX7-0L-x6g">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <prototypes>
+                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="NewsCell" id="BFi-d2-tk7">
+                                <rect key="frame" x="0.0" y="92" width="600" height="44"/>
+                                <autoresizingMask key="autoresizingMask"/>
+                                <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="BFi-d2-tk7" id="CAq-Hg-xyQ">
+                                    <rect key="frame" x="0.0" y="0.0" width="600" height="43"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </tableViewCellContentView>
+                            </tableViewCell>
+                        </prototypes>
+                        <connections>
+                            <outlet property="dataSource" destination="1KA-Xc-Wxy" id="rhy-Ts-Hba"/>
+                            <outlet property="delegate" destination="1KA-Xc-Wxy" id="UF8-g4-YWY"/>
+                        </connections>
+                    </tableView>
+                    <navigationItem key="navigationItem" id="lwT-HQ-t7n">
+                        <barButtonItem key="leftBarButtonItem" systemItem="organize" id="hba-DH-8bL">
+                            <connections>
+                                <action selector="actionChooseCategories:" destination="1KA-Xc-Wxy" id="umB-1P-73Q"/>
+                            </connections>
+                        </barButtonItem>
+                        <rightBarButtonItems>
+                            <barButtonItem title="Login" id="GSH-gM-Xzo">
+                                <connections>
+                                    <segue destination="tGP-sp-wga" kind="presentation" identifier="login" id="KaC-hl-OTz"/>
+                                </connections>
+                            </barButtonItem>
+                            <barButtonItem systemItem="refresh" id="ggR-8F-0kA"/>
+                        </rightBarButtonItems>
+                    </navigationItem>
+                    <connections>
+                        <outlet property="categoriesPickerButton" destination="hba-DH-8bL" id="y4E-PK-Z1e"/>
+                        <outlet property="loginButton" destination="GSH-gM-Xzo" id="nl9-Ju-sDN"/>
+                        <outlet property="refreshButton" destination="ggR-8F-0kA" id="aUB-Jg-919"/>
+                    </connections>
+                </tableViewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="ol6-aZ-XUd" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="941" y="974"/>
+        </scene>
         <!--Navigation Controller-->
         <scene sceneID="iKx-ce-zpM">
             <objects>
@@ -615,7 +699,28 @@
                 </navigationController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="5cU-mX-Tm0" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1605" y="737"/>
+            <point key="canvasLocation" x="2417" y="737"/>
+        </scene>
+        <!--Navigation Controller-->
+        <scene sceneID="1UI-1t-08f">
+            <objects>
+                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="eJM-me-ENu" sceneMemberID="viewController">
+                    <toolbarItems/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="KZt-Sa-NrJ">
+                        <rect key="frame" x="0.0" y="0.0" width="320" height="44"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                    </navigationBar>
+                    <nil name="viewControllers"/>
+                    <connections>
+                        <segue destination="1KA-Xc-Wxy" kind="relationship" relationship="rootViewController" id="nTo-LU-OXT"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="bDG-Qt-k5G" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="129" y="974"/>
         </scene>
     </scenes>
+    <inferredMetricsTieBreakers>
+        <segue reference="KaC-hl-OTz"/>
+    </inferredMetricsTieBreakers>
 </document>

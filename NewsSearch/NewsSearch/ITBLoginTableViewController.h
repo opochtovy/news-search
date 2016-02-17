@@ -18,11 +18,13 @@
 @property (weak, nonatomic) IBOutlet UITextField *passwordField;
 
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+@property (weak, nonatomic) IBOutlet UISwitch *rememberSwitch;
 
 
 - (IBAction)actionLogin:(UIButton *)sender;
 
 - (IBAction)actionCancel:(UIBarButtonItem *)sender;
+
 
 @end
 
@@ -32,5 +34,8 @@
 @optional
 
 - (void)changeTitleForLoginButton:(ITBLoginTableViewController *)vc;
+
+- (void) loginDidPassSuccessful:(ITBLoginTableViewController *)vc;
+//- (void)saveSettingsAfterLogin:(ITBLoginTableViewController *)vc;
 
 @end

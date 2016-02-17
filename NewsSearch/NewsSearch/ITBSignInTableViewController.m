@@ -36,7 +36,8 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     self.passwordField.delegate = self;
     self.passwordConfirmationField.delegate = self;
     
-    self.navigationItem.title = signinTitle;
+//    self.navigationItem.title = signinTitle;
+    self.navigationItem.title = NSLocalizedString(signinTitle, nil);
     
     [self getUsersFromServer];
 }
@@ -85,7 +86,8 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     
     [self.activityIndicator startAnimating];
     
-    self.uniqueUsernameLabel.text = waitUnique;
+//    self.uniqueUsernameLabel.text = waitUnique;
+    self.uniqueUsernameLabel.text = NSLocalizedString(waitUnique, nil);
     
     [[ITBServerManager sharedManager]
      getUsersOnSuccess:^(NSArray *users) {
@@ -145,12 +147,14 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
         
         if ([self.usernamesSet containsObject:result]) {
             
-            self.uniqueUsernameLabel.text = noUnique;
+//            self.uniqueUsernameLabel.text = noUnique;
+            self.uniqueUsernameLabel.text = NSLocalizedString(noUnique, nil);
             self.uniqueUsernameLabel.textColor = [UIColor redColor];
             
         } else {
             
-            self.uniqueUsernameLabel.text = okUnique;
+//            self.uniqueUsernameLabel.text = okUnique;
+            self.uniqueUsernameLabel.text = NSLocalizedString(okUnique, nil);
             self.uniqueUsernameLabel.textColor = [UIColor greenColor];
             
         }
@@ -159,12 +163,14 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
         
         if ([result isEqual:self.passwordField.text]) {
             
-            self.passwordConfirmationLabel.text = okPassConfirm;
+//            self.passwordConfirmationLabel.text = okPassConfirm;
+            self.passwordConfirmationLabel.text = NSLocalizedString(okPassConfirm, nil);
             self.passwordConfirmationLabel.textColor = [UIColor greenColor];
             
         } else {
             
-            self.passwordConfirmationLabel.text = noPassConfirm;
+//            self.passwordConfirmationLabel.text = noPassConfirm;
+            self.passwordConfirmationLabel.text = NSLocalizedString(noPassConfirm, nil);
             self.passwordConfirmationLabel.textColor = [UIColor redColor];
         }
     }

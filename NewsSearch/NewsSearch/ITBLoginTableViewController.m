@@ -9,12 +9,17 @@
 #import "ITBLoginTableViewController.h"
 
 #import "ITBServerManager.h"
+#import "ITBDataManager.h"
 
 #import "ITBUser.h"
 
+NSString *const loginTitle = @"Login:";
 NSString *const invalidLogin = @"invalid login parameters";
 
 @interface ITBLoginTableViewController () <UITextFieldDelegate>
+
+@property (strong, nonatomic) ITBServerManager* serverManager;
+@property (strong, nonatomic) ITBDataManager* dataManager;
 
 @end
 
@@ -26,7 +31,11 @@ NSString *const invalidLogin = @"invalid login parameters";
     self.usernameField.delegate = self;
     self.passwordField.delegate = self;
     
-    self.navigationItem.title = @"Login";
+//    self.navigationItem.title = loginTitle;
+    self.navigationItem.title = NSLocalizedString(loginTitle, nil);
+    
+    self.serverManager = [ITBServerManager sharedManager];
+    self.dataManager = [ITBDataManager sharedManager];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -43,7 +52,9 @@ NSString *const invalidLogin = @"invalid login parameters";
 
 - (void)authorizeUser {
     
-    [[ITBServerManager sharedManager]
+//    ITBServerManager* manager = [ITBServerManager sharedManager];
+    
+    [self.serverManager
      authorizeWithUsername:self.usernameField.text
      withPassword:self.passwordField.text
      onSuccess:^(ITBUser *user)
@@ -55,7 +66,23 @@ NSString *const invalidLogin = @"invalid login parameters";
              
 //             NSLog(@"Login was successful!!!");
              
-             [self.delegate changeTitleForLoginButton:self];
+             self.serverManager.currentUser = user;
+             [self.dataManager fetchCurrentUserForObjectId:user.objectId];
+             
+             if (self.rememberSwitch.enabled) {
+                 
+                 NSLog(@"rememberSwitch is ONN!");
+                 
+//                 [self.delegate saveSettingsAfterLogin:self];
+                 [self.serverManager saveSettings];
+                 
+                 // надо сделать fetchRequest чтобы получить currentUserCD
+//                 [[ITBDataManager sharedManager] fetchCurrentUser];
+                 
+             }
+             
+//             [self.delegate changeTitleForLoginButton:self];
+             [self.delegate loginDidPassSuccessful:self];
              
              [self dismissViewControllerAnimated:YES completion:nil];
              
@@ -63,9 +90,11 @@ NSString *const invalidLogin = @"invalid login parameters";
              
              dispatch_async(dispatch_get_main_queue(), ^{
                  
-                 self.usernameField.placeholder = invalidLogin;
+//                 self.usernameField.placeholder = invalidLogin;
+                 self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
                  
-                 self.passwordField.placeholder = invalidLogin;
+//                 self.passwordField.placeholder = invalidLogin;
+                 self.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
                  
                  [self.activityIndicator stopAnimating];
                  
@@ -116,4 +145,5 @@ NSString *const invalidLogin = @"invalid login parameters";
     
     [self dismissViewControllerAnimated:YES completion:nil];
 }
+
 @end
