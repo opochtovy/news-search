@@ -8,6 +8,7 @@
     </entity>
     <entity name="ITBNewsCD" representedClassName="ITBNewsCD" parentEntity="ITBObject" syncable="YES">
         <attribute name="createdAt" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="isLikedByCurrentUser" optional="YES" attributeType="Boolean" syncable="YES"/>
         <attribute name="newsURL" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="objectId" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="rating" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
@@ -27,7 +28,7 @@
     </entity>
     <elements>
         <element name="ITBCategoryCD" positionX="-270" positionY="18" width="128" height="103"/>
-        <element name="ITBNewsCD" positionX="-63" positionY="-18" width="128" height="178"/>
+        <element name="ITBNewsCD" positionX="-63" positionY="-18" width="128" height="193"/>
         <element name="ITBObject" positionX="-11" positionY="-205" width="128" height="43"/>
         <element name="ITBUserCD" positionX="187" positionY="26" width="128" height="118"/>
     </elements>

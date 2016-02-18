@@ -22,12 +22,12 @@
 
 #import "ITBNewsDetailViewController.h"
 
-NSString *const login = @"Login";
-NSString *const logout = @"Logout";
 NSString *const newsTitle = @"NEWS";
-NSString *const beforeLogin = @"You need to login for using our news network!";
 
 @interface ITBNewsViewController () <ITBLoginTableViewControllerDelegate, ITBCategoriesPickerDelegate, ITBNewsCellDelegate>
+
+@property (strong, nonatomic) ITBDataManager* dataManager;
+@property (strong, nonatomic) ITBServerManager* serverManager;
 
 @property (strong, nonatomic) NSArray *newsArray;
 
@@ -62,6 +62,9 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
     self.currentUser = [[ITBUser alloc] init];
     
+    self.dataManager = [ITBDataManager sharedManager];
+    self.serverManager = [ITBServerManager sharedManager];
+    
 //    self.title = newsTitle;
     self.title = NSLocalizedString(newsTitle, nil);
     
@@ -69,23 +72,20 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     self.tableView.estimatedRowHeight = 400.0;
     
     self.categoriesPickerButton.enabled = self.isLogin;
-   
-    ITBServerManager* manager = [ITBServerManager sharedManager];
-    [manager loadSettings];
+/*
+    [self.dataManager loadSettings];
     
-    if (manager.currentUser.sessionToken != nil) {
+    if (self.dataManager.currentUser.sessionToken != nil) {
         
         NSLog(@"username != 0 -> загружаются новости из локальной БД");
         
-        ITBDataManager* dataManager = [ITBDataManager sharedManager];
-        
         // here I initialize a property currentUserCD of ITBDataManager
-        [dataManager fetchCurrentUserForObjectId:manager.currentUser.objectId];
+        [self.dataManager fetchCurrentUserForObjectId:self.dataManager.currentUser.objectId];
         
 //        [dataManager printAllObjects];
         
     }
-    
+*/    
 }
 
 - (void)didReceiveMemoryWarning {
@@ -140,16 +140,16 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 - (void) getCurrentUserFromServer {
 
-    [[ITBDataManager sharedManager] addCurrentUserToLocalDB];
+    [self.dataManager addCurrentUserToLocalDB];
     
 }
 
 - (void)getCategoriesFromServer {
     
-    [[ITBServerManager sharedManager]
+    [self.serverManager
      getCategoriesOnSuccess:^(NSArray *categories) {
          
-         [[ITBDataManager sharedManager] addCategoriesToLocalDBFromLoadedArray:categories];
+         [self.dataManager addCategoriesToLocalDBFromLoadedArray:categories];
         
      }
      onFailure:^(NSError *error, NSInteger statusCode) {
@@ -160,10 +160,10 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 - (void)getNewsFromServer {
     
-    [[ITBServerManager sharedManager]
+    [self.serverManager
      getNewsOnSuccess:^(NSArray *news) {
          
-         [[ITBDataManager sharedManager] addNewsToLocalDBFromLoadedArray:news];
+         [self.dataManager addNewsToLocalDBFromLoadedArray:news];
          
 //         [self.tableView reloadData];
          
@@ -182,7 +182,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 - (void)getNewsFromServerByCategories {
     
-    [[ITBServerManager sharedManager]
+    [self.serverManager
      getNewsOnSuccess:^(NSArray *news) {
          
 //         self.currentUser = [ITBServerManager sharedManager].currentUser;
@@ -191,7 +191,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
          
          NSMutableArray* choosedNews = [NSMutableArray array];
          
-         for (NSString* category in [ITBServerManager sharedManager].currentUser.categories) {
+         for (NSString* category in self.dataManager.currentUser.categories) {
              
              for (ITBNews* newsItem in news) {
                  
@@ -232,7 +232,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 - (void) updateRatingForNewsItem:(ITBNews* ) news {
     
-    [[ITBServerManager sharedManager]
+    [self.serverManager
      updateRatingFromUserForNewsItem: news
      onSuccess:^(NSDate *updatedAt)
      {
@@ -247,7 +247,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
 
 - (void) updateCategories {
     
-    [[ITBServerManager sharedManager]
+    [self.serverManager
      updateCategoriesFromUserOnSuccess:^(NSDate *updatedAt)
      {
          
@@ -278,12 +278,8 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         
         self.currentUser = nil;
         
-        ITBServerManager* serverManager = [ITBServerManager sharedManager];
-        
-        serverManager.currentUser = nil;
-        [serverManager saveSettings];
-//        [self saveSettings];
-        
+        self.dataManager.currentUser = nil;
+        [self.dataManager saveSettings];
         
         [self.tableView reloadData];
         
@@ -329,7 +325,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         
         ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
         
-        cell.delegate = self;
+//        cell.delegate = self;
         
         ITBNews* news = [self.newsArray objectAtIndex:indexPath.row];
         

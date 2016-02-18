@@ -2,7 +2,7 @@
 //  ITBNewsCD+CoreDataProperties.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 17.02.16.
+//  Created by Oleg Pochtovy on 18.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 //  Choose "Create NSManagedObject Subclass…" from the Core Data editor menu
@@ -16,25 +16,13 @@
 @dynamic createdAt;
 @dynamic newsURL;
 @dynamic objectId;
+@dynamic rating;
 @dynamic title;
 @dynamic updatedAt;
-@dynamic rating;
+@dynamic isLikedByCurrentUser;
 @dynamic author;
 @dynamic category;
 @dynamic likeAddedUsers;
-
-/*
-- (void)setFirstName:(NSString *)firstName {
-    
-    //    _firstName = firstName; // !!!!!! такую строку нельзя написать !!!!!!!!!
-    
-    [self willChangeValueForKey:@"firstName"];
-    
-    [self setPrimitiveValue:firstName forKey:@"firstName"];
-    
-    [self didChangeValueForKey:@"firstName"];
-}
-*/
 
 - (void)addLikeAddedUsersObject:(ITBUserCD *)value {
     
@@ -42,7 +30,7 @@
     
     NSLog(@"rating was changed");
     
-// @property (nullable, nonatomic, retain) NSSet<ITBUserCD *> *likeAddedUsers;
+    // @property (nullable, nonatomic, retain) NSSet<ITBUserCD *> *likeAddedUsers;
     NSMutableSet* set = [[self primitiveValueForKey:@"likeAddedUsers"] mutableCopy];
     [set addObject:value];
     [self setPrimitiveValue:[set copy] forKey:@"likeAddedUsers"];
@@ -102,7 +90,7 @@
     [self setPrimitiveValue:[NSNumber numberWithInteger:ratingInt-[values count]] forKey:@"rating"];
     
     [self didChangeValueForKey:@"likeAddedUsers"];
-
+    
 }
 
 @end

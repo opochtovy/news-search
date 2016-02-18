@@ -17,6 +17,14 @@
 #import "ITBCategoryCD.h"
 #import "ITBUserCD.h"
 
+static NSString *const kSettingsUsername = @"username";
+static NSString *const kSettingsObjectId = @"objectId";
+static NSString *const kSettingsSessionToken = @"sessionToken";
+
+NSString *const login = @"Login";
+NSString *const logout = @"Logout";
+NSString *const beforeLogin = @"You need to login for using our news network!";
+
 @interface ITBDataManager ()
 
 @end
@@ -40,6 +48,74 @@
     });
     
     return manager;
+}
+
+- (id)init {
+    
+    self = [super init];
+    
+    if (self != nil) {
+        
+        self.currentUser = [[ITBUser alloc] init];
+        
+        [self loadSettings];
+        
+        if (self.currentUser.sessionToken != nil) {
+            
+            NSLog(@"username != 0 -> загружаются новости из локальной БД");
+            
+            [self fetchCurrentUserForObjectId:self.currentUser.objectId];
+            
+//            [self fetchAllNews];
+
+//#warning 2.A - генерация локальной БД
+//                    [self getNewsFromServer];
+            
+//#warning 2.B - генерация локальной БД
+//                    [self getCategoriesFromServer];
+            
+//#warning 2.C - генерация локальной БД
+//                    [self addCurrentUserToLocalDB];
+            
+//#warning 2.D - генерация всех связей
+//                    [self addRelationsManually];
+            
+//#warning 2.E - вывод всех паролей
+            [self printAllObjects];
+            
+        }
+    }
+    
+    return self;
+}
+
+#pragma mark - NSUserDefaults
+
+- (void)saveSettings {
+    
+//    NSLog(@"QQQ : self.currentUser.username : %@", self.currentUser.username);
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    [userDefaults setObject:self.currentUser.username forKey:kSettingsUsername];
+    [userDefaults setObject:self.currentUser.objectId forKey:kSettingsObjectId];
+    [userDefaults setObject:self.currentUser.sessionToken forKey:kSettingsSessionToken];
+    
+//    NSLog(@"Username for currentUser was saved to NSUserDefaults : %@", self.currentUser.username);
+    
+    [userDefaults synchronize];
+    
+}
+
+- (void)loadSettings {
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    self.currentUser.username = [userDefaults objectForKey:kSettingsUsername];
+    self.currentUser.objectId = [userDefaults objectForKey:kSettingsObjectId];
+    self.currentUser.sessionToken = [userDefaults objectForKey:kSettingsSessionToken];
+    
+//    NSLog(@"sessionToken for currentUser was loaded from NSUserDefaults : %@", self.currentUser.sessionToken);
 }
 
 # pragma mark - Private Methods
@@ -75,6 +151,7 @@
         [self.managedObjectContext deleteObject:object];
     }
     
+    // здесь идет сохранение в permanent store
     [self.managedObjectContext save:nil];
 }
 
@@ -85,17 +162,17 @@
         if ([object isKindOfClass:[ITBNewsCD class]]) {
             
             ITBNewsCD *newsItem = (ITBNewsCD *)object;
-            NSLog(@"NEWS title : %@ and URL %@, created at : %@, updated at : %@ AND category = %@ AND author = %@ AND number of likeAddedUsers = %ld AND newsItem.rating = %@", newsItem.title, newsItem.newsURL, newsItem.createdAt, newsItem.updatedAt, newsItem.category.title, newsItem.author.username, [newsItem.likeAddedUsers count], newsItem.rating);
+            NSLog(@"NEWS title : %@ and URL %@, created at : %@, updated at : %@ AND category = %@ AND author = %@ AND number of likeAddedUsers = %lu AND newsItem.rating = %@", newsItem.title, newsItem.newsURL, newsItem.createdAt, newsItem.updatedAt, newsItem.category.title, newsItem.author.username, [newsItem.likeAddedUsers count], newsItem.rating);
             
         } else if ([object isKindOfClass:[ITBCategoryCD class]]) {
             
             ITBCategoryCD *category = (ITBCategoryCD *)object;
-            NSLog(@"CATEGORY title : %@ and objectId = %@ and number of news in that category = %ld and number of signed users = %ld", category.title, category.objectId, [category.news count], [category.signedUsers count]);
+            NSLog(@"CATEGORY title : %@ and objectId = %@ and number of news in that category = %lu and number of signed users = %lu", category.title, category.objectId, [category.news count], [category.signedUsers count]);
             
         } else if ([object isKindOfClass:[ITBUserCD class]]) {
             
             ITBUserCD *user = (ITBUserCD *)object;
-            NSLog(@"USER username : %@ and objectId = %@ and number of created news = %ld and number of liked news = %ld and number of selected categories = %ld", user.username, user.objectId, [user.createdNews count], [user.likedNews count], [user.selectedCategories count]);
+            NSLog(@"USER username : %@ and objectId = %@ and number of created news = %lu and number of liked news = %lu and number of selected categories = %lu", user.username, user.objectId, [user.createdNews count], [user.likedNews count], [user.selectedCategories count]);
             
         }
         
@@ -149,7 +226,77 @@
     
 }
 
+- (void)fetchAllNews {
+    
+    NSFetchRequest *request = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description = [NSEntityDescription
+                                        entityForName:@"ITBNewsCD"
+                                        inManagedObjectContext:self.managedObjectContext];
+    
+    [request setEntity:description];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    for (ITBNewsCD* newsItem in resultArray) {
+        
+        if ([newsItem.likeAddedUsers containsObject:self.currentUserCD]) {
+            
+            newsItem.isLikedByCurrentUser = @1;
+        }
+        
+    }
+    
+    // здесь идет сохранение в permanent store
+    [self.managedObjectContext save:nil];
+    
+}
+
+- (NSArray* )fetchAllCategories {
+    
+    NSFetchRequest *request = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description = [NSEntityDescription
+                                        entityForName:@"ITBCategoryCD"
+                                        inManagedObjectContext:self.managedObjectContext];
+    
+    [request setEntity:description];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    return resultArray;
+    
+}
+
 # pragma mark - API
+
+- (void)getNewsFromServer {
+    
+    [[ITBServerManager sharedManager]
+     getNewsOnSuccess:^(NSArray *news) {
+         
+         NSLog(@"number of all news = %ld", [news count]);
+         
+         [self addNewsToLocalDBFromLoadedArray:news];
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode) {
+         
+     }];
+    
+}
 
 - (void)addNewsToLocalDBFromLoadedArray:(NSArray* ) news {
     
@@ -178,14 +325,23 @@
         NSLog(@"%@", [error localizedDescription]);
     }
     
-    // а здесь первый пример of NSFetchRequest
-    
-    [self printAllObjects];
-    
-    [self allObjects];
-    
 }
 
+- (void)getCategoriesFromServer {
+    
+    [[ITBServerManager sharedManager]
+     getCategoriesOnSuccess:^(NSArray *categories) {
+         
+         NSLog(@"number of all categories = %ld", [categories count]);
+         
+         [self addCategoriesToLocalDBFromLoadedArray:categories];
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode) {
+         
+     }];
+    
+}
 
 - (void)addCategoriesToLocalDBFromLoadedArray:(NSArray* ) categories {
     
@@ -203,23 +359,14 @@
         
         NSLog(@"%@", [error localizedDescription]);
     }
-    
-    [self printAllObjects];
-    
-    [self allObjects];
 }
 
 - (void) addCurrentUserToLocalDB {
     
-    ITBServerManager* serverManager = [ITBServerManager sharedManager];
-    
     ITBUserCD* user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUserCD" inManagedObjectContext:self.managedObjectContext];
     
-    NSLog(@"serverManager.currentUser.objectId = %@", serverManager.currentUser.objectId);
-    NSLog(@"serverManager.currentUser.username = %@", serverManager.currentUser.username);
-    
-    user.objectId = serverManager.currentUser.objectId;
-    user.username = serverManager.currentUser.username;
+    user.objectId = self.currentUser.objectId;
+    user.username = self.currentUser.username;
     
     NSError *error = nil;
     
@@ -236,96 +383,98 @@
 - (void) addRelationsManually {
     
     // code for setting all my relations manually
-
-     // 1st fetchRequest for News
-     NSFetchRequest *request1 = [[NSFetchRequest alloc] init];
-     
-     NSEntityDescription *description1 = [NSEntityDescription
-     entityForName:@"ITBNewsCD"
-     inManagedObjectContext:self.managedObjectContext];
-     
-     [request1 setEntity:description1];
-     
-     NSError *requestError = nil;
-     
-     NSArray *resultNewsArray = [self.managedObjectContext executeFetchRequest:request1 error:&requestError];
-     
-     if (requestError) {
-     NSLog(@"%@", [requestError localizedDescription]);
-     }
-     
-     // 2nd fetchRequest for Categories
-     NSFetchRequest *request2 = [[NSFetchRequest alloc] init];
-     
-     NSEntityDescription *description2 = [NSEntityDescription
-     entityForName:@"ITBCategoryCD"
-     inManagedObjectContext:self.managedObjectContext];
-     
-     [request2 setEntity:description2];
-     
-     NSArray *resultCategoriesArray = [self.managedObjectContext executeFetchRequest:request2 error:&requestError];
-     
-     if (requestError) {
-     NSLog(@"%@", [requestError localizedDescription]);
-     }
-     
-     // 3rd fetchRequest for currentUser
-     NSFetchRequest *request3 = [[NSFetchRequest alloc] init];
-     
-     NSEntityDescription *description3 = [NSEntityDescription
-     entityForName:@"ITBUserCD"
-     inManagedObjectContext:self.managedObjectContext];
-     
-     [request3 setEntity:description3];
-     
-     NSArray *resultUserArray = [self.managedObjectContext executeFetchRequest:request3 error:&requestError];
-     
-     if (requestError) {
-     NSLog(@"%@", [requestError localizedDescription]);
-     }
-     
-     ITBUserCD* currentUser = [resultUserArray firstObject];
-     
-     for (ITBNewsCD* newsItem in resultNewsArray) {
-     
-         newsItem.author = currentUser;
-     
-         [newsItem addLikeAddedUsersObject:currentUser];
-         
-/*
-     NSInteger ratingInt = [newsItem.rating integerValue];
-     newsItem.rating = [NSNumber numberWithInteger:++ratingInt];
-*/
-     for (ITBCategoryCD* category in resultCategoriesArray) {
-     
-     [category addSignedUsersObject:currentUser];
-     
-     if ( ([newsItem.objectId isEqualToString:@"JlnHtVqzlP"]) && ([category.title isEqualToString:@"sport"]) ) {
-     
-     newsItem.category = category;
-     
-     } else if ( ([newsItem.objectId isEqualToString:@"etpe6DlNgc"]) && ([category.title isEqualToString:@"realty"]) ) {
-     
-     newsItem.category = category;
-     
-     } else if ( ([newsItem.objectId isEqualToString:@"vuyVshsCZt"]) && ([category.title isEqualToString:@"weather"]) ) {
-     
-     newsItem.category = category;
-     
-     }
-     
-     }
-     
-     }
-     
-     NSError *error = nil;
-     
-     // здесь идет сохранение в permanent store
-     if (![self.managedObjectContext save:&error]) {
-     
-     NSLog(@"%@", [error localizedDescription]);
-     }
-
+    
+    // 1st fetchRequest for News
+    NSFetchRequest *request1 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description1 = [NSEntityDescription
+                                         entityForName:@"ITBNewsCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request1 setEntity:description1];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultNewsArray = [self.managedObjectContext executeFetchRequest:request1 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    // 2nd fetchRequest for Categories
+    NSFetchRequest *request2 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description2 = [NSEntityDescription
+                                         entityForName:@"ITBCategoryCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request2 setEntity:description2];
+    
+    NSArray *resultCategoriesArray = [self.managedObjectContext executeFetchRequest:request2 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    // 3rd fetchRequest for currentUser
+    NSFetchRequest *request3 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description3 = [NSEntityDescription
+                                         entityForName:@"ITBUserCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request3 setEntity:description3];
+    
+    NSArray *resultUserArray = [self.managedObjectContext executeFetchRequest:request3 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    ITBUserCD* currentUser = [resultUserArray firstObject];
+    
+    for (ITBNewsCD* newsItem in resultNewsArray) {
+        
+        newsItem.author = currentUser;
+        
+        [newsItem addLikeAddedUsersObject:currentUser];
+        
+        
+        // изменение newsItem.rating происходит в ITBNewsCD+CoreDataProperties.m в связанных методах likeAddedUsers
+        /*
+         NSInteger ratingInt = [newsItem.rating integerValue];
+         newsItem.rating = [NSNumber numberWithInteger:++ratingInt];
+         */
+        for (ITBCategoryCD* category in resultCategoriesArray) {
+            
+            [category addSignedUsersObject:currentUser];
+            
+            if ( ([newsItem.objectId isEqualToString:@"JlnHtVqzlP"]) && ([category.title isEqualToString:@"sport"]) ) {
+                
+                newsItem.category = category;
+                
+            } else if ( ([newsItem.objectId isEqualToString:@"etpe6DlNgc"]) && ([category.title isEqualToString:@"realty"]) ) {
+                
+                newsItem.category = category;
+                
+            } else if ( ([newsItem.objectId isEqualToString:@"vuyVshsCZt"]) && ([category.title isEqualToString:@"weather"]) ) {
+                
+                newsItem.category = category;
+                
+            }
+            
+        }
+        
+    }
+    
+    NSError *error = nil;
+    
+    // здесь идет сохранение в permanent store
+    if (![self.managedObjectContext save:&error]) {
+        
+        NSLog(@"%@", [error localizedDescription]);
+    }
+    
     // end of code for setting all my relations manually
     
 }

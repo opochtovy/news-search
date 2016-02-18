@@ -17,8 +17,6 @@
 @property (strong, nonatomic) NSArray *allCategoriesArray;
 @property (strong, nonatomic) NSArray *categoriesOfCurrentUserArray;
 
-@property (strong, nonatomic) NSIndexPath *checkmarkIndexPath;
-
 @property (weak, nonatomic) id <ITBCategoriesPickerDelegate> delegate;
 
 @end

@@ -10,7 +10,12 @@
 #import <UIKit/UIKit.h>
 #import <CoreData/CoreData.h>
 
+@class ITBUser;
 @class ITBUserCD;
+
+extern NSString *const login;
+extern NSString *const logout;
+extern NSString *const beforeLogin;
 
 @interface ITBDataManager : NSObject
 
@@ -18,6 +23,7 @@
 @property (readonly, strong, nonatomic) NSManagedObjectModel *managedObjectModel;
 @property (readonly, strong, nonatomic) NSPersistentStoreCoordinator *persistentStoreCoordinator;
 
+@property (strong, nonatomic) ITBUser *currentUser;
 @property (strong, nonatomic) ITBUserCD *currentUserCD;
 
 - (void)saveContext;
@@ -33,5 +39,10 @@
 - (void)printAllObjects;
 
 - (void)fetchCurrentUserForObjectId:(NSString* ) objectId;
+- (NSArray* )fetchAllCategories;
+
+// methods for NSUserDefaults
+- (void)saveSettings;
+- (void)loadSettings;
 
 @end

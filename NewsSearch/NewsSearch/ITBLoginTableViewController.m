@@ -66,7 +66,7 @@ NSString *const invalidLogin = @"invalid login parameters";
              
 //             NSLog(@"Login was successful!!!");
              
-             self.serverManager.currentUser = user;
+             self.dataManager.currentUser = user;
              [self.dataManager fetchCurrentUserForObjectId:user.objectId];
              
              if (self.rememberSwitch.enabled) {
@@ -74,7 +74,7 @@ NSString *const invalidLogin = @"invalid login parameters";
                  NSLog(@"rememberSwitch is ONN!");
                  
 //                 [self.delegate saveSettingsAfterLogin:self];
-                 [self.serverManager saveSettings];
+                 [self.dataManager saveSettings];
                  
                  // надо сделать fetchRequest чтобы получить currentUserCD
 //                 [[ITBDataManager sharedManager] fetchCurrentUser];

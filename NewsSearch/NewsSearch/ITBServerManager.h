@@ -15,8 +15,6 @@
 
 @interface ITBServerManager : NSObject
 
-@property (strong, nonatomic) ITBUser *currentUser;
-
 + (ITBServerManager *)sharedManager;
 
 // GET method for class ITBLoginTableViewController after pressing button "Login"
@@ -50,9 +48,5 @@
 
 - (void)getCategoriesOnSuccess:(void(^)(NSArray *categories)) success
                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-// methods for NSUserDefaults
-- (void)saveSettings;
-- (void)loadSettings;
 
 @end

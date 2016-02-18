@@ -2,7 +2,7 @@
 //  ITBNewsCD.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 17.02.16.
+//  Created by Oleg Pochtovy on 18.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 

@@ -9,7 +9,7 @@
 #import <UIKit/UIKit.h>
 #import <CoreData/CoreData.h>
 
-@interface ITBHotNewsViewController : UITableViewController <NSFetchedResultsControllerDelegate>
+@interface ITBHotNewsViewController : UITableViewController
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;

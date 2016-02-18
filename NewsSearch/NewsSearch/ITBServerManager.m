@@ -10,19 +10,17 @@
 
 #import "ITBServerManager.h"
 
+#import "ITBDataManager.h"
+
 #import "ITBUser.h"
-#import "ITBNews.h"
-//#import "ITBUserCD.h"
+#import "ITBNews.h" // надо заменить на ITBNewsCD.h
+#import "ITBUserCD.h"
 
 NSString *const appId = @"lQETMCXVV6efIe7LsllbrEix0pZtmT02isLhGeGn";
 NSString *const restApiKey = @"0rwsYi5iHx1XZzwABjzlwiJZ0f266W7IUkHqcE7B";
 NSString *const json = @"application/json";
 
 NSString *const baseUrl = @"https://api.parse.com";
-
-static NSString *const kSettingsUsername = @"username";
-static NSString *const kSettingsObjectId = @"objectId";
-static NSString *const kSettingsSessionToken = @"sessionToken";
 
 @interface ITBServerManager ()
 
@@ -62,42 +60,9 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
         self.session = [NSURLSession sessionWithConfiguration:sessionConfig
                                                               delegate:nil
                                                          delegateQueue:nil];
-        
-        self.currentUser = [[ITBUser alloc] init];
-        
-//        [self loadSettings];
     }
     
     return self;
-}
-
-#pragma mark - NSUserDefaults
-
-- (void)saveSettings {
-    
-    NSLog(@"QQQ : self.currentUser.username : %@", self.currentUser.username);
-    
-    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    
-    [userDefaults setObject:self.currentUser.username forKey:kSettingsUsername];
-    [userDefaults setObject:self.currentUser.objectId forKey:kSettingsObjectId];
-    [userDefaults setObject:self.currentUser.sessionToken forKey:kSettingsSessionToken];
-    
-    NSLog(@"Username for currentUser was saved to NSUserDefaults : %@", self.currentUser.username);
-    
-    [userDefaults synchronize];
-    
-}
-
-- (void)loadSettings {
-    
-    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    
-    self.currentUser.username = [userDefaults objectForKey:kSettingsUsername];
-    self.currentUser.objectId = [userDefaults objectForKey:kSettingsObjectId];
-    self.currentUser.sessionToken = [userDefaults objectForKey:kSettingsSessionToken];
-    
-    NSLog(@"sessionToken for currentUser was loaded from NSUserDefaults : %@", self.currentUser.sessionToken);
 }
 
 #pragma mark - Client-Server API
@@ -139,9 +104,6 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
         if (error == nil) {
 
             ITBUser *user = [[ITBUser alloc] initWithServerResponse:responseBody];
-            
-//            self.currentUser = user;
-//            [self saveSettings];
             
             success(user);
 
@@ -195,7 +157,7 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
             
             ITBUser *user = [[ITBUser alloc] initWithServerResponse:responseBody];
             
-            self.currentUser = user;
+            [ITBDataManager sharedManager].currentUser = user;
             
             success(user);
             
@@ -456,7 +418,7 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
     
     NSString* operation = news.isLikedByCurrentUser ? @"AddUnique" : @"Remove"; // здесь идет наоборот т.к. к этому моменту news.isLikedByCurrentUser уже поменялся а я смотрел по старому значению (до нажатия на кнопку + или -)
     
-    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": operation, @"objects": @[ self.currentUser.objectId ] } };
+    NSDictionary *parameters = @{ @"likedUsers": @{ @"__op": operation, @"objects": @[ [ITBDataManager sharedManager].currentUser.objectId ] } };
     
     [self updateObject:news.objectId
            withHeaders:headers
@@ -480,16 +442,16 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
 - (void)updateCategoriesFromUserOnSuccess:(void(^)(NSDate* updatedAt)) success
                                 onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
     
-    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/users/%@", self.currentUser.objectId];
+    NSString *urlString = [NSString stringWithFormat: @"https://api.parse.com/1/users/%@", [ITBDataManager sharedManager].currentUser.objectId];
     
     NSDictionary *headers = @{ @"x-parse-application-id": appId,
                                @"x-parse-rest-api-key": restApiKey,
-                               @"x-parse-session-token": self.currentUser.sessionToken,
+                               @"x-parse-session-token": [ITBDataManager sharedManager].currentUser.sessionToken,
                                @"content-type": json };
     
-    NSDictionary *parameters = @{ @"categories": self.currentUser.categories };
+    NSDictionary *parameters = @{ @"categories": [ITBDataManager sharedManager].currentUser.categories };
     
-    [self updateObject:self.currentUser.objectId
+    [self updateObject:[ITBDataManager sharedManager].currentUser.objectId
            withHeaders:headers
             withFields:parameters
           forUrlString:urlString
