@@ -168,7 +168,7 @@ NSString *const allCatsCell = @"All categories";
         NSNumber *number = [self.checkBoxes objectAtIndex:indexPath.row];
         BOOL hasCheckBox = [number boolValue];
         
-        ITBCategoryCD* category = [self.allCategoriesArray objectAtIndex:indexPath.row];
+//        ITBCategoryCD* category = [self.allCategoriesArray objectAtIndex:indexPath.row];
         
         hasCheckBox = !hasCheckBox;
         
@@ -179,8 +179,6 @@ NSString *const allCatsCell = @"All categories";
         [self.categoriesTableView beginUpdates];
         [self.categoriesTableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
         [self.categoriesTableView endUpdates];
-        
-        NSLog(@"number of selected categories = %li", [self.dataManager.currentUserCD.selectedCategories count]);
         
     } else {
         
@@ -195,7 +193,7 @@ NSString *const allCatsCell = @"All categories";
         
     }
     
-    NSLog(@"number of self.dataManager.currentUserCD.selectedCategories = %li", [self.dataManager.currentUserCD.selectedCategories count]);
+    NSLog(@"number of self.dataManager.currentUserCD.selectedCategories = %li", (long)[self.dataManager.currentUserCD.selectedCategories count]);
     
     NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
     
@@ -211,7 +209,7 @@ NSString *const allCatsCell = @"All categories";
         }
     }
     
-    NSLog(@"number of selected categories = %li", [categoriesOfCurrentUser count]);
+    NSLog(@"number of selected categories = %li", (long)[categoriesOfCurrentUser count]);
     
     // Нюанс popover - поскольку я убрал из popover кнопки в navigationBar то надо обновлять данные при каждом select
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
