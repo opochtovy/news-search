@@ -33,9 +33,6 @@
 
 @optional
 
-- (void)changeTitleForLoginButton:(ITBLoginTableViewController *)vc;
-
-- (void) loginDidPassSuccessful:(ITBLoginTableViewController *)vc;
-//- (void)saveSettingsAfterLogin:(ITBLoginTableViewController *)vc;
+- (void) loginDidPassSuccessfully:(ITBLoginTableViewController *)vc;
 
 @end

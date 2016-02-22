@@ -16,4 +16,6 @@
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *refreshButton;
 
 - (IBAction)actionChooseCategories:(UIBarButtonItem *)sender;
+- (IBAction)actionRefresh:(UIBarButtonItem *)sender;
+
 @end

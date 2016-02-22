@@ -10,7 +10,6 @@
 
 @interface ITBNewsDetailViewController : UIViewController <UIWebViewDelegate>
 
-//@property (strong, nonatomic) NSString *urlString;
 @property (strong, nonatomic) NSURL *url;
 
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *indicator;

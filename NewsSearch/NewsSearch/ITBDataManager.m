@@ -18,8 +18,10 @@
 #import "ITBUserCD.h"
 
 static NSString *const kSettingsUsername = @"username";
-static NSString *const kSettingsObjectId = @"objectId";
+//static NSString *const kSettingsObjectId = @"objectId";
 static NSString *const kSettingsSessionToken = @"sessionToken";
+
+NSString *const kSettingsObjectId = @"objectId";
 
 NSString *const login = @"Login";
 NSString *const logout = @"Logout";
@@ -56,7 +58,13 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
     if (self != nil) {
         
+        self.usersArray = [NSArray array];
+        self.categoriesArray = [NSArray array];
+        self.newsArray = [NSArray array];
+        
         self.currentUser = [[ITBUser alloc] init];
+        
+        self.allCategoriesArray = [NSArray array];
         
         [self loadSettings];
         
@@ -66,22 +74,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
             
             [self fetchCurrentUserForObjectId:self.currentUser.objectId];
             
-//            [self fetchAllNews];
-
-//#warning 2.A - генерация локальной БД
-//                    [self getNewsFromServer];
-            
-//#warning 2.B - генерация локальной БД
-//                    [self getCategoriesFromServer];
-            
-//#warning 2.C - генерация локальной БД
-//                    [self addCurrentUserToLocalDB];
-            
-//#warning 2.D - генерация всех связей
-//                    [self addRelationsManually];
-            
-//#warning 2.E - вывод всех паролей
-            [self printAllObjects];
+            [self fetchAllCategories]; // здесь вычисляется self.allCategories когда мы либо загружаем локальную БД (при загрузке app) либо когда нажимаем refreshButton
             
         }
     }
@@ -162,17 +155,17 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         if ([object isKindOfClass:[ITBNewsCD class]]) {
             
             ITBNewsCD *newsItem = (ITBNewsCD *)object;
-            NSLog(@"NEWS title : %@ and URL %@, created at : %@, updated at : %@ AND category = %@ AND author = %@ AND number of likeAddedUsers = %lu AND newsItem.rating = %@", newsItem.title, newsItem.newsURL, newsItem.createdAt, newsItem.updatedAt, newsItem.category.title, newsItem.author.username, [newsItem.likeAddedUsers count], newsItem.rating);
+            NSLog(@"NEWS title : %@ and URL %@, created at : %@, updated at : %@ AND category = %@ AND author = %@ AND number of likeAddedUsers = %li AND newsItem.rating = %li", newsItem.title, newsItem.newsURL, newsItem.createdAt, newsItem.updatedAt, newsItem.category.title, newsItem.author.username, (long)[newsItem.likeAddedUsers count], (long)newsItem.rating);
             
         } else if ([object isKindOfClass:[ITBCategoryCD class]]) {
             
             ITBCategoryCD *category = (ITBCategoryCD *)object;
-            NSLog(@"CATEGORY title : %@ and objectId = %@ and number of news in that category = %lu and number of signed users = %lu", category.title, category.objectId, [category.news count], [category.signedUsers count]);
+            NSLog(@"CATEGORY title : %@ and objectId = %@ and number of news in that category = %li and number of signed users = %li", category.title, category.objectId, (long)[category.news count], (long)[category.signedUsers count]);
             
         } else if ([object isKindOfClass:[ITBUserCD class]]) {
             
             ITBUserCD *user = (ITBUserCD *)object;
-            NSLog(@"USER username : %@ and objectId = %@ and number of created news = %lu and number of liked news = %lu and number of selected categories = %lu", user.username, user.objectId, [user.createdNews count], [user.likedNews count], [user.selectedCategories count]);
+            NSLog(@"USER username : %@ and objectId = %@ and number of created news = %li and number of liked news = %li and number of selected categories = %li", user.username, user.objectId, (long)[user.createdNews count], (long)[user.likedNews count], (long)[user.selectedCategories count]);
             
         }
         
@@ -226,39 +219,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
 }
 
-- (void)fetchAllNews {
-    
-    NSFetchRequest *request = [[NSFetchRequest alloc] init];
-    
-    NSEntityDescription *description = [NSEntityDescription
-                                        entityForName:@"ITBNewsCD"
-                                        inManagedObjectContext:self.managedObjectContext];
-    
-    [request setEntity:description];
-    
-    NSError *requestError = nil;
-    
-    NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
-    
-    if (requestError) {
-        NSLog(@"%@", [requestError localizedDescription]);
-    }
-    
-    for (ITBNewsCD* newsItem in resultArray) {
-        
-        if ([newsItem.likeAddedUsers containsObject:self.currentUserCD]) {
-            
-            newsItem.isLikedByCurrentUser = @1;
-        }
-        
-    }
-    
-    // здесь идет сохранение в permanent store
-    [self.managedObjectContext save:nil];
-    
-}
-
-- (NSArray* )fetchAllCategories {
+- (void )fetchAllCategories {
     
     NSFetchRequest *request = [[NSFetchRequest alloc] init];
     
@@ -269,15 +230,23 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     [request setEntity:description];
     
     NSError *requestError = nil;
-    
+/*
     NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
     
     if (requestError) {
         NSLog(@"%@", [requestError localizedDescription]);
     }
     
-    return resultArray;
+    NSLog(@"When I pressed choose category button ,,, number of selected categoies = %li", [resultArray count]);
     
+    return resultArray;
+*/
+    
+    self.allCategoriesArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
 }
 
 # pragma mark - API
@@ -287,7 +256,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     [[ITBServerManager sharedManager]
      getNewsOnSuccess:^(NSArray *news) {
          
-         NSLog(@"number of all news = %ld", [news count]);
+         NSLog(@"number of all news = %li", (long)[news count]);
          
          [self addNewsToLocalDBFromLoadedArray:news];
          
@@ -298,10 +267,16 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
 }
 
+// ЭТИ МЕТОДЫ ДЛЯ СОХРАНЕНИЯ В ЛОКАЛЬНУЮ БД В ТЕСТОВОМ РЕЖИМЕ (РЕЖИМ КОГДА МЫ ВРУЧНУЮ СОЗДАВАЛИ СВЯЗИ ЛОКАЛЬНО А ЗАТЕМ ЗАКАЧИВАЛИ ВСЕ СВЯЗИ НА СЕРВЕР ЧТОБЫ ПОЛУЧИТЬ НА СЕРВЕРЕ ПОЛНОЦЕННУЮ РАБОЧУЮ БД)
+
+
+// 1st method to get users from server for saving them to local DB
 - (void)addNewsToLocalDBFromLoadedArray:(NSArray* ) news {
     
     // эта строка удаляет все объекты из permanent store
     [self deleteAllObjects];
+    
+    NSMutableArray* newsArray = [NSMutableArray array];
     
     for (NSDictionary* newsDict in news) {
         
@@ -315,8 +290,54 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         
         newsItem.createdAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"createdAt"]];
         newsItem.updatedAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"updatedAt"]];
+        
+        
+/*
+        // устанавливаю связь author и likeAddedUsers
+        NSDictionary* authorDict = [newsDict objectForKey:@"author"];
+        NSString* authorObjectId = [authorDict objectForKey:@"objectId"];
+        
+        NSArray* likeAddedUsersObjectIdsArray = [newsDict objectForKey:@"likedUsers"];
+        
+        for (ITBUserCD* user in self.usersArray) {
+            
+            if ([user.objectId isEqualToString:authorObjectId]) {
+                
+                newsItem.author = user;
+            }
+            
+            for (NSString* likeAddedUsersObjectId in likeAddedUsersObjectIdsArray) {
+                
+                if ([user.objectId isEqualToString:likeAddedUsersObjectId]) {
+                    
+                    [newsItem addLikeAddedUsersObject:user];
+                }
+                
+            }
+        }
+        
+        // устанавливаю связь category
+        NSDictionary* categoryDict = [newsDict objectForKey:@"cat"];
+        NSString* categoryObjectId = [categoryDict objectForKey:@"objectId"];
+        
+        for (ITBCategoryCD* category in self.categoriesArray) {
+            
+            if ([category.objectId isEqualToString:categoryObjectId]) {
+                
+                newsItem.category = category;
+            }
+        }
+*/
+        [newsArray addObject:newsItem];
     }
     
+    self.newsArray = [newsArray copy];
+    
+    NSLog(@"1st method");
+    
+    [self printArray:self.newsArray];
+    
+/*
     NSError *error = nil;
     
     // здесь идет сохранение в permanent store
@@ -324,7 +345,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         
         NSLog(@"%@", [error localizedDescription]);
     }
-    
+*/
 }
 
 - (void)getCategoriesFromServer {
@@ -332,7 +353,7 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     [[ITBServerManager sharedManager]
      getCategoriesOnSuccess:^(NSArray *categories) {
          
-         NSLog(@"number of all categories = %ld", [categories count]);
+         NSLog(@"number of all categories = %li", (long)[categories count]);
          
          [self addCategoriesToLocalDBFromLoadedArray:categories];
          
@@ -343,7 +364,10 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     
 }
 
+// 2nd method to get users from server for saving them to local DB
 - (void)addCategoriesToLocalDBFromLoadedArray:(NSArray* ) categories {
+    
+    NSMutableArray* categoriesArray = [NSMutableArray array];
     
     for (NSDictionary* catDict in categories) {
         
@@ -351,14 +375,56 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
         
         category.objectId = [catDict objectForKey:@"objectId"];
         category.title = [catDict objectForKey:@"title"];
+        
+        
+        /*
+         // устанавливаю связь signedUsers
+         NSArray* signedUsersObjectIdsArray = [catDict objectForKey:@"signedUsers"];
+         
+         for (ITBUserCD* user in self.usersArray) {
+         
+         for (NSString* signedUsersObjectId in signedUsersObjectIdsArray) {
+         
+         if ([user.objectId isEqualToString:signedUsersObjectId]) {
+         
+         [category addSignedUsersObject:user];
+         }
+         
+         }
+         }
+         */
+        /*
+         // устанавливаю связь news
+         NSArray* newsObjectIdsArray = [catDict objectForKey:@"news"];
+         
+         for (ITBNewsCD* newsItem in self.newsArray) {
+         
+         for (NSString* newsObjectId in newsObjectIdsArray) {
+         
+         if ([newsItem.objectId isEqualToString:newsObjectId]) {
+         
+         [category addNewsObject:newsItem];
+         }
+         
+         }
+         }
+         */
+
+        [categoriesArray addObject:category];
     }
     
+    self.categoriesArray = [categoriesArray copy];
+    
+    NSLog(@"2nd method");
+    [self printArray:self.categoriesArray];
+/*
     NSError *error = nil;
     
     if (![self.managedObjectContext save:&error]) {
         
         NSLog(@"%@", [error localizedDescription]);
     }
+ */
 }
 
 - (void) addCurrentUserToLocalDB {
@@ -378,6 +444,243 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     [self printAllObjects];
     
     [self allObjects];
+}
+
+// 3rd method to get users from server for saving them to local DB
+- (void)addUsersToLocalDBFromLoadedArray:(NSArray* ) users {
+    
+    // эта строка удаляет все объекты из permanent store
+//    [self deleteAllObjects];
+    
+    NSMutableArray* usersArray = [NSMutableArray array];
+    
+    for (NSDictionary* userDict in users) {
+        
+        ITBUserCD *user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUserCD" inManagedObjectContext:self.managedObjectContext];
+        
+        user.objectId = [userDict objectForKey:@"objectId"];
+        user.username = [userDict objectForKey:@"username"];
+        
+        [usersArray addObject:user];
+    }
+    
+    self.usersArray = [usersArray copy];
+    
+    NSLog(@"3rd method");
+    [self printArray:self.usersArray];
+    
+/*
+    NSError *error = nil;
+    
+    if (![self.managedObjectContext save:&error]) {
+        
+        NSLog(@"%@", [error localizedDescription]);
+    }
+ */
+}
+
+- (void) addRelations {
+    
+    // 1st fetchRequest for News
+    NSFetchRequest *request1 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description1 = [NSEntityDescription
+                                         entityForName:@"ITBNewsCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request1 setEntity:description1];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultNewsArray = [self.managedObjectContext executeFetchRequest:request1 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    // 2nd fetchRequest for Categories
+    NSFetchRequest *request2 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description2 = [NSEntityDescription
+                                         entityForName:@"ITBCategoryCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request2 setEntity:description2];
+    
+    NSArray *resultCategoriesArray = [self.managedObjectContext executeFetchRequest:request2 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    // 3rd fetchRequest for Users
+    NSFetchRequest *request3 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description3 = [NSEntityDescription
+                                         entityForName:@"ITBUserCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request3 setEntity:description3];
+    
+    NSArray *resultUserArray = [self.managedObjectContext executeFetchRequest:request3 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    for (ITBNewsCD* newsItem in resultNewsArray) {
+        
+        //        newsItem.author = currentUser;
+        //        car.model = carModelNames[arc4random_uniform(5)];
+        //        NSInteger countOfUsers = [resultUserArray count];
+        
+        // 1 связь - author
+        newsItem.author = [resultUserArray objectAtIndex:arc4random_uniform((int)[resultUserArray count])];
+        NSLog(@"1 связь - author - newsItem.author.username = %@", newsItem.author.username);
+        
+        // 2 связь - likeAddedUsers
+        for (ITBUserCD* user in resultUserArray) {
+            
+            [newsItem addLikeAddedUsersObject:user];
+            
+        }
+        
+        // 3 связь - category
+        for (ITBCategoryCD* category in resultCategoriesArray) {
+            
+            if ( ([category.title isEqualToString:@"realty"]) && ([newsItem.objectId isEqualToString:@"etpe6DlNgc"]) ) {
+                
+                newsItem.category = category;
+                
+            } else if ( ([category.title isEqualToString:@"sport"]) && ([newsItem.objectId isEqualToString:@"JlnHtVqzlP"]) ) {
+                
+                newsItem.category = category;
+                
+            } else if ( ([category.title isEqualToString:@"weather"]) && ([newsItem.objectId isEqualToString:@"vuyVshsCZt"]) ) {
+                
+                newsItem.category = category;
+                
+            }
+            
+            
+            // 4 связь - selectedCategories
+            for (ITBUserCD* user in resultUserArray) {
+                
+                [user addSelectedCategoriesObject:category];
+                
+            }
+        }
+        
+    }
+    
+    NSError *error = nil;
+    
+    if (![self.managedObjectContext save:&error]) {
+        
+        NSLog(@"%@", [error localizedDescription]);
+    }
+}
+
+- (void) addRelationsManually2 {
+    
+    // 1st fetchRequest for News
+    NSFetchRequest *request1 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description1 = [NSEntityDescription
+                                         entityForName:@"ITBNewsCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request1 setEntity:description1];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultNewsArray = [self.managedObjectContext executeFetchRequest:request1 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    // 2nd fetchRequest for Categories
+    NSFetchRequest *request2 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description2 = [NSEntityDescription
+                                         entityForName:@"ITBCategoryCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request2 setEntity:description2];
+    
+    NSArray *resultCategoriesArray = [self.managedObjectContext executeFetchRequest:request2 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    // 3rd fetchRequest for Users
+    NSFetchRequest *request3 = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description3 = [NSEntityDescription
+                                         entityForName:@"ITBUserCD"
+                                         inManagedObjectContext:self.managedObjectContext];
+    
+    [request3 setEntity:description3];
+    
+    NSArray *resultUserArray = [self.managedObjectContext executeFetchRequest:request3 error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    for (ITBNewsCD* newsItem in resultNewsArray) {
+        
+//        newsItem.author = currentUser;
+//        car.model = carModelNames[arc4random_uniform(5)];
+//        NSInteger countOfUsers = [resultUserArray count];
+        
+        // 1 связь - author
+        newsItem.author = [resultUserArray objectAtIndex:arc4random_uniform((int)[resultUserArray count])];
+        NSLog(@"1 связь - author - newsItem.author.username = %@", newsItem.author.username);
+        
+        // 2 связь - likeAddedUsers
+        for (ITBUserCD* user in resultUserArray) {
+            
+            [newsItem addLikeAddedUsersObject:user];
+            
+        }
+        
+        // 3 связь - category
+        for (ITBCategoryCD* category in resultCategoriesArray) {
+            
+            if ( ([category.title isEqualToString:@"realty"]) && ([newsItem.objectId isEqualToString:@"etpe6DlNgc"]) ) {
+                
+                newsItem.category = category;
+                
+            } else if ( ([category.title isEqualToString:@"sport"]) && ([newsItem.objectId isEqualToString:@"JlnHtVqzlP"]) ) {
+                
+                newsItem.category = category;
+                
+            } else if ( ([category.title isEqualToString:@"weather"]) && ([newsItem.objectId isEqualToString:@"vuyVshsCZt"]) ) {
+                
+                newsItem.category = category;
+                
+            }
+            
+            
+            // 4 связь - selectedCategories
+            for (ITBUserCD* user in resultUserArray) {
+                
+                [user addSelectedCategoriesObject:category];
+                
+            }
+        }
+        
+    }
+    
+    NSError *error = nil;
+    
+    if (![self.managedObjectContext save:&error]) {
+        
+        NSLog(@"%@", [error localizedDescription]);
+    }
 }
 
 - (void) addRelationsManually {
@@ -478,6 +781,326 @@ NSString *const beforeLogin = @"You need to login for using our news network!";
     // end of code for setting all my relations manually
     
 }
+
+// КОНЕЦ - ЭТИ МЕТОДЫ ДЛЯ СОХРАНЕНИЯ В ЛОКАЛЬНУЮ БД В ТЕСТОВОМ РЕЖИМЕ (РЕЖИМ КОГДА МЫ ВРУЧНУЮ СОЗДАВАЛИ СВЯЗИ ЛОКАЛЬНО А ЗАТЕМ ЗАКАЧИВАЛИ ВСЕ СВЯЗИ НА СЕРВЕР ЧТОБЫ ПОЛУЧИТЬ НА СЕРВЕРЕ ПОЛНОЦЕННУЮ РАБОЧУЮ БД)
+
+
+// ЭТИ МЕТОДЫ УЖЕ ДЛЯ refresh КОГДА МЫ С ПОЛНОЦЕННОЙ БД НА СЕРВЕРЕ ЗАКАЧИВАЕМ В ЛОКАЛЬНУЮ БД АТРИБУТЫ И СВЯЗИ
+
+- (void)addAllObjectsToLocalDBForDict:(NSDictionary* ) dict
+                            onSuccess:(void(^)(BOOL isSuccess)) success {
+    
+    // эта строка удаляет все объекты из permanent store
+    [self deleteAllObjects];
+    
+    // 1 - News
+    
+    NSArray* newsDictsArray = [dict objectForKey:@"news"];
+    
+    NSMutableArray* newsArray = [NSMutableArray array];
+    
+    for (NSDictionary* newsDict in newsDictsArray) {
+        
+        ITBNewsCD *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNewsCD" inManagedObjectContext:self.managedObjectContext];
+        
+        newsItem.objectId = [newsDict objectForKey:@"objectId"];
+        newsItem.title = [newsDict objectForKey:@"title"];
+        newsItem.newsURL = [newsDict objectForKey:@"newsURL"];
+        
+        // createdAt and updatedAt are UTC timestamps stored in ISO 8601 format with millisecond precision: YYYY-MM-DDTHH:MM:SS.MMMZ.
+        
+        newsItem.createdAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"createdAt"]];
+        newsItem.updatedAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"updatedAt"]];
+        
+        [newsArray addObject:newsItem];
+    }
+    
+    //    self.newsArray = [newsArray copy];
+    
+    // end of 1 - News
+    
+    // 2 - Category
+    
+    NSArray* categoryDictsArray = [dict objectForKey:@"categories"];
+    
+    NSMutableArray* categoriesArray = [NSMutableArray array];
+    
+    for (NSDictionary* categoryDict in categoryDictsArray) {
+        
+        ITBCategoryCD *category = [NSEntityDescription insertNewObjectForEntityForName:@"ITBCategoryCD" inManagedObjectContext:self.managedObjectContext];
+        
+        category.objectId = [categoryDict objectForKey:@"objectId"];
+        category.title = [categoryDict objectForKey:@"title"];
+        
+        [categoriesArray addObject:category];
+        
+    }
+    
+    //        self.categoriesArray = [categoriesArray copy];
+    
+    // end of 2 - Category
+    
+    // 3 - User
+    
+    NSArray* userDictsArray = [dict objectForKey:@"users"];
+    
+    NSMutableArray* usersArray = [NSMutableArray array];
+    
+    for (NSDictionary* userDict in userDictsArray) {
+        
+        ITBUserCD *user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUserCD" inManagedObjectContext:self.managedObjectContext];
+        
+        user.objectId = [userDict objectForKey:@"objectId"];
+        user.username = [userDict objectForKey:@"username"];
+        
+        [usersArray addObject:user];
+        
+    }
+    
+    //            self.usersArray = [usersArray copy];
+    
+    // end of 3 - User
+    
+    // 4 - и только теперь можно создавать все связи (отдельно от создания NSManagedObject
+    for (NSDictionary* newsDict in newsDictsArray) {
+        
+        ITBNewsCD* newsItem = [newsArray objectAtIndex:[newsDictsArray indexOfObject:newsDict]];
+        
+        NSDictionary* authorDict = [newsDict objectForKey:@"author"];
+        NSArray* likeAddedUsersDictsArray = [newsDict objectForKey:@"likeAddedUsers"];
+        NSDictionary* categoryOfNewsItemDict = [newsDict objectForKey:@"category"];
+        
+        for (NSDictionary* categoryDict in categoryDictsArray) {
+            
+            ITBCategoryCD* category = [categoriesArray objectAtIndex:[categoryDictsArray indexOfObject:categoryDict]];
+            
+            // устанавливаю связь category - ЭТА связь не работает
+            if ([category.objectId isEqualToString:[categoryOfNewsItemDict objectForKey:@"objectId"]]) {
+                
+                newsItem.category = category;
+                
+            }
+            // конец - устанавливаю связь category
+            
+            for (NSDictionary* userDict in userDictsArray) {
+                
+                ITBUserCD* user = [usersArray objectAtIndex:[userDictsArray indexOfObject:userDict]];
+                
+                // устанавливаю связь likedNews
+                for (NSDictionary* likeAddedUsersDict in likeAddedUsersDictsArray) {
+                    
+                    if ([user.objectId isEqualToString:[likeAddedUsersDict objectForKey:@"objectId"]]) {
+                        
+                        [user addLikedNewsObject:newsItem];
+                    }
+                }
+                // конец - устанавливаю связь likedNews
+                
+                // устанавливаю связь author
+                if ([user.objectId isEqualToString:[authorDict objectForKey:@"objectId"]]) {
+                    
+                    newsItem.author = user;
+                    
+                }
+                // конец - устанавливаю связь author
+                
+                // устанавливаю связь selectedCategories
+                NSLog(@"username = %@", user.username);
+                
+                NSLog(@"!!! %@", [userDict objectForKey:@"selectedCategories"]);
+                
+                NSArray* selectedCategoriesDictsArray = [userDict objectForKey:@"selectedCategories"];
+                
+                NSLog(@"%li", (long)[selectedCategoriesDictsArray count]);
+                
+                // тут идет проверка на то сколько элементов в массиве - 1 или больше (почему-то если 1 один то объект из полученного responseBody ( [userDict objectForKey:@"selectedCategories"] ) - не массив с одним элементом а просто NSString* objectId of selected category
+                if ([selectedCategoriesDictsArray count] > 1) {
+                    
+                    for (NSDictionary* selectedCategoriesDict in selectedCategoriesDictsArray) {
+                        
+                        NSLog(@"!!! %@", [selectedCategoriesDict objectForKey:@"objectId"]);
+                        
+                        if ([category.objectId isEqualToString:[selectedCategoriesDict objectForKey:@"objectId"]]) {
+                            
+                            [user addSelectedCategoriesObject:category];
+                        }
+                    }
+                    
+                } else {
+                    
+                    if ([category.objectId isEqualToString:[userDict objectForKey:@"selectedCategories"]]) {
+                        
+                        [user addSelectedCategoriesObject:category];
+                    }
+                }
+                // конец - устанавливаю связь selectedCategories
+            }
+            
+        }
+        
+    }
+    // конец 4 - создание всех связей
+
+    // сохранение в persistant store
+    
+    NSError *error = nil;
+    
+    if (![self.managedObjectContext save:&error]) {
+        
+        NSLog(@"%@", [error localizedDescription]);
+    }
+    
+    // 5 -  теперь надо установить self.currentUserCD и self.allCategoriesArray
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    [self fetchCurrentUserForObjectId:[userDefaults objectForKey:kSettingsObjectId]];
+    [self fetchAllCategories];
+    
+    success(YES);
+    
+}
+
+- (void)addNewsToLocalDBForNewsDictsArray:(NSArray* ) news {
+    
+    // эта строка удаляет все объекты из permanent store
+    [self deleteAllObjects];
+    
+    NSMutableArray* newsArray = [NSMutableArray array];
+    
+    for (NSDictionary* newsDict in news) {
+        
+        ITBNewsCD *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNewsCD" inManagedObjectContext:self.managedObjectContext];
+        
+        newsItem.objectId = [newsDict objectForKey:@"objectId"];
+        newsItem.title = [newsDict objectForKey:@"title"];
+        newsItem.newsURL = [newsDict objectForKey:@"newsURL"];
+        
+        // createdAt and updatedAt are UTC timestamps stored in ISO 8601 format with millisecond precision: YYYY-MM-DDTHH:MM:SS.MMMZ.
+        
+        newsItem.createdAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"createdAt"]];
+        newsItem.updatedAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"updatedAt"]];
+        
+        [newsArray addObject:newsItem];
+    }
+    
+    self.newsArray = [newsArray copy];
+    
+    [self printArray:self.newsArray];
+}
+
+- (void)addCategoriesToLocalDBForCategoriesDictsArray:(NSArray* ) categories {
+    
+    NSMutableArray* categoriesArray = [NSMutableArray array];
+    
+    for (NSDictionary* catDict in categories) {
+        
+        ITBCategoryCD *category = [NSEntityDescription insertNewObjectForEntityForName:@"ITBCategoryCD" inManagedObjectContext:self.managedObjectContext];
+        
+        category.objectId = [catDict objectForKey:@"objectId"];
+        category.title = [catDict objectForKey:@"title"];
+        
+        // устанавливаю связь news
+        NSArray* newsDictsArray = [catDict objectForKey:@"news"];
+        
+        for (ITBNewsCD* newsItem in self.newsArray) {
+            
+            for (NSDictionary* newsDict in newsDictsArray) {
+                
+                NSString* newsDictObjectId = [newsDict objectForKey:@"objectId"];
+                
+                if ([newsItem.objectId isEqualToString:newsDictObjectId]) {
+                    
+                    [category addNewsObject:newsItem];
+                }
+                
+            }
+        }
+        
+        [categoriesArray addObject:category];
+    }
+    
+    self.categoriesArray = [categoriesArray copy];
+    
+    NSLog(@"2nd method");
+    [self printArray:self.categoriesArray];
+}
+
+- (void)addUsersToLocalDBForUsersDictsArray:(NSArray* ) users {
+    
+    NSMutableArray* usersArray = [NSMutableArray array];
+    
+    for (NSDictionary* userDict in users) {
+        
+        ITBUserCD *user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUserCD" inManagedObjectContext:self.managedObjectContext];
+        
+        user.objectId = [userDict objectForKey:@"objectId"];
+        user.username = [userDict objectForKey:@"username"];
+        
+        // устанавливаю связь createdNews
+        NSArray* createdNewsDictsArray = [userDict objectForKey:@"createdNews"];
+        
+        // устанавливаю связь likedNews одновременно с связью createdNews
+        NSArray* likedNewsDictsArray = [userDict objectForKey:@"likedNews"];
+        
+        for (ITBNewsCD* newsItem in self.newsArray) {
+            
+            for (NSDictionary* createdNewsDict in createdNewsDictsArray) {
+                
+                NSString* createdNewsDictObjectId = [createdNewsDict objectForKey:@"objectId"];
+                
+                if ([newsItem.objectId isEqualToString:createdNewsDictObjectId]) {
+                    
+                    [user addCreatedNewsObject:newsItem];
+                }
+                
+            }
+            
+            for (NSDictionary* likedNewsDict in likedNewsDictsArray) {
+                
+                NSString* likedNewsDictObjectId = [likedNewsDict objectForKey:@"objectId"];
+                
+                if ([newsItem.objectId isEqualToString:likedNewsDictObjectId]) {
+                    
+                    [user addLikedNewsObject:newsItem];
+                }
+                
+            }
+        }
+        
+        // устанавливаю связь selectedCategories
+        NSArray* selectedCategoriesDictsArray = [userDict objectForKey:@"selectedCategories"];
+        
+        for (ITBCategoryCD* category in self.categoriesArray) {
+            
+            for (NSDictionary* selectedCategoriesDict in selectedCategoriesDictsArray) {
+                
+                NSString* selectedCategoriesDictObjectId = [selectedCategoriesDict objectForKey:@"objectId"];
+                
+                if ([category.objectId isEqualToString:selectedCategoriesDictObjectId]) {
+                    
+                    [user addSelectedCategoriesObject:category];
+                }
+                
+            }
+        }
+        
+        [usersArray addObject:user];
+    }
+    
+    self.usersArray = [usersArray copy];
+    
+    NSLog(@"3rd method");
+    [self printArray:self.usersArray];
+    
+     NSError *error = nil;
+     
+     if (![self.managedObjectContext save:&error]) {
+     
+     NSLog(@"%@", [error localizedDescription]);
+     }
+}
+
+// КОНЕЦ - ЭТИ МЕТОДЫ УЖЕ ДЛЯ refresh КОГДА МЫ С ПОЛНОЦЕННОЙ БД НА СЕРВЕРЕ ЗАКАЧИВАЕМ В ЛОКАЛЬНУЮ БД АТРИБУТЫ И СВЯЗИ
 
 #pragma mark - Core Data stack
 

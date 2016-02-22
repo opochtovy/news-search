@@ -8,7 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
-@class ITBNews, ITBNewsCell;
+@class ITBNewsCell;
 
 @protocol ITBNewsCellDelegate <NSObject>
 

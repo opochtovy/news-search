@@ -52,8 +52,6 @@ NSString *const invalidLogin = @"invalid login parameters";
 
 - (void)authorizeUser {
     
-//    ITBServerManager* manager = [ITBServerManager sharedManager];
-    
     [self.serverManager
      authorizeWithUsername:self.usernameField.text
      withPassword:self.passwordField.text
@@ -73,7 +71,6 @@ NSString *const invalidLogin = @"invalid login parameters";
                  
                  NSLog(@"rememberSwitch is ONN!");
                  
-//                 [self.delegate saveSettingsAfterLogin:self];
                  [self.dataManager saveSettings];
                  
                  // надо сделать fetchRequest чтобы получить currentUserCD
@@ -81,8 +78,7 @@ NSString *const invalidLogin = @"invalid login parameters";
                  
              }
              
-//             [self.delegate changeTitleForLoginButton:self];
-             [self.delegate loginDidPassSuccessful:self];
+             [self.delegate loginDidPassSuccessfully:self];
              
              [self dismissViewControllerAnimated:YES completion:nil];
              

@@ -761,7 +761,11 @@
                                     <segue destination="tGP-sp-wga" kind="presentation" identifier="login" id="KaC-hl-OTz"/>
                                 </connections>
                             </barButtonItem>
-                            <barButtonItem systemItem="refresh" id="ggR-8F-0kA"/>
+                            <barButtonItem systemItem="refresh" id="ggR-8F-0kA">
+                                <connections>
+                                    <action selector="actionRefresh:" destination="1KA-Xc-Wxy" id="Wkg-4D-60p"/>
+                                </connections>
+                            </barButtonItem>
                         </rightBarButtonItems>
                     </navigationItem>
                     <connections>

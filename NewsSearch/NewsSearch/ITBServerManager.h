@@ -13,6 +13,10 @@
 @class ITBUser;
 @class ITBNews;
 
+@class ITBNewsCD;
+@class ITBCategoryCD;
+@class ITBUserCD;
+
 @interface ITBServerManager : NSObject
 
 + (ITBServerManager *)sharedManager;
@@ -33,7 +37,7 @@
 - (void)getUsersOnSuccess:(void(^)(NSArray *users)) success
                 onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
-// GET method for class ITBSignInTableViewController for getting all users before writing a new username in the usernameField
+// GET method for class ITBDataManager and ITBNewsViewController for getting all news from server (client-server version of app)
 - (void)getNewsOnSuccess:(void(^)(NSArray *news)) success
                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
@@ -46,7 +50,57 @@
 - (void)updateCategoriesFromUserOnSuccess:(void(^)(NSDate* updatedAt)) success
                                 onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
+// GET method for class ITBHotNewsViewController in -actionRefresh: - method to get just attributes for users from server for saving them to local DB (without relations)
+- (void)getAllUsersOnSuccess:(void(^)(NSArray *users)) success
+                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// GET method for class ITBHotNewsViewController in -actionRefresh: - method to get just attributes for categories from server for saving them to local DB (without relations)
 - (void)getCategoriesOnSuccess:(void(^)(NSArray *categories)) success
-               onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// GET method for class ITBHotNewsViewController in -actionRefresh: - method to get just attributes for news from server for saving them to local DB (without relations)
+- (void)getAllNewsOnSuccess:(void(^)(NSArray *news)) success
+                  onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// === МЕТОДЫ ОБНОВЛЯЮЩИЕ СВЯЗИ of currentUserCD НА СЕРВЕР
+
+// methods for uploading current user changes to server before refreshing all data from server to local DB
+- (void)uploadToServerUserRelationsForUser:(ITBUserCD* ) user
+                         onSuccess:(void(^)(NSDate* updatedAt)) success
+                         onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)uploadToServerCategoryRelationsForCategory:(ITBCategoryCD* ) category
+                             onSuccess:(void(^)(NSDate* updatedAt)) success
+                             onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)uploadToServerNewsRelationsForNewsItem:(ITBNewsCD* ) newsItem
+                             onSuccess:(void(^)(NSDate* updatedAt)) success
+                                     onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// method for refreshButton
+- (void) updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success;
+
+// === КОНЕЦ - МЕТОДЫ ОБНОВЛЯЮЩИЕ СВЯЗИ of currentUserCD НА СЕРВЕР
+
+// === ТЕСТОВЫЕ МЕТОДЫ
+
+- (void) createLocalDataSource;
+
+// тестовый метод для createLocalDataSource в ITBHotNewsViewController.m - загружаю с локальной БД на сервер все связи для ITBNewsCD (тестовый режим)
+- (void)updateAllRelationsForNewsItem:(ITBNewsCD* ) news
+                            onSuccess:(void(^)(NSDate* updatedAt)) success
+                            onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// тестовый метод для createLocalDataSource в ITBHotNewsViewController.m - загружаю с локальной БД на сервер все связи для ITBCategoryCD (тестовый режим)
+- (void)updateAllRelationsForCategory:(ITBCategoryCD* ) category
+                            onSuccess:(void(^)(NSDate* updatedAt)) success
+                            onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// тестовый метод для createLocalDataSource в ITBHotNewsViewController.m - загружаю с локальной БД на сервер все связи для ITBUserCD (тестовый режим)
+- (void)updateAllRelationsForUser:(ITBUserCD* ) user
+                        onSuccess:(void(^)(NSDate* updatedAt)) success
+                        onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// === КОНЕЦ - ТЕСТОВЫЕ МЕТОДЫ
 
 @end

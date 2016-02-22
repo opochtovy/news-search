@@ -8,8 +8,6 @@
 
 #import "ITBNewsCell.h"
 
-#import "ITBNews.h"
-
 @implementation ITBNewsCell
 
 - (void)awakeFromNib {

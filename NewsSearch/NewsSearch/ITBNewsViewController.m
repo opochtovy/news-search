@@ -364,7 +364,7 @@ NSString *const newsTitle = @"NEWS";
 
 #pragma mark - ITBLoginTableViewControllerDelegate
 
-- (void) loginDidPassSuccessful:(ITBLoginTableViewController *)vc {
+- (void) loginDidPassSuccessfully:(ITBLoginTableViewController *)vc {
     
     self.loginButton.title = NSLocalizedString(logout, nil);
     
@@ -387,7 +387,7 @@ NSString *const newsTitle = @"NEWS";
     [self.tableView reloadData];
     
     // осталось отправить на сервер новый self.currentUser.categories
-    [self updateCategories];
+//    [self updateCategories];
     
     // вызов этого метода нужен чтобы обновить список новостей в соответствии с выбранными категориями
     [self getNewsFromServerByCategories];
