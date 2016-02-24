@@ -14,24 +14,10 @@
 
 @property (weak, nonatomic) id <ITBLoginTableViewControllerDelegate> delegate;
 
-@property (weak, nonatomic) IBOutlet UITextField *usernameField;
-@property (weak, nonatomic) IBOutlet UITextField *passwordField;
-
-@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
-@property (weak, nonatomic) IBOutlet UISwitch *rememberSwitch;
-
-
-- (IBAction)actionLogin:(UIButton *)sender;
-
-- (IBAction)actionCancel:(UIBarButtonItem *)sender;
-
-
 @end
 
 
-@protocol ITBLoginTableViewControllerDelegate //<NSObject>
-
-@optional
+@protocol ITBLoginTableViewControllerDelegate <NSObject>
 
 - (void) loginDidPassSuccessfully:(ITBLoginTableViewController *)vc;
 

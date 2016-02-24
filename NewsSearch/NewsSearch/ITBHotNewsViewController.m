@@ -7,16 +7,13 @@
 //
 
 #import "ITBHotNewsViewController.h"
+#import <CoreData/CoreData.h>
 
-#import "ITBDataManager.h"
-#import "ITBServerManager.h"
+#import "ITBNewsAPI.h"
 
-#import "ITBNewsCD.h"
-#import "ITBCategoryCD.h"
-#import "ITBUserCD.h"
-
-#import "ITBUser.h"
 #import "ITBNews.h"
+#import "ITBCategory.h"
+#import "ITBUser.h"
 
 #import "ITBLoginTableViewController.h"
 
@@ -28,14 +25,13 @@
 
 NSString *const hotNewsTitle = @"HOT NEWS";
 
-@interface ITBHotNewsViewController () <ITBLoginTableViewControllerDelegate, NSFetchedResultsControllerDelegate, ITBNewsCellDelegate, ITBCategoriesPickerDelegate>
+@interface ITBHotNewsViewController () <NSFetchedResultsControllerDelegate, ITBLoginTableViewControllerDelegate, ITBNewsCellDelegate, ITBCategoriesPickerDelegate>
 
-@property (nonatomic, strong) NSManagedObjectContext *managedObjectContext;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *refreshButton;
 
 @property (strong, nonatomic) NSFetchedResultsController *fetchedResultsController;
-
-@property (strong, nonatomic) ITBServerManager* serverManager;
-@property (strong, nonatomic) ITBDataManager* dataManager;
 
 @end
 
@@ -49,26 +45,15 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     if (self) {
         
+        
     }
     
     return self;
 }
 
-- (NSManagedObjectContext *)managedObjectContext {
-    
-    if (!_managedObjectContext) {
-        
-        _managedObjectContext = [[ITBDataManager sharedManager] managedObjectContext];
-    }
-    
-    return _managedObjectContext;
-}
-
 - (void)viewDidLoad {
-    [super viewDidLoad];
     
-    self.serverManager = [ITBServerManager sharedManager];
-    self.dataManager = [ITBDataManager sharedManager];
+    [super viewDidLoad];
     
     // Do any additional setup after loading the view.
     
@@ -78,10 +63,16 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 200.0;
     
-    self.categoriesPickerButton.enabled = (self.dataManager.currentUser.sessionToken != nil);
-    self.refreshButton.enabled = (self.dataManager.currentUser.sessionToken != nil);
+    self.categoriesPickerButton.enabled = ([ITBNewsAPI sharedInstance].currentUser.username != nil);
+    self.refreshButton.enabled = self.categoriesPickerButton.enabled;
     
-    self.loginButton.title = (self.dataManager.currentUser.sessionToken != nil) ? @"Logout" : @"Login";
+    self.loginButton.title = self.categoriesPickerButton.enabled ? NSLocalizedString(logout, nil) : NSLocalizedString(login, nil);
+    
+    // refresh
+    UIRefreshControl *refresh = [[UIRefreshControl alloc] init];
+    
+    [refresh addTarget:self action:@selector(refreshNews) forControlEvents:UIControlEventValueChanged];
+    self.refreshControl = refresh;
 }
 
 - (void)didReceiveMemoryWarning {
@@ -97,17 +88,16 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (BOOL)shouldPerformSegueWithIdentifier:(NSString *)identifier sender:(nullable id)sender {
     
-    if ([self.loginButton.title isEqualToString:@"Logout"]) {
+    if ([self.loginButton.title isEqualToString:NSLocalizedString(logout, nil)]) {
         
         self.loginButton.title = NSLocalizedString(login, nil);
         
-        self.dataManager.currentUser = nil;
-        self.dataManager.currentUserCD = nil;
+        [ITBNewsAPI sharedInstance].currentUser = nil;
         
-        self.categoriesPickerButton.enabled = (self.dataManager.currentUser != nil);
-        self.refreshButton.enabled = (self.dataManager.currentUser != nil);
+        self.categoriesPickerButton.enabled = NO;
+        self.refreshButton.enabled = NO;
         
-        [self.dataManager saveSettings];
+        [[ITBNewsAPI sharedInstance] saveCurrentUser];
         
         [self.tableView reloadData];
         
@@ -140,34 +130,26 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         return _fetchedResultsController;
     }
     
-//    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    
-//    [self.dataManager fetchCurrentUserForObjectId:[userDefaults objectForKey:kSettingsObjectId]];
-//    [self.dataManager fetchAllCategories]; // здесь вычисляется self.allCategories когда мы либо загружаем локальную БД (при загрузке app) либо когда нажимаем refreshButton
-    
-    ITBUserCD* user = self.dataManager.currentUserCD;
-    
-    if (user != nil) {
+    if ([ITBNewsAPI sharedInstance].currentUser != nil) {
         
         NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
         
-        NSEntityDescription *description = [NSEntityDescription entityForName:@"ITBNewsCD"
-                                                       inManagedObjectContext:self.managedObjectContext];
-        
-//    [fetchRequest setResultType:NSDictionaryResultType]; // that line doesn't work with NSFetchedResultsController
+        NSEntityDescription *description = [NSEntityDescription entityForName:@"ITBNews"
+                                                       inManagedObjectContext:[ITBNewsAPI sharedInstance].managedObjectContext];
         
         [fetchRequest setEntity:description];
         
-        NSSortDescriptor *ratingDescriptor = [[NSSortDescriptor alloc] initWithKey:@"rating" ascending:YES];
-        [fetchRequest setSortDescriptors:@[ratingDescriptor]];
-        //    NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:@"title" ascending:YES];
-        //    [fetchRequest setSortDescriptors:@[titleDescriptor]];
+//        NSSortDescriptor *ratingDescriptor = [[NSSortDescriptor alloc] initWithKey:@"rating" ascending:YES];
+//        [fetchRequest setSortDescriptors:@[ratingDescriptor]];
+        
+    NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:@"title" ascending:YES];
+    [fetchRequest setSortDescriptors:@[titleDescriptor]];
         
 //        NSLog(@"[user.selectedCategories count] = %u", [user.selectedCategories count]);
         
-        if ([user.selectedCategories count] != 0) {
+        if ([[ITBNewsAPI sharedInstance].currentUser.selectedCategories count] != 0) {
             
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"category IN %@", user.selectedCategories];
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"category IN %@", [ITBNewsAPI sharedInstance].currentUser.selectedCategories];
             [fetchRequest setPredicate:predicate];
             
         } else {
@@ -178,7 +160,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         NSFetchedResultsController *aFetchedResultsController = [[NSFetchedResultsController alloc]
                                                                  initWithFetchRequest:fetchRequest
-                                                                 managedObjectContext:self.managedObjectContext
+                                                                 managedObjectContext:[ITBNewsAPI sharedInstance].managedObjectContext
                                                                  sectionNameKeyPath:nil cacheName:nil];
         
         aFetchedResultsController.delegate = self;
@@ -204,11 +186,10 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     
-//    return [[self.fetchedResultsController sections] count];
-    
-    if (self.dataManager.currentUser != nil) {
+    if ([ITBNewsAPI sharedInstance].currentUser != nil) {
         
         return [[self.fetchedResultsController sections] count];
+        
     } else {
         
         return 1;
@@ -218,10 +199,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
-//    id <NSFetchedResultsSectionInfo> sectionInfo = [self.fetchedResultsController sections][section];
-//    return [sectionInfo numberOfObjects];
-    
-    if (self.dataManager.currentUser != nil) {
+    if ([ITBNewsAPI sharedInstance].currentUser != nil) {
         
         id <NSFetchedResultsSectionInfo> sectionInfo = [self.fetchedResultsController sections][section];
         return [sectionInfo numberOfObjects];
@@ -234,7 +212,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    if (self.dataManager.currentUser != nil) {
+    if ([ITBNewsAPI sharedInstance].currentUser != nil) {
         
         static NSString *identifier = @"NewsCell";
         
@@ -262,7 +240,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (void)configureCell:(ITBNewsCell *)cell atIndexPath:(NSIndexPath *)indexPath {
     
-    ITBNewsCD *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
     cell.titleLabel.text = newsItem.title;
     
@@ -271,10 +249,10 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 //    cell.ratingLabel.text = [NSString stringWithFormat:@"%ld", (long)[newsItem.likeAddedUsers count]];
     cell.ratingLabel.text = [NSString stringWithFormat:@"%@", newsItem.rating];
     
-    BOOL isLikedByCurrentUserCD = [newsItem.likeAddedUsers containsObject:self.dataManager.currentUserCD];
+    BOOL isLikedByCurrentUser = [newsItem.likeAddedUsers containsObject:[ITBNewsAPI sharedInstance].currentUser];
     
-    cell.addLikeButton.enabled = !isLikedByCurrentUserCD;
-    cell.subtractLikeButton.enabled = isLikedByCurrentUserCD;
+    cell.addLikeButton.enabled = !isLikedByCurrentUser;
+    cell.subtractLikeButton.enabled = isLikedByCurrentUser;
     
 }
 
@@ -373,8 +351,8 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     dispatch_async(dispatch_get_main_queue(), ^{
         
-        self.categoriesPickerButton.enabled = (self.dataManager.currentUser != nil);
-        self.refreshButton.enabled = (self.dataManager.currentUser != nil);
+        self.categoriesPickerButton.enabled = ([ITBNewsAPI sharedInstance].currentUser != nil);
+        self.refreshButton.enabled = self.categoriesPickerButton.enabled;
         
         [self.tableView reloadData];
         
@@ -386,15 +364,15 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC {
     
-    self.dataManager.currentUserCD.selectedCategories = [NSSet setWithArray:categoriesVC.categoriesOfCurrentUserArray];
+    [ITBNewsAPI sharedInstance].currentUser.selectedCategories = [NSSet setWithArray:categoriesVC.categoriesOfCurrentUserArray];
     
-    NSLog(@"number of self.dataManager.currentUser.categories NSSet = %li", (long)[self.dataManager.currentUserCD.selectedCategories count]);
+    NSLog(@"number of self.dataManager.currentUser.categories NSSet = %li", (long)[[ITBNewsAPI sharedInstance].currentUser.selectedCategories count]);
     
     // здесь идет сохранение в permanent store
-    [self.managedObjectContext save:nil];
+    [[ITBNewsAPI sharedInstance].managedObjectContext save:nil];
     
-    self.fetchedResultsController = nil; // эта проперти обнуляется чтобы заново сделать выборку используя новые данные selectedCategories
-    
+    self.fetchedResultsController = nil;
+//
     [self.tableView reloadData];
 }
 
@@ -416,7 +394,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     NSIndexPath* indexPath = [self.tableView indexPathForCell:cell];
     
-    ITBNewsCD *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
     NSURL *url = [NSURL URLWithString: newsItem.newsURL];
     
@@ -427,39 +405,49 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
 }
 
-#pragma mark - Private Methods
-
-// этот метод нужен для методов протокола ITBNewsCellDelegate
 - (void) getNewsCellForSender:(ITBNewsCell* ) cell {
     
     NSIndexPath* indexPath = [self.tableView indexPathForCell:cell];
     
-    ITBNewsCD *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
-    BOOL isLikedByCurrentUser = [newsItem.likeAddedUsers containsObject:self.dataManager.currentUserCD];
+    BOOL isLikedByCurrentUser = [newsItem.likeAddedUsers containsObject:[ITBNewsAPI sharedInstance].currentUser];
     
     if (isLikedByCurrentUser) {
         
-        [newsItem removeLikeAddedUsersObject:self.dataManager.currentUserCD];
+        [newsItem removeLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
         
     } else {
         
-        [newsItem addLikeAddedUsersObject:self.dataManager.currentUserCD];
+        [newsItem addLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
         
     }
     
-    // здесь идет сохранение в permanent store
-    [self.managedObjectContext save:nil];
+    [[ITBNewsAPI sharedInstance].managedObjectContext save:nil];
     
-    // мне надо сделать reloadData для всей таблицы т.к. у меня идет сортировка по RATING который меняется в результате нажатия на + или - и в результате после каждого нажатия меняется порядок во всей таблице
-        [self.tableView reloadData];
+    [self.tableView reloadData];
+    
+}
+
+#pragma mark - Private Methods
+
+- (void)refreshNews {
 /*
-    [self.tableView beginUpdates];
-//    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationLeft];
-    [self.tableView endUpdates];
-*/
+    __weak ITBHotNewsViewController* weakSelf = self;
     
+    [self.serverManager updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+            weakSelf.fetchedResultsController = nil;
+            [weakSelf.tableView reloadData];
+            
+            [weakSelf.refreshControl endRefreshing];
+        });
+        
+    }];
+*/
 }
 
 #pragma mark - Actions
@@ -468,10 +456,9 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     ITBCategoriesViewController *vc = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCategoriesViewController"];
     
-//    vc.allCategoriesArray = [self.dataManager fetchAllCategories];
-//    [self.dataManager fetchAllCategories]; //  вызов этого метода не здесь а когда мы либо загружаем локальную БД либо нажимаем refreshButton
-    vc.allCategoriesArray = self.dataManager.allCategoriesArray;
-    vc.categoriesOfCurrentUserArray = [self.dataManager.currentUserCD.selectedCategories allObjects];
+    vc.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchAllCategories];
+    
+    vc.categoriesOfCurrentUserArray = [[ITBNewsAPI sharedInstance].currentUser.selectedCategories allObjects];
     
     vc.delegate = self;
     
@@ -503,7 +490,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 }
 
 - (IBAction)actionRefresh:(UIBarButtonItem *)sender {
-    
+/*
     __weak ITBHotNewsViewController* weakSelf = self;
     
     [self.serverManager updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
@@ -516,6 +503,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         });
         
     }];
+ */
 }
 
 @end

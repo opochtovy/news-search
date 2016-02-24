@@ -8,9 +8,11 @@
 
 #import "ITBNewsDetailViewController.h"
 
-@interface ITBNewsDetailViewController ()
+@interface ITBNewsDetailViewController () <UIWebViewDelegate>
 
 @property (weak, nonatomic) IBOutlet UIWebView *webView;
+
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *indicator;
 
 @property (strong, nonatomic) UIBarButtonItem *backButtonItem;
 @property (strong, nonatomic) UIBarButtonItem *forwardButtonItem;

@@ -1,20 +1,22 @@
 //
-//  ITBCategoryCD+CoreDataProperties.m
+//  ITBCategory+CoreDataProperties.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 16.02.16.
+//  Created by Oleg Pochtovy on 24.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 //  Choose "Create NSManagedObject Subclass…" from the Core Data editor menu
 //  to delete and recreate this implementation file for your updated model.
 //
 
-#import "ITBCategoryCD+CoreDataProperties.h"
+#import "ITBCategory+CoreDataProperties.h"
 
-@implementation ITBCategoryCD (CoreDataProperties)
+@implementation ITBCategory (CoreDataProperties)
 
+@dynamic createdAt;
 @dynamic objectId;
 @dynamic title;
+@dynamic updatedAt;
 @dynamic news;
 @dynamic signedUsers;
 

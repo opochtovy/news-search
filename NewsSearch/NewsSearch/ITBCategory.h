@@ -1,19 +1,19 @@
 //
-//  ITBCategoryCD.h
+//  ITBCategory.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 16.02.16.
+//  Created by Oleg Pochtovy on 24.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
-#import "ITBObject.h"
+#import <CoreData/CoreData.h>
 
-@class ITBNewsCD, ITBUserCD;
+@class ITBNews, ITBUser;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ITBCategoryCD : ITBObject
+@interface ITBCategory : NSManagedObject
 
 // Insert code here to declare functionality of your managed object subclass
 
@@ -21,4 +21,4 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-#import "ITBCategoryCD+CoreDataProperties.h"
+#import "ITBCategory+CoreDataProperties.h"

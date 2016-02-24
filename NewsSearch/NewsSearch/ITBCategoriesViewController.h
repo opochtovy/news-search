@@ -10,20 +10,17 @@
 
 @protocol ITBCategoriesPickerDelegate;
 
-@interface ITBCategoriesViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@interface ITBCategoriesViewController : UIViewController
 
-@property (weak, nonatomic) IBOutlet UITableView *categoriesTableView;
+@property (weak, nonatomic) id <ITBCategoriesPickerDelegate> delegate;
 
 @property (strong, nonatomic) NSArray *allCategoriesArray;
 @property (strong, nonatomic) NSArray *categoriesOfCurrentUserArray;
-
-@property (weak, nonatomic) id <ITBCategoriesPickerDelegate> delegate;
 
 @end
 
 @protocol ITBCategoriesPickerDelegate
 
-@required
 - (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC;
 
 @end

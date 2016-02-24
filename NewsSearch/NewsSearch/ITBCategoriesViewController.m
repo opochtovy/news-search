@@ -8,19 +8,19 @@
 
 #import "ITBCategoriesViewController.h"
 
-#import "ITBDataManager.h"
+#import "ITBNewsAPI.h"
 
-#import "ITBCategoryCD.h"
-#import "ITBUserCD.h"
+#import "ITBUser.h"
+#import "ITBCategory.h"
 
 NSString *const categoriesTitle = @"Categories";
 NSString *const allCatsCell = @"All categories";
 
-@interface ITBCategoriesViewController ()
+@interface ITBCategoriesViewController () <UITableViewDataSource, UITableViewDelegate>
 
-@property (strong, nonatomic) ITBDataManager* dataManager;
+@property (weak, nonatomic) IBOutlet UITableView *categoriesTableView;
 
-@property (strong, nonatomic) NSMutableArray *checkBoxes; // количество элементов этого нового массива такое же как в self.allCategoriesArray + 1 (из-за поля All)
+@property (strong, nonatomic) NSMutableArray *checkBoxes;
 @property (assign, nonatomic) BOOL isAllChecked;
 
 @end
@@ -48,7 +48,7 @@ NSString *const allCatsCell = @"All categories";
     
     self.checkBoxes = [[NSMutableArray alloc] init];
     
-    for (ITBCategoryCD* category in self.allCategoriesArray) {
+    for (ITBCategory* category in self.allCategoriesArray) {
         
         BOOL checkBox = NO;
         
@@ -106,7 +106,7 @@ NSString *const allCatsCell = @"All categories";
                                           reuseIdentifier:identifier];
         }
         
-        ITBCategoryCD* category = [self.allCategoriesArray objectAtIndex:indexPath.row];
+        ITBCategory* category = [self.allCategoriesArray objectAtIndex:indexPath.row];
         
         cell.textLabel.text = category.title;
         
@@ -134,8 +134,6 @@ NSString *const allCatsCell = @"All categories";
         if (self.isAllChecked) {
             
             cell.accessoryType = UITableViewCellAccessoryCheckmark;
-//            cell.highlighted = YES;
-//            cell.selected = YES;
             cell.backgroundColor = [UIColor lightGrayColor];
             
         } else {
@@ -168,8 +166,6 @@ NSString *const allCatsCell = @"All categories";
         NSNumber *number = [self.checkBoxes objectAtIndex:indexPath.row];
         BOOL hasCheckBox = [number boolValue];
         
-//        ITBCategoryCD* category = [self.allCategoriesArray objectAtIndex:indexPath.row];
-        
         hasCheckBox = !hasCheckBox;
         
         [self.checkBoxes replaceObjectAtIndex:indexPath.row withObject:[NSNumber numberWithBool:hasCheckBox]];
@@ -193,11 +189,9 @@ NSString *const allCatsCell = @"All categories";
         
     }
     
-    NSLog(@"number of self.dataManager.currentUserCD.selectedCategories = %li", (long)[self.dataManager.currentUserCD.selectedCategories count]);
-    
     NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
     
-    for (ITBCategoryCD* category in self.allCategoriesArray) {
+    for (ITBCategory* category in self.allCategoriesArray) {
         
         NSInteger i = [self.allCategoriesArray indexOfObject:category];
         NSNumber *numberWithBool = [self.checkBoxes objectAtIndex:i];
@@ -211,13 +205,11 @@ NSString *const allCatsCell = @"All categories";
     
     NSLog(@"number of selected categories = %li", (long)[categoriesOfCurrentUser count]);
     
-    // Нюанс popover - поскольку я убрал из popover кнопки в navigationBar то надо обновлять данные при каждом select
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         
-        // сначала НАДО ОБЯЗАТЕЛЬНО обновить массив categoriesOfCurrentUser
         NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
         
-        for (ITBCategoryCD* category in self.allCategoriesArray) {
+        for (ITBCategory* category in self.allCategoriesArray) {
             
             NSInteger i = [self.allCategoriesArray indexOfObject:category];
             NSNumber *numberWithBool = [self.checkBoxes objectAtIndex:i];
@@ -240,11 +232,9 @@ NSString *const allCatsCell = @"All categories";
 #pragma mark - Actions
 - (void)actionDone:(UIBarButtonItem *)sender {
 
-    // сначала НАДО ОБЯЗАТЕЛЬНО обновить массив categoriesOfCurrentUser
     NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
     
-//    for (NSString* category in self.allCategoriesArray) {
-    for (ITBCategoryCD* category in self.allCategoriesArray) {
+    for (ITBCategory* category in self.allCategoriesArray) {
         
         NSInteger i = [self.allCategoriesArray indexOfObject:category];
         NSNumber *numberWithBool = [self.checkBoxes objectAtIndex:i];
@@ -257,8 +247,6 @@ NSString *const allCatsCell = @"All categories";
     }
     
     self.categoriesOfCurrentUserArray = [categoriesOfCurrentUser copy];
-    
-//    NSLog(@"number of self.categoriesOfCurrentUserArray = %li", [self.categoriesOfCurrentUserArray count]);
     
     [self.delegate reloadCategoriesFrom:self];
  

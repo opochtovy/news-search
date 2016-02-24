@@ -8,9 +8,7 @@
 
 #import "ITBSignInTableViewController.h"
 
-#import "ITBServerManager.h"
-
-#import "ITBUser.h"
+#import "ITBNewsAPI.h"
 
 NSString *const signinTitle = @"Sign In";
 NSString *const waitUnique = @"Please wait...";
@@ -21,7 +19,16 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 @interface ITBSignInTableViewController () <UITextFieldDelegate>
 
-@property (strong, nonatomic) NSMutableSet* usernamesSet;
+@property (weak, nonatomic) IBOutlet UITextField *usernameField;
+@property (weak, nonatomic) IBOutlet UITextField *passwordField;
+@property (weak, nonatomic) IBOutlet UITextField *passwordConfirmationField;
+
+@property (weak, nonatomic) IBOutlet UILabel *uniqueUsernameLabel;
+@property (weak, nonatomic) IBOutlet UILabel *passwordConfirmationLabel;
+
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+
+@property (strong, nonatomic) NSSet* usernamesSet;
 
 @end
 
@@ -30,7 +37,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.usernamesSet = [NSMutableSet set];
+    self.usernamesSet = [NSSet set];
     
     self.usernameField.delegate = self;
     self.passwordField.delegate = self;
@@ -47,34 +54,22 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     // Dispose of any resources that can be recreated.
 }
 
-- (void)dealloc {
-    
-//    [self.activityIndicator stopAnimating];
-}
-
 #pragma mark - API
 
 - (void)registerUser {
     
-    [[ITBServerManager sharedManager]
-     registerWithUsername:self.usernameField.text
-     withPassword:self.passwordField.text
-     onSuccess:^(ITBUser *user)
-     {
-         
-         dispatch_async(dispatch_get_main_queue(), ^{
-             
-             [self.activityIndicator stopAnimating];
-             
-             [self dismissViewControllerAnimated:YES completion:nil];
-             
-         });
-         
-     }
-     onFailure:^(NSError *error, NSInteger statusCode)
-     {
-         
-     }];
+    [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text
+                                         withPassword:self.passwordField.text
+                                            onSuccess:^(BOOL isSuccess)
+    {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            [self.activityIndicator stopAnimating];
+            
+            [self dismissViewControllerAnimated:YES completion:nil];
+            
+        });
+    }];
     
 }
 
@@ -89,32 +84,22 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 //    self.uniqueUsernameLabel.text = waitUnique;
     self.uniqueUsernameLabel.text = NSLocalizedString(waitUnique, nil);
     
-    [[ITBServerManager sharedManager]
-     getUsersOnSuccess:^(NSArray *users) {
-         
-         for (ITBUser* userItem in users) {
-             
-             [self.usernamesSet addObject:userItem.username];
-         }
-         
-         dispatch_async(dispatch_get_main_queue(), ^{
-             
-             self.usernameField.enabled = YES;
-             self.passwordField.enabled = YES;
-             self.passwordConfirmationField.enabled = YES;
-             
-             self.uniqueUsernameLabel.text = nil;
-             
-             [self.activityIndicator stopAnimating];
-             
-//             NSLog(@"%@", self.usernamesSet);
-             
-         });
-         
-     }
-     onFailure:^(NSError *error, NSInteger statusCode) {
-         
-     }];
+    [[ITBNewsAPI sharedInstance] getUsersOnSuccess:^(NSSet *usernames) {
+        
+        self.usernamesSet = usernames;
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            self.usernameField.enabled = YES;
+            self.passwordField.enabled = YES;
+            self.passwordConfirmationField.enabled = YES;
+            
+            self.uniqueUsernameLabel.text = nil;
+            
+            [self.activityIndicator stopAnimating];
+            
+        });
+    }];
 }
 
 #pragma mark - UITextFieldDelegate

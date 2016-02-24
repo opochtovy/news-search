@@ -7,15 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-#import <CoreData/CoreData.h>
 
 @interface ITBHotNewsViewController : UITableViewController
-
-@property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
-@property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;
-@property (weak, nonatomic) IBOutlet UIBarButtonItem *refreshButton;
-
-- (IBAction)actionChooseCategories:(UIBarButtonItem *)sender;
-- (IBAction)actionRefresh:(UIBarButtonItem *)sender;
 
 @end

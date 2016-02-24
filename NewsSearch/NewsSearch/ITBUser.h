@@ -2,25 +2,26 @@
 //  ITBUser.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 02.02.16.
+//  Created by Oleg Pochtovy on 24.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
+#import <CoreData/CoreData.h>
 
-@interface ITBUser : NSObject
+@class ITBCategory, ITBNews;
 
-@property (strong, nonatomic) NSString* username;
-@property (strong, nonatomic) NSString* objectId;
-@property (strong, nonatomic) NSString* sessionToken;
-@property (strong, nonatomic) NSDate* createdAt;
-@property (strong, nonatomic) NSDate* updatedAt;
+NS_ASSUME_NONNULL_BEGIN
 
-@property (assign, nonatomic) NSNumber* code;
-@property (strong, nonatomic) NSString* error;
+@interface ITBUser : NSManagedObject
 
-@property (strong, nonatomic) NSArray* categories;
+// Insert code here to declare functionality of your managed object subclass
 
-- (id)initWithServerResponse:(NSDictionary *) responseObject;
+- (id)insertObjectWithDictionary:(NSDictionary *) userDict inContext:(NSManagedObjectContext* ) context;
+- (void)updateObjectWithDictionary:(NSDictionary *) userDict inContext:(NSManagedObjectContext* ) context;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#import "ITBUser+CoreDataProperties.h"

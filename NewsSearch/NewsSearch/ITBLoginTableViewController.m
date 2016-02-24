@@ -8,18 +8,20 @@
 
 #import "ITBLoginTableViewController.h"
 
-#import "ITBServerManager.h"
-#import "ITBDataManager.h"
-
 #import "ITBUser.h"
+
+#import "ITBNewsAPI.h"
 
 NSString *const loginTitle = @"Login:";
 NSString *const invalidLogin = @"invalid login parameters";
 
 @interface ITBLoginTableViewController () <UITextFieldDelegate>
 
-@property (strong, nonatomic) ITBServerManager* serverManager;
-@property (strong, nonatomic) ITBDataManager* dataManager;
+@property (weak, nonatomic) IBOutlet UITextField *usernameField;
+@property (weak, nonatomic) IBOutlet UITextField *passwordField;
+
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+@property (weak, nonatomic) IBOutlet UISwitch *rememberSwitch;
 
 @end
 
@@ -33,9 +35,6 @@ NSString *const invalidLogin = @"invalid login parameters";
     
 //    self.navigationItem.title = loginTitle;
     self.navigationItem.title = NSLocalizedString(loginTitle, nil);
-    
-    self.serverManager = [ITBServerManager sharedManager];
-    self.dataManager = [ITBDataManager sharedManager];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -46,64 +45,6 @@ NSString *const invalidLogin = @"invalid login parameters";
 - (void)dealloc {
     
     [self.activityIndicator stopAnimating];
-}
-
-#pragma mark - API
-
-- (void)authorizeUser {
-    
-    [self.serverManager
-     authorizeWithUsername:self.usernameField.text
-     withPassword:self.passwordField.text
-     onSuccess:^(ITBUser *user)
-     {
-
-         NSInteger code = [user.code integerValue];
-
-         if (code == 0) {
-             
-//             NSLog(@"Login was successful!!!");
-             
-             self.dataManager.currentUser = user;
-             [self.dataManager fetchCurrentUserForObjectId:user.objectId];
-             
-             if (self.rememberSwitch.enabled) {
-                 
-                 NSLog(@"rememberSwitch is ONN!");
-                 
-                 [self.dataManager saveSettings];
-                 
-                 // надо сделать fetchRequest чтобы получить currentUserCD
-//                 [[ITBDataManager sharedManager] fetchCurrentUser];
-                 
-             }
-             
-             [self.delegate loginDidPassSuccessfully:self];
-             
-             [self dismissViewControllerAnimated:YES completion:nil];
-             
-         } else {
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-//                 self.usernameField.placeholder = invalidLogin;
-                 self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
-                 
-//                 self.passwordField.placeholder = invalidLogin;
-                 self.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
-                 
-                 [self.activityIndicator stopAnimating];
-                 
-             });
-             
-         }
-         
-     }
-     onFailure:^(NSError *error, NSInteger statusCode)
-     {
-         
-     }];
-    
 }
 
 #pragma mark - UITextFieldDelegate
@@ -126,6 +67,42 @@ NSString *const invalidLogin = @"invalid login parameters";
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+#pragma mark - API
+
+- (void)authorizeUser {
+    
+    [[ITBNewsAPI sharedInstance] authorizeWithUsername:self.usernameField.text
+                                          withPassword:self.passwordField.text
+                                             onSuccess:^(ITBUser *user) {
+        
+        NSInteger code = [user.code integerValue];
+        
+        if (code == 0) {
+            
+            [self.delegate loginDidPassSuccessfully:self];
+            
+            [self dismissViewControllerAnimated:YES completion:nil];
+        
+        } else {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+//                 self.usernameField.placeholder = invalidLogin;
+                self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
+                
+//                 self.passwordField.placeholder = invalidLogin;
+                self.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
+                
+                [self.activityIndicator stopAnimating];
+                
+            });
+            
+        }
+        
+    }];
+    
 }
 
 #pragma mark - Actions

@@ -8,15 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
-@class ITBNewsCell;
-
-@protocol ITBNewsCellDelegate <NSObject>
-
-- (void)newsCellDidTapAdd:(ITBNewsCell *) cell;
-- (void)newsCellDidTapSubtract:(ITBNewsCell *) cell;
-- (void)newsCellDidTapDetail:(ITBNewsCell *) cell;
-
-@end
+@protocol ITBNewsCellDelegate;
 
 @interface ITBNewsCell : UITableViewCell
 
@@ -29,8 +21,12 @@
 @property (weak, nonatomic) IBOutlet UIButton *addLikeButton;
 @property (weak, nonatomic) IBOutlet UIButton *subtractLikeButton;
 
-- (IBAction)actionAddLike:(UIButton *)sender;
-- (IBAction)actionSubtractLike:(UIButton *)sender;
-- (IBAction)actionShowNewsPage:(UIButton *)sender;
+@end
+
+@protocol ITBNewsCellDelegate <NSObject>
+
+- (void)newsCellDidTapAdd:(ITBNewsCell *) cell;
+- (void)newsCellDidTapSubtract:(ITBNewsCell *) cell;
+- (void)newsCellDidTapDetail:(ITBNewsCell *) cell;
 
 @end

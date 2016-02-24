@@ -1,16 +1,16 @@
 //
-//  ITBUserCD.m
+//  ITBCategory.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 16.02.16.
+//  Created by Oleg Pochtovy on 24.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
-#import "ITBUserCD.h"
-#import "ITBCategoryCD.h"
-#import "ITBNewsCD.h"
+#import "ITBCategory.h"
+#import "ITBNews.h"
+#import "ITBUser.h"
 
-@implementation ITBUserCD
+@implementation ITBCategory
 
 // Insert code here to add functionality to your managed object subclass
 
