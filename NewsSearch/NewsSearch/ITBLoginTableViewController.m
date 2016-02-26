@@ -75,11 +75,10 @@ NSString *const invalidLogin = @"invalid login parameters";
     
     [[ITBNewsAPI sharedInstance] authorizeWithUsername:self.usernameField.text
                                           withPassword:self.passwordField.text
-                                             onSuccess:^(ITBUser *user) {
+                                             onSuccess:^(ITBUser *user)
+    {
         
-        NSInteger code = [user.code integerValue];
-        
-        if (code == 0) {
+        if (user != nil) {
             
             [self.delegate loginDidPassSuccessfully:self];
             
@@ -88,6 +87,9 @@ NSString *const invalidLogin = @"invalid login parameters";
         } else {
             
             dispatch_async(dispatch_get_main_queue(), ^{
+                
+                self.usernameField.text = @"";
+                self.passwordField.text = @"";
                 
 //                 self.usernameField.placeholder = invalidLogin;
                 self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);

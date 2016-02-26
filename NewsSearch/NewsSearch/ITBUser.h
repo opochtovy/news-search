@@ -2,7 +2,7 @@
 //  ITBUser.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 24.02.16.
+//  Created by Oleg Pochtovy on 25.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (id)insertObjectWithDictionary:(NSDictionary *) userDict inContext:(NSManagedObjectContext* ) context;
 - (void)updateObjectWithDictionary:(NSDictionary *) userDict inContext:(NSManagedObjectContext* ) context;
+
 
 @end
 

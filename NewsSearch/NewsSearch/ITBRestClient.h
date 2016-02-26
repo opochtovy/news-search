@@ -27,4 +27,15 @@
 - (void)getUsersOnSuccess:(void(^)(NSArray *dicts)) success
                 onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
+- (void)getAllObjectsForClassName:(NSString* ) className
+                        onSuccess:(void(^)(NSArray *dicts)) success
+                        onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)getCurrentUser:(NSString* ) objectId
+             onSuccess:(void(^)(NSDictionary *dict)) success
+             onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+- (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser* ) user
+                                                               onSuccess:(void(^)(BOOL isSuccess)) success;
+
 @end

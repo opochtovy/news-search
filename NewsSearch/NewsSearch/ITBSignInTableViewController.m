@@ -54,7 +54,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     // Dispose of any resources that can be recreated.
 }
 
-#pragma mark - API
+#pragma mark - Private Methods
 
 - (void)registerUser {
     

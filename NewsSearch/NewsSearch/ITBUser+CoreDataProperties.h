@@ -2,7 +2,7 @@
 //  ITBUser+CoreDataProperties.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 24.02.16.
+//  Created by Oleg Pochtovy on 25.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 //  Choose "Create NSManagedObject Subclass…" from the Core Data editor menu
@@ -15,13 +15,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ITBUser (CoreDataProperties)
 
+@property (nullable, nonatomic, retain) NSNumber *code;
 @property (nullable, nonatomic, retain) NSDate *createdAt;
+@property (nullable, nonatomic, retain) NSString *error;
 @property (nullable, nonatomic, retain) NSString *objectId;
+@property (nullable, nonatomic, retain) NSString *sessionToken;
 @property (nullable, nonatomic, retain) NSDate *updatedAt;
 @property (nullable, nonatomic, retain) NSString *username;
-@property (nullable, nonatomic, retain) NSString *sessionToken;
-@property (nullable, nonatomic, retain) NSNumber *code;
-@property (nullable, nonatomic, retain) NSString *error;
 @property (nullable, nonatomic, retain) NSSet<ITBNews *> *createdNews;
 @property (nullable, nonatomic, retain) NSSet<ITBNews *> *likedNews;
 @property (nullable, nonatomic, retain) NSSet<ITBCategory *> *selectedCategories;

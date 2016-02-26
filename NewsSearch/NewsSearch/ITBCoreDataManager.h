@@ -21,4 +21,20 @@
 - (ITBUser* )fetchCurrentUserForObjectId:(NSString* ) objectId;
 - (NSArray* )fetchAllCategories;
 
+- (NSArray *)allObjectsForName:(NSString* ) entityName; // universal fetching by entityName
+- (void) printAllObjectsForName:(NSString* ) entityName;
+
+- (NSArray* )addNewsToLocalDBFromLoadedArray:(NSArray* ) dicts;
+- (NSArray* )addCategoriesToLocalDBFromLoadedArray:(NSArray* ) dicts;
+
+- (void) addRelationsToLocalDBFromNewsDictsArray:(NSArray* ) newsDicts
+                                    forNewsArray:(NSArray* ) newsArray
+                          fromCategoryDictsArray:(NSArray* ) categoryDicts
+                              forCategoriesArray:(NSArray* ) categoriesArray
+                                         forUser: (ITBUser* ) currentUser
+                                       onSuccess:(void(^)(BOOL isSuccess)) success;
+
+- (void)deleteAllObjects;
+- (void)deleteObjectsInArray:(NSArray* ) array;
+
 @end

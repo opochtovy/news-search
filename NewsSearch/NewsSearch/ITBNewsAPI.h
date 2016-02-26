@@ -29,6 +29,8 @@ extern NSString *const beforeLogin;
 - (void)saveCurrentUser;
 - (void)loadCurrentUser;
 
+- (void) logOut;
+
 // ITBRestClient
 
 - (void)authorizeWithUsername:(NSString* ) username
@@ -50,5 +52,17 @@ extern NSString *const beforeLogin;
 
 - (void)fetchCurrentUserForObjectId:(NSString* ) objectId;
 - (NSArray* )fetchAllCategories;
+
+//- (void) createLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success;
+- (void) updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success;
+
+- (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess)) success;
+
+// TEST
+
+- (void) printAllObjectsOfLocalDB;
+- (void)fetchAllObjects;
+
+- (void)deleteLocalDB;
 
 @end

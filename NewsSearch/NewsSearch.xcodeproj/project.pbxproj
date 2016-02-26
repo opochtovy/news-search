@@ -20,9 +20,9 @@
 		A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */; };
 		A27F8F621C737352007111CB /* ITBHotNewsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A27F8F611C737352007111CB /* ITBHotNewsViewController.m */; };
 		A2D5D9A41C69D6B000AAB625 /* ITBLoginTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */; };
+		A2EC53A31C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.m in Sources */ = {isa = PBXBuildFile; fileRef = A2EC53A01C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.m */; };
+		A2EC53A41C7F38BA00A61AF8 /* ITBUser.m in Sources */ = {isa = PBXBuildFile; fileRef = A2EC53A21C7F38BA00A61AF8 /* ITBUser.m */; };
 		A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */; };
-		A2F291051C7DA68E005FFEEA /* ITBUser+CoreDataProperties.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F290FA1C7DA68E005FFEEA /* ITBUser+CoreDataProperties.m */; };
-		A2F291061C7DA68E005FFEEA /* ITBUser.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F290FC1C7DA68E005FFEEA /* ITBUser.m */; };
 		A2F291071C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F290FE1C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.m */; };
 		A2F291081C7DA68E005FFEEA /* ITBCategory.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F291001C7DA68E005FFEEA /* ITBCategory.m */; };
 		A2F291091C7DA68E005FFEEA /* ITBNews+CoreDataProperties.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F291021C7DA68E005FFEEA /* ITBNews+CoreDataProperties.m */; };
@@ -69,12 +69,12 @@
 		A27F8F611C737352007111CB /* ITBHotNewsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBHotNewsViewController.m; sourceTree = "<group>"; };
 		A2D5D9A21C69D6B000AAB625 /* ITBLoginTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBLoginTableViewController.h; sourceTree = "<group>"; };
 		A2D5D9A31C69D6B000AAB625 /* ITBLoginTableViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBLoginTableViewController.m; sourceTree = "<group>"; };
+		A2EC539F1C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ITBUser+CoreDataProperties.h"; sourceTree = "<group>"; };
+		A2EC53A01C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "ITBUser+CoreDataProperties.m"; sourceTree = "<group>"; };
+		A2EC53A11C7F38BA00A61AF8 /* ITBUser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBUser.h; sourceTree = "<group>"; };
+		A2EC53A21C7F38BA00A61AF8 /* ITBUser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBUser.m; sourceTree = "<group>"; };
 		A2F08EAF1C6B1FC10008B932 /* ITBSignInTableViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBSignInTableViewController.h; sourceTree = "<group>"; };
 		A2F08EB01C6B1FC10008B932 /* ITBSignInTableViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBSignInTableViewController.m; sourceTree = "<group>"; };
-		A2F290F91C7DA68E005FFEEA /* ITBUser+CoreDataProperties.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ITBUser+CoreDataProperties.h"; sourceTree = "<group>"; };
-		A2F290FA1C7DA68E005FFEEA /* ITBUser+CoreDataProperties.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "ITBUser+CoreDataProperties.m"; sourceTree = "<group>"; };
-		A2F290FB1C7DA68E005FFEEA /* ITBUser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBUser.h; sourceTree = "<group>"; };
-		A2F290FC1C7DA68E005FFEEA /* ITBUser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBUser.m; sourceTree = "<group>"; };
 		A2F290FD1C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ITBCategory+CoreDataProperties.h"; sourceTree = "<group>"; };
 		A2F290FE1C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "ITBCategory+CoreDataProperties.m"; sourceTree = "<group>"; };
 		A2F290FF1C7DA68E005FFEEA /* ITBCategory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBCategory.h; sourceTree = "<group>"; };
@@ -189,10 +189,6 @@
 		A22F79141C60E2A300340FC0 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				A2F290F91C7DA68E005FFEEA /* ITBUser+CoreDataProperties.h */,
-				A2F290FA1C7DA68E005FFEEA /* ITBUser+CoreDataProperties.m */,
-				A2F290FB1C7DA68E005FFEEA /* ITBUser.h */,
-				A2F290FC1C7DA68E005FFEEA /* ITBUser.m */,
 				A2F290FD1C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.h */,
 				A2F290FE1C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.m */,
 				A2F290FF1C7DA68E005FFEEA /* ITBCategory.h */,
@@ -201,6 +197,10 @@
 				A2F291021C7DA68E005FFEEA /* ITBNews+CoreDataProperties.m */,
 				A2F291031C7DA68E005FFEEA /* ITBNews.h */,
 				A2F291041C7DA68E005FFEEA /* ITBNews.m */,
+				A2EC539F1C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.h */,
+				A2EC53A01C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.m */,
+				A2EC53A11C7F38BA00A61AF8 /* ITBUser.h */,
+				A2EC53A21C7F38BA00A61AF8 /* ITBUser.m */,
 			);
 			name = Models;
 			sourceTree = "<group>";
@@ -346,6 +346,7 @@
 				A2D5D9A41C69D6B000AAB625 /* ITBLoginTableViewController.m in Sources */,
 				A2F5E86A1C7C7DB600677907 /* ITBNewsAPI.m in Sources */,
 				A21037D81C71BF9100B1D8B3 /* NewsSearch.xcdatamodeld in Sources */,
+				A2EC53A41C7F38BA00A61AF8 /* ITBUser.m in Sources */,
 				A2F2910A1C7DA68E005FFEEA /* ITBNews.m in Sources */,
 				A236F1801C6E2861001D0902 /* ITBNewsDetailViewController.m in Sources */,
 				A27F8F621C737352007111CB /* ITBHotNewsViewController.m in Sources */,
@@ -354,11 +355,10 @@
 				A2295E881C6C97500019892A /* ITBCategoriesViewController.m in Sources */,
 				A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */,
 				A2F291071C7DA68E005FFEEA /* ITBCategory+CoreDataProperties.m in Sources */,
-				A2F291061C7DA68E005FFEEA /* ITBUser.m in Sources */,
-				A2F291051C7DA68E005FFEEA /* ITBUser+CoreDataProperties.m in Sources */,
 				A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */,
 				A22F78EA1C60B0CD00340FC0 /* main.m in Sources */,
 				A2F5E86D1C7C7F7500677907 /* ITBRestClient.m in Sources */,
+				A2EC53A31C7F38BA00A61AF8 /* ITBUser+CoreDataProperties.m in Sources */,
 				A2F5E8701C7C7FF600677907 /* ITBCoreDataManager.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

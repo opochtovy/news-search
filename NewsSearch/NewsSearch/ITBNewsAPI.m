@@ -8,6 +8,8 @@
 
 #import "ITBNewsAPI.h"
 
+#import <UIKit/UIKit.h>
+
 #import "ITBRestClient.h"
 #import "ITBCoreDataManager.h"
 
@@ -78,18 +80,25 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
  
 - (void)loadCurrentUser {
  
-     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    NSString* objectId = [userDefaults objectForKey:kSettingsObjectId];
+    
+    NSLog(@"username has objectId = %@", objectId);
      
-     NSString* objectId = [userDefaults objectForKey:kSettingsObjectId];
-     
-     if (objectId != nil) {
-         
-         self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:objectId];
-     }
+    if (objectId != nil) {
+        
+        self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:objectId];
+    }
  
- }
+}
 
-
+- (void) logOut
+{
+    self.currentUser = nil;
+    
+    [self saveCurrentUser];
+}
 #pragma mark - ITBRestClient
 
 - (void)authorizeWithUsername:(NSString* ) username
@@ -112,9 +121,16 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
             
             [self saveCurrentUser];
             
+            self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:user.objectId];
+            
+            success(user);
+            
+        } else {
+            
+            success(nil);
         }
         
-        success(user);
+//        success(user);
         
     }
                                  onFailure:^(NSError *error, NSInteger statusCode)
@@ -179,7 +195,7 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
 
 - (NSManagedObjectContext *)managedObjectContext {
     
-    if (!_managedObjectContext) {
+    if (_managedObjectContext == nil) {
         
         _managedObjectContext = [self.coreDataManager managedObjectContext];
     }
@@ -202,6 +218,286 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
 - (NSArray* )fetchAllCategories
 {
     return [self.coreDataManager fetchAllCategories];
+}
+
+#pragma mark - Database creating
+
+- (void) createLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success
+{
+    
+    [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
+    
+    [self.restClient
+     getAllObjectsForClassName:@"ITBNews"
+     onSuccess:^(NSArray *dicts) {
+         
+         NSArray* newsDicts = dicts;
+         
+         NSLog(@"count of newsArray = %li", (long)[newsDicts count]);
+         
+         NSArray* news = [self.coreDataManager addNewsToLocalDBFromLoadedArray:newsDicts];
+//         NSArray* news = [self.coreDataManager allObjectsForName:@"ITBNews"];
+         
+         [self.restClient
+          getAllObjectsForClassName:@"ITBCategory"
+          onSuccess:^(NSArray *dicts)
+          {
+              
+              NSArray* categoryDicts = dicts;
+              
+              NSLog(@"count of categoriesArray = %li", (long)[categoryDicts count]);
+              
+              NSArray* categories = [self.coreDataManager addCategoriesToLocalDBFromLoadedArray:categoryDicts];
+//              NSArray* categories = [self.coreDataManager allObjectsForName:@"ITBCategory"];
+              
+              [self.restClient
+               getCurrentUser:self.currentUser.objectId
+               onSuccess:^(NSDictionary *dict)
+               {
+                   
+                   //                   __weak ITBNewsAPI* weakSelf = self;
+                   
+                   [self.coreDataManager
+                    addRelationsToLocalDBFromNewsDictsArray:newsDicts
+                    forNewsArray:news
+                    fromCategoryDictsArray:categoryDicts
+                    forCategoriesArray:categories
+                    forUser:self.currentUser
+                    onSuccess:^(BOOL isSuccess)
+                   {
+                        
+                        [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+                        
+                        success(isSuccess);
+                    }];
+                   
+               }
+               onFailure:^(NSError *error, NSInteger statusCode) { }];
+          
+          }
+          onFailure:^(NSError *error, NSInteger statusCode) { }];
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode) { }];
+    
+}
+
+- (void) updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success
+{
+    
+    [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
+    
+    [self.restClient
+     getAllObjectsForClassName:@"ITBNews"
+     onSuccess:^(NSArray *dicts)
+     {
+         NSMutableArray* newsDicts = [dicts mutableCopy];
+         
+         NSMutableArray* newsArray = [ [self.coreDataManager allObjectsForName:@"ITBNews"] mutableCopy];
+         
+         NSMutableArray* updatedNews = [NSMutableArray array];
+         NSMutableArray* updatedNewsDicts = [NSMutableArray array];
+         
+         for (int i = [newsDicts count] - 1; i>=0; i--) {
+             
+             NSDictionary* newsDict = [newsDicts objectAtIndex:i];
+             
+             for (int j = [newsArray count] - 1; j>=0; j--) {
+                 
+                 ITBNews* newsItem = [newsArray objectAtIndex:j];
+                 
+                 if ([newsItem.objectId isEqualToString:[newsDict objectForKey:@"objectId"]]) {
+                     
+                     [updatedNews addObject:newsItem];
+                     [updatedNewsDicts addObject:newsDict];
+                     
+                     [newsArray removeObject:newsItem];
+                     [newsDicts removeObject:newsDict];
+                     
+                 }
+             }
+         }
+         
+         NSMutableArray* deletedNews = newsArray;
+         
+         NSMutableArray* insertedNewsDicts = newsDicts;
+         
+         NSLog(@"number of elements in updatedNews = %li", (long)[updatedNews count]);
+         NSLog(@"number of elements in updatedNewsDicts = %li", (long)[updatedNewsDicts count]);
+         NSLog(@"number of elements in deletedNews = %li", (long)[deletedNews count]);
+         NSLog(@"number of elements in insertedNewsDicts = %li", (long)[insertedNewsDicts count]);
+
+         // updating of attributes
+         for (NSDictionary* newsDict in updatedNewsDicts) {
+             
+             ITBNews* newsItem = [updatedNews objectAtIndex:[updatedNewsDicts indexOfObject:newsDict]];
+             
+             [newsItem updateObjectWithDictionary:newsDict inContext:self.managedObjectContext];
+         }
+         
+         // creating of attributes for inserted news and merge updated and inserted objects (and dicts)
+         NSArray* insertedNews = [NSArray array];
+         if ([insertedNewsDicts count] > 0) {
+             
+             insertedNews = [self.coreDataManager addNewsToLocalDBFromLoadedArray:insertedNewsDicts];
+             
+             for (ITBNews* insertedNewsItem in insertedNews) {
+                 
+                 [updatedNews addObject:insertedNews];
+                 
+                 NSInteger indexOfInsertedNewsItem = [insertedNews indexOfObject:insertedNewsItem];
+                 
+                 [updatedNewsDicts addObject:[insertedNewsDicts objectAtIndex:indexOfInsertedNewsItem]];
+             }
+         }
+         
+         // deleting
+         if ([deletedNews count] > 0) {
+             
+             [self.coreDataManager deleteObjectsInArray:deletedNews];
+         }
+         
+         [self.restClient
+          getAllObjectsForClassName:@"ITBCategory"
+          onSuccess:^(NSArray *dicts)
+         {
+             NSMutableArray* categoryDicts = [dicts mutableCopy];
+             
+             NSMutableArray* categoriesArray = [ [self.coreDataManager allObjectsForName:@"ITBCategory"] mutableCopy];
+             
+             NSMutableArray* updatedCategories = [NSMutableArray array];
+             NSMutableArray* updatedCategoryDicts = [NSMutableArray array];
+             
+             for (int i = [categoryDicts count] - 1; i>=0; i--) {
+                 
+                 NSDictionary* categoryDict = [categoryDicts objectAtIndex:i];
+                 
+                 for (int j = [categoriesArray count] - 1; j>=0; j--) {
+                     
+                     ITBCategory* category = [categoriesArray objectAtIndex:j];
+                     
+                     if ([category.objectId isEqualToString:[categoryDict objectForKey:@"objectId"]]) {
+                         
+                         [updatedCategories addObject:category];
+                         [updatedCategoryDicts addObject:categoryDict];
+                         
+                         [categoriesArray removeObject:category];
+                         [categoryDicts removeObject:categoryDict];
+                     }
+                 }
+             }
+             
+             NSMutableArray* deletedCategories = categoriesArray;
+             
+             NSMutableArray* insertedCategoryDicts = categoryDicts;
+             
+             NSLog(@"number of elements in updatedCategories = %li", (long)[updatedCategories count]);
+             NSLog(@"number of elements in updatedCategoryDicts = %li", (long)[updatedCategoryDicts count]);
+             NSLog(@"number of elements in deletedCategories = %li", (long)[deletedCategories count]);
+             NSLog(@"number of elements in insertedCategoriesDicts = %li", (long)[insertedCategoryDicts count]);
+             
+             // updating of attributes
+             for (NSDictionary* categoryDict in updatedCategoryDicts) {
+                 
+                 ITBCategory* category = [updatedCategories objectAtIndex:[updatedCategoryDicts indexOfObject:categoryDict]];
+                 
+                 [category updateObjectWithDictionary:categoryDict inContext:self.managedObjectContext];
+             }
+             
+             // creating of attributes for inserted categories and merge updated and inserted objects (and dicts)
+             NSArray* insertedCategories = [NSArray array];
+             if ([insertedCategoryDicts count] > 0) {
+                 
+                 insertedCategories = [self.coreDataManager addCategoriesToLocalDBFromLoadedArray:insertedCategoryDicts];
+                 
+                 for (ITBCategory* insertedCategory in insertedCategories) {
+                     
+                     [updatedCategories addObject:insertedCategory];
+                     
+                     NSInteger indexOfInsertedCategory = [insertedCategories indexOfObject:insertedCategory];
+                     
+                     [updatedCategoryDicts addObject:[insertedCategoryDicts objectAtIndex:indexOfInsertedCategory]];
+                 }
+             }
+             
+             // deleting
+             if ([deletedCategories count] > 0) {
+                 
+                 [self.coreDataManager deleteObjectsInArray:deletedCategories];
+             }
+             
+             // и теперь уже обновление связей для всех элементов в updatedNews (из updatedNewsDicts) и в updatedCategories (из updatedCategoryDicts)
+             
+             [self.restClient
+              getCurrentUser:self.currentUser.objectId
+              onSuccess:^(NSDictionary *dict)
+             {
+                 
+                 [self.coreDataManager
+                  addRelationsToLocalDBFromNewsDictsArray:updatedNewsDicts
+                  forNewsArray:updatedNews
+                  fromCategoryDictsArray:updatedCategoryDicts
+                  forCategoriesArray:updatedCategories
+                  forUser:self.currentUser onSuccess:^(BOOL isSuccess)
+                 {
+                     
+                     [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+                     
+                     success(isSuccess);
+                     
+                  }];
+                 
+              } onFailure:^(NSError *error, NSInteger statusCode) { }];
+             
+             
+          }
+          onFailure:^(NSError *error, NSInteger statusCode) { }];
+    }
+     onFailure:^(NSError *error, NSInteger statusCode) { }];
+    
+}
+
+- (void)deleteLocalDB
+{
+    [self.coreDataManager deleteAllObjects];
+}
+
+- (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess)) success
+{
+    
+    NSLog(@"self.currentUser.sessionToken = %@", self.currentUser.sessionToken);
+    
+    if (self.currentUser.sessionToken != nil) {
+        
+        [self.restClient uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:self.currentUser onSuccess:^(BOOL isSuccess) {
+            
+            success(isSuccess);
+            
+        }];
+    }
+    
+}
+
+- (void)fetchAllObjects {
+    
+    NSLog(@"All news:");
+    
+    [self.coreDataManager printAllObjectsForName:@"ITBNews"];
+    
+    NSLog(@"All categories:");
+    
+    [self.coreDataManager printAllObjectsForName:@"ITBCategory"];
+    
+    NSLog(@"All users:");
+    
+    [self.coreDataManager printAllObjectsForName:@"ITBUser"];
+}
+
+- (void) printAllObjectsOfLocalDB
+{
+    [self.coreDataManager printAllObjectsForName:@"ITBNews"];
+    [self.coreDataManager printAllObjectsForName:@"ITBCategory"];
+    [self.coreDataManager printAllObjectsForName:@"ITBUser"];
 }
 
 @end

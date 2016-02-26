@@ -2,7 +2,7 @@
 //  ITBUser.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 24.02.16.
+//  Created by Oleg Pochtovy on 25.02.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
@@ -17,7 +17,7 @@
 - (id)insertObjectWithDictionary:(NSDictionary *) userDict inContext:(NSManagedObjectContext* ) context
 {
     
-//    ITBUser* user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUser" inManagedObjectContext:context];
+    //    ITBUser* user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUser" inManagedObjectContext:context];
     
     ITBUser* user = (ITBUser* )[[NSManagedObject alloc] initWithEntity:[NSEntityDescription entityForName:@"ITBUser" inManagedObjectContext:context] insertIntoManagedObjectContext:context];
     
@@ -26,8 +26,9 @@
         user.username = [userDict objectForKey:@"username"];
         user.objectId = [userDict objectForKey:@"objectId"];
         user.sessionToken = [userDict objectForKey:@"sessionToken"];
+        
         user.createdAt = [self convertToNSDateFromUTC:[userDict objectForKey:@"createdAt"]];
-        user.updatedAt = [self convertToNSDateFromUTC:[userDict objectForKey:@"createdAt"]];
+        user.updatedAt = [self convertToNSDateFromUTC:[userDict objectForKey:@"updatedAt"]];
         
         user.code = [userDict objectForKey:@"code"];
         user.error = [userDict objectForKey:@"error"];
@@ -40,17 +41,15 @@
 - (void)updateObjectWithDictionary:(NSDictionary *) userDict inContext:(NSManagedObjectContext* ) context
 {
     
-    if (self != nil) {
-        
-        self.username = [userDict objectForKey:@"username"];
-        self.objectId = [userDict objectForKey:@"objectId"];
-        self.sessionToken = [userDict objectForKey:@"sessionToken"];
-        self.createdAt = [userDict objectForKey:@"createdAt"];
-        self.updatedAt = [userDict objectForKey:@"updatedAt"];
-        
-        self.code = [userDict objectForKey:@"code"];
-        self.error = [userDict objectForKey:@"error"];
-    }
+    self.username = [userDict objectForKey:@"username"];
+    self.objectId = [userDict objectForKey:@"objectId"];
+    self.sessionToken = [userDict objectForKey:@"sessionToken"];
+    
+    self.createdAt = [self convertToNSDateFromUTC:[userDict objectForKey:@"createdAt"]];
+    self.updatedAt = [self convertToNSDateFromUTC:[userDict objectForKey:@"updatedAt"]];
+    
+    self.code = [userDict objectForKey:@"code"];
+    self.error = [userDict objectForKey:@"error"];
 }
 
 - (NSDate* ) convertToNSDateFromUTC:(NSDate* ) utcDate {

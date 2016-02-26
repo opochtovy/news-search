@@ -90,7 +90,7 @@
     }
     
     NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
-    if (!coordinator) {
+    if (coordinator == nil) {
         return nil;
     }
     _managedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
@@ -152,7 +152,7 @@
     
     NSArray *currentUserArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
     
-    if (requestError) {
+    if (requestError != nil) {
         NSLog(@"%@", [requestError localizedDescription]);
     }
     
@@ -174,12 +174,266 @@
     
     NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
     
-    if (requestError) {
+    if (requestError != nil) {
         NSLog(@"%@", [requestError localizedDescription]);
     }
     
     return resultArray;
     
+}
+
+- (NSArray *)allObjectsForName:(NSString* ) entityName {
+    
+    NSFetchRequest *request = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description = [NSEntityDescription
+                                        entityForName:entityName
+                                        inManagedObjectContext:self.managedObjectContext];
+    
+    [request setEntity:description];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    NSLog(@"count of %@ objects - %li", entityName, (long)[resultArray count]);
+    
+    return resultArray;
+    
+}
+
+- (void)deleteAllObjectsForName:(NSString* ) entityName {
+    
+    NSArray *allObjects = [self allObjectsForName:entityName];
+    
+    for (id object in allObjects) {
+        [self.managedObjectContext deleteObject:object];
+    }
+    
+    // здесь идет сохранение в permanent store
+    [self.managedObjectContext save:nil];
+}
+
+- (void)deleteAllObjects
+{
+    [self deleteAllObjectsForName:@"ITBNews"];
+    [self deleteAllObjectsForName:@"ITBCategory"];
+    [self deleteAllObjectsForName:@"ITBUser"];
+    
+    [self.managedObjectContext save:nil];
+}
+
+- (void)deleteObjectsInArray:(NSArray* ) array
+{
+    for (id object in array) {
+        [self.managedObjectContext deleteObject:object];
+    }
+}
+
+- (void) printAllObjects {
+    
+    [self printAllObjectsForName:@"ITBNews"];
+    [self printAllObjectsForName:@"ITBCategory"];
+    [self printAllObjectsForName:@"ITBUser"];
+}
+
+- (void) printAllObjectsForName:(NSString* ) entityName {
+    
+    NSArray *allObjects = [self allObjectsForName:entityName];
+    
+    [self printArray:allObjects];
+    
+}
+
+- (void)printArray:(NSArray *)array {
+    
+    for (id object in array) {
+        
+        if ([object isKindOfClass:[ITBNews class]]) {
+            
+            ITBNews *newsItem = (ITBNews *)object;
+            NSLog(@"NEWS title : %@ and URL %@, created at : %@, updated at : %@ AND category = %@ AND author = %@ AND number of likeAddedUsers = %li AND newsItem.rating = %@", newsItem.title, newsItem.newsURL, newsItem.createdAt, newsItem.updatedAt, newsItem.category.title, newsItem.author.username, (long)[newsItem.likeAddedUsers count], newsItem.rating);
+            
+        } else if ([object isKindOfClass:[ITBCategory class]]) {
+            
+            ITBCategory *category = (ITBCategory *)object;
+            NSLog(@"CATEGORY title : %@ and objectId = %@ and number of news in that category = %li and number of signed users = %li", category.title, category.objectId, (long)[category.news count], (long)[category.signedUsers count]);
+            
+        } else if ([object isKindOfClass:[ITBUser class]]) {
+            
+            ITBUser *user = (ITBUser *)object;
+            NSLog(@"USER username : %@ and objectId = %@ and number of created news = %li and number of liked news = %li and number of selected categories = %li", user.username, user.objectId, (long)[user.createdNews count], (long)[user.likedNews count], (long)[user.selectedCategories count]);
+            
+        }
+        
+    }
+    
+}
+
+- (NSDate* ) convertToNSDateFromUTC:(NSDate* ) utcDate {
+    
+    NSString* string = [NSString stringWithFormat:@"%@", utcDate];
+    
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    
+    [formatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSSZ"];
+    
+    NSDate *date = [formatter dateFromString:string];
+    
+    return date;
+    
+}
+
+#pragma mark - Database creating
+
+- (NSArray* )addNewsToLocalDBFromLoadedArray:(NSArray* ) dicts
+{
+    // эта строка удаляет все объекты из permanent store
+//    [self deleteAllObjectsForName:@"ITBNews"];
+    
+    NSMutableArray* newsArray = [NSMutableArray array];
+    
+    for (NSDictionary* newsDict in dicts) {
+/*
+        ITBNews *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNews" inManagedObjectContext:self.managedObjectContext];
+        
+        newsItem.objectId = [newsDict objectForKey:@"objectId"];
+        newsItem.title = [newsDict objectForKey:@"title"];
+        newsItem.newsURL = [newsDict objectForKey:@"newsURL"];
+        
+        newsItem.createdAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"createdAt"]];
+        newsItem.updatedAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"updatedAt"]];
+ */
+        ITBNews* newsItem = [[ITBNews alloc] insertObjectWithDictionary:newsDict inContext:self.managedObjectContext];
+        
+        [newsArray addObject:newsItem];
+    }
+    
+//    NSLog(@"1st method");
+//    [self printAllObjectsForName:@"ITBNews"];
+    
+/*
+    // здесь идет сохранение в permanent store
+    NSError *error = nil;
+    
+    if (![self.managedObjectContext save:&error]) {
+     
+         NSLog(@"%@", [error localizedDescription]);
+     }
+*/
+    
+    return [newsArray copy];
+}
+
+- (NSArray* )updateNewsToLocalDBFromLoadedArray:(NSArray* ) dicts
+                                forLocalObjects:(NSArray* ) updatedNewsArray
+{
+    
+    NSMutableArray* newsArray = [NSMutableArray array];
+    
+    for (NSDictionary* newsDict in dicts) {
+        
+        ITBNews* newsItem = [updatedNewsArray objectAtIndex:[dicts indexOfObject:newsDict]];
+        
+        [newsItem updateObjectWithDictionary:newsDict inContext:self.managedObjectContext];
+        
+        [newsArray addObject:newsItem];
+    }
+    
+    return [newsArray copy];
+}
+
+- (NSArray* )addCategoriesToLocalDBFromLoadedArray:(NSArray* ) dicts
+{
+    
+    // эта строка удаляет все объекты из permanent store
+//    [self deleteAllObjectsForName:@"ITBCategory"];
+    
+    NSMutableArray* categoriesArray = [NSMutableArray array];
+    
+    for (NSDictionary* catDict in dicts) {
+        
+        ITBCategory* category = [[ITBCategory alloc] insertObjectWithDictionary:catDict inContext:self.managedObjectContext];
+        
+        [categoriesArray addObject:category];
+    }
+    
+//    NSLog(@"2nd method");
+//    [self printAllObjectsForName:@"ITBCategory"];
+    
+    return [categoriesArray copy];
+}
+
+- (void) addRelationsToLocalDBFromNewsDictsArray:(NSArray* ) newsDicts
+                                    forNewsArray:(NSArray* ) newsArray
+                          fromCategoryDictsArray:(NSArray* ) categoryDicts
+                              forCategoriesArray:(NSArray* ) categoriesArray
+                                    forUser: (ITBUser* ) currentUser
+                                       onSuccess:(void(^)(BOOL isSuccess)) success
+{
+    
+    for (NSDictionary* newsDict in newsDicts) {
+        
+        ITBNews* newsItem = [newsArray objectAtIndex:[newsDicts indexOfObject:newsDict]];
+        
+        NSDictionary* authorDict = [newsDict objectForKey:@"author"]; // for newsItem
+        NSArray* likeAddedUsersDictsArray = [newsDict objectForKey:@"likeAddedUsers"]; // for newsItem
+        NSDictionary* categoryOfNewsItemDict = [newsDict objectForKey:@"category"]; // for newsItem
+        
+        if ([currentUser.objectId isEqualToString:[authorDict objectForKey:@"objectId"]]) {
+            
+            newsItem.author = currentUser;
+//            NSLog(@"Relation for news (author) %@ - %@", newsItem.title, currentUser.username);
+        }
+        
+        for (NSDictionary* likeAddedUserDict in likeAddedUsersDictsArray) {
+            
+            if ([currentUser.objectId isEqualToString:[likeAddedUserDict objectForKey:@"objectId"]]) {
+                
+                [currentUser addLikedNewsObject:newsItem];
+//                NSLog(@"Relation for news (likeAddedUser) %@ - %@", newsItem.title, currentUser.username);
+            }
+        }
+    
+        
+        for (NSDictionary* categoryDict in categoryDicts) {
+            
+            ITBCategory* category = [categoriesArray objectAtIndex:[categoryDicts indexOfObject:categoryDict]];
+            
+            NSArray* signedUsersDictsArray = [categoryDict objectForKey:@"signedUsers"]; // for category
+            
+            if ([category.objectId isEqualToString:[categoryOfNewsItemDict objectForKey:@"objectId"]]) {
+                
+                newsItem.category = category;
+//                NSLog(@"Relation for news (category) %@ - %@", newsItem.title, category.title);
+                
+            }
+            
+            for (NSDictionary* signedUserDict in signedUsersDictsArray) {
+                
+                if ([currentUser.objectId isEqualToString:[signedUserDict objectForKey:@"objectId"]]) {
+                    
+                    [currentUser addSelectedCategoriesObject:category];
+//                    NSLog(@"Relation for user (selectedCategory) %@ - %@", currentUser.username, category.title);
+                    
+                }
+            }
+        }
+    }
+    
+    NSError *error = nil;
+    if (![self.managedObjectContext save:&error]) {
+        
+        NSLog(@"error localizedDescription = %@", [error localizedDescription]);
+    }
+    
+    [self printAllObjects];
+    
+    success(YES);
 }
 
 @end
