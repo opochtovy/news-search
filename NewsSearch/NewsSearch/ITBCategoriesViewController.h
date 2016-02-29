@@ -17,6 +17,8 @@
 @property (strong, nonatomic) NSArray *allCategoriesArray;
 @property (strong, nonatomic) NSArray *categoriesOfCurrentUserArray;
 
+@property (strong, nonatomic) NSManagedObjectContext* context;
+
 @end
 
 @protocol ITBCategoriesPickerDelegate

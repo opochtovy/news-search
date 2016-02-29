@@ -30,6 +30,8 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
 @property (strong, nonatomic) ITBRestClient* restClient;
 @property (strong, nonatomic) ITBCoreDataManager* coreDataManager;
 
+@property (strong, nonatomic) NSManagedObjectContext *backgroundManagedObjectContext;
+
 @end
 
 @implementation ITBNewsAPI
@@ -57,6 +59,20 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
         self.restClient = [[ITBRestClient alloc] init];
         
         self.coreDataManager = [[ITBCoreDataManager alloc] init];
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            _mainManagedObjectContext = [_coreDataManager mainManagedObjectContext];
+        });
+        
+        if (self.mainManagedObjectContext != nil) {
+            
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                
+                _backgroundManagedObjectContext = [_coreDataManager getContextForBGTask];
+            });
+            
+        }
         
         [self loadCurrentUser];
         
@@ -64,9 +80,20 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
     return self;
 }
 
+- (NSManagedObjectContext *)mainManagedObjectContext {
+    
+    if (_mainManagedObjectContext == nil) {
+        
+        _mainManagedObjectContext = [self.coreDataManager mainManagedObjectContext];
+    }
+    
+    return _mainManagedObjectContext;
+}
+
  #pragma mark - NSUserDefaults
  
-- (void)saveCurrentUser {
+- (void)saveCurrentUser
+{
     
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
     
@@ -78,17 +105,16 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
     
 }
  
-- (void)loadCurrentUser {
+- (void)loadCurrentUser
+{
  
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
     
     NSString* objectId = [userDefaults objectForKey:kSettingsObjectId];
     
-    NSLog(@"username has objectId = %@", objectId);
-     
     if (objectId != nil) {
         
-        self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:objectId];
+        self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:objectId usingContext:self.mainManagedObjectContext];
     }
  
 }
@@ -99,6 +125,7 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
     
     [self saveCurrentUser];
 }
+
 #pragma mark - ITBRestClient
 
 - (void)authorizeWithUsername:(NSString* ) username
@@ -106,37 +133,29 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
                     onSuccess:(void(^)(ITBUser* user)) success
 {
     
-    [self.restClient authorizeWithUsername:username
-                              withPassword:password
-                                 onSuccess:^(NSDictionary *userDict)
-    {
-        
-        ITBUser* user = [[ITBUser alloc] insertObjectWithDictionary:userDict inContext:self.managedObjectContext];
-        
-        self.currentUser = user;
-        
-        NSInteger code = [user.code integerValue];
-        
-        if (code == 0) {
-            
-            [self saveCurrentUser];
-            
-            self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:user.objectId];
-            
-            success(user);
-            
-        } else {
-            
-            success(nil);
-        }
-        
-//        success(user);
-        
-    }
-                                 onFailure:^(NSError *error, NSInteger statusCode)
-    {
-        
-    }];
+    [self.restClient
+     authorizeWithUsername:username
+     withPassword:password
+     onSuccess:^(NSDictionary *userDict)
+     {
+         
+         ITBUser* user = [self.coreDataManager fetchCurrentUserForObjectId:[userDict objectForKey:@"objectId"] usingContext:self.mainManagedObjectContext];
+         [user updateObjectWithDictionary:userDict inContext:self.mainManagedObjectContext];
+         
+         if (user == nil) {
+             
+             user = [[ITBUser alloc] insertObjectWithDictionary:userDict inContext:self.mainManagedObjectContext];
+         }
+         
+         [self saveMainContext];
+         
+         self.currentUser = user;
+         [self saveCurrentUser];
+         
+         success(user);
+         
+     }
+     onFailure:^(NSError *error, NSInteger statusCode) { }];
     
 }
 
@@ -186,38 +205,50 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
     }];
 }
 
-- (void)getCategoriesOnSuccess:(void(^)(NSArray *categories)) success
+- (void) checkNetworkConnectionOnSuccess:(void(^)(BOOL isSuccess)) success
 {
     
+    if (self.currentUser.sessionToken != nil) {
+        
+        [self.restClient
+         checkNetworkConnectionWithSessionToken:self.currentUser.sessionToken
+         onSuccess:^(BOOL isSuccess)
+         {
+             success(isSuccess);
+             
+         }
+         onFailure:^(NSError *error, NSInteger statusCode) { }];
+        
+    } else {
+        
+        [self loadCurrentUser];
+    }
 }
 
 #pragma mark - ITBCoreDataManager
 
-- (NSManagedObjectContext *)managedObjectContext {
+- (void)saveMainContext {
     
-    if (_managedObjectContext == nil) {
-        
-        _managedObjectContext = [self.coreDataManager managedObjectContext];
-    }
+    [self.coreDataManager saveMainContext];
     
-    return _managedObjectContext;
-}
-
-- (void)saveContext {
-    
-    [self.coreDataManager saveContext];
-    
-}
-
-- (void)fetchCurrentUserForObjectId:(NSString* ) objectId
-{
-    
-    self.currentUser = [self.coreDataManager fetchCurrentUserForObjectId:objectId];
 }
 
 - (NSArray* )fetchAllCategories
 {
     return [self.coreDataManager fetchAllCategories];
+}
+
+- (NSArray* )fetchAllObjectsForEntity:(NSString* ) entityName
+{
+    
+    NSManagedObjectContext* context = [self.coreDataManager getCurrentThreadContext];
+    
+    return [self.coreDataManager getObjectsOfType:@"ITBUser" withSortDescriptors:nil andPredicate:nil inContext:context];
+}
+
+- (NSArray* )newsInLocalDB {
+
+    return [self.coreDataManager allObjectsForName:@"ITBNews"];
 }
 
 #pragma mark - Database creating
@@ -233,10 +264,7 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
          
          NSArray* newsDicts = dicts;
          
-         NSLog(@"count of newsArray = %li", (long)[newsDicts count]);
-         
-         NSArray* news = [self.coreDataManager addNewsToLocalDBFromLoadedArray:newsDicts];
-//         NSArray* news = [self.coreDataManager allObjectsForName:@"ITBNews"];
+         NSArray* news = [self.coreDataManager addNewsToLocalDBFromLoadedArray:newsDicts usingContext:self.backgroundManagedObjectContext];
          
          [self.restClient
           getAllObjectsForClassName:@"ITBCategory"
@@ -245,24 +273,25 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
               
               NSArray* categoryDicts = dicts;
               
-              NSLog(@"count of categoriesArray = %li", (long)[categoryDicts count]);
-              
-              NSArray* categories = [self.coreDataManager addCategoriesToLocalDBFromLoadedArray:categoryDicts];
-//              NSArray* categories = [self.coreDataManager allObjectsForName:@"ITBCategory"];
+              NSArray* categories = [self.coreDataManager addCategoriesToLocalDBFromLoadedArray:categoryDicts usingContext:self.backgroundManagedObjectContext];
               
               [self.restClient
                getCurrentUser:self.currentUser.objectId
                onSuccess:^(NSDictionary *dict)
                {
                    
-                   //                   __weak ITBNewsAPI* weakSelf = self;
+                   ITBUser* user = [self.coreDataManager fetchCurrentUserForObjectId:self.currentUser.objectId usingContext:self.backgroundManagedObjectContext];
+                   
+                   [user updateObjectWithDictionary:dict inContext:self.backgroundManagedObjectContext];
+                   user.sessionToken = self.currentUser.sessionToken;
                    
                    [self.coreDataManager
                     addRelationsToLocalDBFromNewsDictsArray:newsDicts
                     forNewsArray:news
                     fromCategoryDictsArray:categoryDicts
                     forCategoriesArray:categories
-                    forUser:self.currentUser
+                    forUser:user
+                    usingContext:self.backgroundManagedObjectContext
                     onSuccess:^(BOOL isSuccess)
                    {
                         
@@ -291,18 +320,19 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
      getAllObjectsForClassName:@"ITBNews"
      onSuccess:^(NSArray *dicts)
      {
+         
          NSMutableArray* newsDicts = [dicts mutableCopy];
          
-         NSMutableArray* newsArray = [ [self.coreDataManager allObjectsForName:@"ITBNews"] mutableCopy];
+         NSMutableArray* newsArray = [ [self.coreDataManager allObjectsForName:@"ITBNews" usingContext:self.backgroundManagedObjectContext] mutableCopy];
          
          NSMutableArray* updatedNews = [NSMutableArray array];
          NSMutableArray* updatedNewsDicts = [NSMutableArray array];
          
-         for (int i = [newsDicts count] - 1; i>=0; i--) {
+         for (int i = (int)[newsDicts count] - 1; i>=0; i--) {
              
              NSDictionary* newsDict = [newsDicts objectAtIndex:i];
              
-             for (int j = [newsArray count] - 1; j>=0; j--) {
+             for (int j = (int)[newsArray count] - 1; j>=0; j--) {
                  
                  ITBNews* newsItem = [newsArray objectAtIndex:j];
                  
@@ -321,25 +351,20 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
          NSMutableArray* deletedNews = newsArray;
          
          NSMutableArray* insertedNewsDicts = newsDicts;
-         
-         NSLog(@"number of elements in updatedNews = %li", (long)[updatedNews count]);
-         NSLog(@"number of elements in updatedNewsDicts = %li", (long)[updatedNewsDicts count]);
-         NSLog(@"number of elements in deletedNews = %li", (long)[deletedNews count]);
-         NSLog(@"number of elements in insertedNewsDicts = %li", (long)[insertedNewsDicts count]);
 
          // updating of attributes
          for (NSDictionary* newsDict in updatedNewsDicts) {
              
              ITBNews* newsItem = [updatedNews objectAtIndex:[updatedNewsDicts indexOfObject:newsDict]];
              
-             [newsItem updateObjectWithDictionary:newsDict inContext:self.managedObjectContext];
+             [newsItem updateObjectWithDictionary:newsDict inContext:self.backgroundManagedObjectContext];
          }
          
          // creating of attributes for inserted news and merge updated and inserted objects (and dicts)
          NSArray* insertedNews = [NSArray array];
          if ([insertedNewsDicts count] > 0) {
              
-             insertedNews = [self.coreDataManager addNewsToLocalDBFromLoadedArray:insertedNewsDicts];
+             insertedNews = [self.coreDataManager addNewsToLocalDBFromLoadedArray:insertedNewsDicts usingContext:self.backgroundManagedObjectContext];
              
              for (ITBNews* insertedNewsItem in insertedNews) {
                  
@@ -354,7 +379,9 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
          // deleting
          if ([deletedNews count] > 0) {
              
-             [self.coreDataManager deleteObjectsInArray:deletedNews];
+             for (id object in deletedNews) {
+                 [self.backgroundManagedObjectContext deleteObject:object];
+             }
          }
          
          [self.restClient
@@ -363,16 +390,16 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
          {
              NSMutableArray* categoryDicts = [dicts mutableCopy];
              
-             NSMutableArray* categoriesArray = [ [self.coreDataManager allObjectsForName:@"ITBCategory"] mutableCopy];
+             NSMutableArray* categoriesArray = [ [self.coreDataManager allObjectsForName:@"ITBCategory" usingContext:self.backgroundManagedObjectContext] mutableCopy];
              
              NSMutableArray* updatedCategories = [NSMutableArray array];
              NSMutableArray* updatedCategoryDicts = [NSMutableArray array];
              
-             for (int i = [categoryDicts count] - 1; i>=0; i--) {
+             for (int i = (int)[categoryDicts count] - 1; i>=0; i--) {
                  
                  NSDictionary* categoryDict = [categoryDicts objectAtIndex:i];
                  
-                 for (int j = [categoriesArray count] - 1; j>=0; j--) {
+                 for (int j = (int)[categoriesArray count] - 1; j>=0; j--) {
                      
                      ITBCategory* category = [categoriesArray objectAtIndex:j];
                      
@@ -391,24 +418,19 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
              
              NSMutableArray* insertedCategoryDicts = categoryDicts;
              
-             NSLog(@"number of elements in updatedCategories = %li", (long)[updatedCategories count]);
-             NSLog(@"number of elements in updatedCategoryDicts = %li", (long)[updatedCategoryDicts count]);
-             NSLog(@"number of elements in deletedCategories = %li", (long)[deletedCategories count]);
-             NSLog(@"number of elements in insertedCategoriesDicts = %li", (long)[insertedCategoryDicts count]);
-             
              // updating of attributes
              for (NSDictionary* categoryDict in updatedCategoryDicts) {
                  
                  ITBCategory* category = [updatedCategories objectAtIndex:[updatedCategoryDicts indexOfObject:categoryDict]];
                  
-                 [category updateObjectWithDictionary:categoryDict inContext:self.managedObjectContext];
+                 [category updateObjectWithDictionary:categoryDict inContext:self.backgroundManagedObjectContext];
              }
              
              // creating of attributes for inserted categories and merge updated and inserted objects (and dicts)
              NSArray* insertedCategories = [NSArray array];
              if ([insertedCategoryDicts count] > 0) {
                  
-                 insertedCategories = [self.coreDataManager addCategoriesToLocalDBFromLoadedArray:insertedCategoryDicts];
+                 insertedCategories = [self.coreDataManager addCategoriesToLocalDBFromLoadedArray:insertedCategoryDicts usingContext:self.backgroundManagedObjectContext];
                  
                  for (ITBCategory* insertedCategory in insertedCategories) {
                      
@@ -423,23 +445,34 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
              // deleting
              if ([deletedCategories count] > 0) {
                  
-                 [self.coreDataManager deleteObjectsInArray:deletedCategories];
+                 for (id object in deletedCategories) {
+                     [self.backgroundManagedObjectContext deleteObject:object];
+                 }
              }
              
              // и теперь уже обновление связей для всех элементов в updatedNews (из updatedNewsDicts) и в updatedCategories (из updatedCategoryDicts)
-             
              [self.restClient
               getCurrentUser:self.currentUser.objectId
               onSuccess:^(NSDictionary *dict)
-             {
+              {
+                  
+                  NSString* sessionToken = [self.currentUser.sessionToken copy];
+                  
+                  ITBUser* user = [self.coreDataManager fetchCurrentUserForObjectId:self.currentUser.objectId usingContext:self.backgroundManagedObjectContext];
+                  
+                  [user updateObjectWithDictionary:dict inContext:self.backgroundManagedObjectContext];
+                  
+                  user.sessionToken = sessionToken;
                  
                  [self.coreDataManager
                   addRelationsToLocalDBFromNewsDictsArray:updatedNewsDicts
                   forNewsArray:updatedNews
                   fromCategoryDictsArray:updatedCategoryDicts
                   forCategoriesArray:updatedCategories
-                  forUser:self.currentUser onSuccess:^(BOOL isSuccess)
-                 {
+                  forUser:user
+                  usingContext:self.backgroundManagedObjectContext
+                  onSuccess:^(BOOL isSuccess)
+                  {
                      
                      [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
                      
@@ -457,15 +490,10 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
     
 }
 
-- (void)deleteLocalDB
-{
-    [self.coreDataManager deleteAllObjects];
-}
-
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess)) success
 {
     
-    NSLog(@"self.currentUser.sessionToken = %@", self.currentUser.sessionToken);
+    [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
     
     if (self.currentUser.sessionToken != nil) {
         
@@ -476,28 +504,6 @@ static NSString *const kSettingsSessionToken = @"sessionToken";
         }];
     }
     
-}
-
-- (void)fetchAllObjects {
-    
-    NSLog(@"All news:");
-    
-    [self.coreDataManager printAllObjectsForName:@"ITBNews"];
-    
-    NSLog(@"All categories:");
-    
-    [self.coreDataManager printAllObjectsForName:@"ITBCategory"];
-    
-    NSLog(@"All users:");
-    
-    [self.coreDataManager printAllObjectsForName:@"ITBUser"];
-}
-
-- (void) printAllObjectsOfLocalDB
-{
-    [self.coreDataManager printAllObjectsForName:@"ITBNews"];
-    [self.coreDataManager printAllObjectsForName:@"ITBCategory"];
-    [self.coreDataManager printAllObjectsForName:@"ITBUser"];
 }
 
 @end

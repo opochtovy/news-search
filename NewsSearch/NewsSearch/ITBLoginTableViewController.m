@@ -9,6 +9,7 @@
 #import "ITBLoginTableViewController.h"
 
 #import "ITBUser.h"
+#import "ITBNews.h"
 
 #import "ITBNewsAPI.h"
 
@@ -33,7 +34,6 @@ NSString *const invalidLogin = @"invalid login parameters";
     self.usernameField.delegate = self;
     self.passwordField.delegate = self;
     
-//    self.navigationItem.title = loginTitle;
     self.navigationItem.title = NSLocalizedString(loginTitle, nil);
 }
 
@@ -91,10 +91,7 @@ NSString *const invalidLogin = @"invalid login parameters";
                 self.usernameField.text = @"";
                 self.passwordField.text = @"";
                 
-//                 self.usernameField.placeholder = invalidLogin;
                 self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
-                
-//                 self.passwordField.placeholder = invalidLogin;
                 self.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
                 
                 [self.activityIndicator stopAnimating];

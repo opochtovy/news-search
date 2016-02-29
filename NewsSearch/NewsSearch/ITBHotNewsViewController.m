@@ -55,9 +55,6 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     [super viewDidLoad];
     
-    // Do any additional setup after loading the view.
-    
-//    self.navigationItem.title = @"Hot news";
     self.title = NSLocalizedString(hotNewsTitle, nil);
     
     self.tableView.rowHeight = UITableViewAutomaticDimension;
@@ -128,22 +125,17 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         return _fetchedResultsController;
     }
     
-    if ([ITBNewsAPI sharedInstance].currentUser != nil) {
+    if ([ITBNewsAPI sharedInstance].currentUser.objectId != nil) {
         
         NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
         
         NSEntityDescription *description = [NSEntityDescription entityForName:@"ITBNews"
-                                                       inManagedObjectContext:[ITBNewsAPI sharedInstance].managedObjectContext];
+                                                       inManagedObjectContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext];
         
         [fetchRequest setEntity:description];
         
         NSSortDescriptor *ratingDescriptor = [[NSSortDescriptor alloc] initWithKey:@"rating" ascending:YES];
         [fetchRequest setSortDescriptors:@[ratingDescriptor]];
-        
-//    NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:@"title" ascending:YES];
-//    [fetchRequest setSortDescriptors:@[titleDescriptor]];
-        
-//        NSLog(@"[user.selectedCategories count] = %u", [user.selectedCategories count]);
         
         if ([[ITBNewsAPI sharedInstance].currentUser.selectedCategories count] != 0) {
             
@@ -158,7 +150,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         NSFetchedResultsController *aFetchedResultsController = [[NSFetchedResultsController alloc]
                                                                  initWithFetchRequest:fetchRequest
-                                                                 managedObjectContext:[ITBNewsAPI sharedInstance].managedObjectContext
+                                                                 managedObjectContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext
                                                                  sectionNameKeyPath:nil cacheName:nil];
         
         aFetchedResultsController.delegate = self;
@@ -170,7 +162,6 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         if (![self.fetchedResultsController performFetch:&error]) {
             
             NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-            //     abort();
         }
         
         return _fetchedResultsController;
@@ -244,21 +235,12 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     cell.categoryLabel.text = newsItem.category.title;
     
-//    cell.ratingLabel.text = [NSString stringWithFormat:@"%ld", (long)[newsItem.likeAddedUsers count]];
     cell.ratingLabel.text = [NSString stringWithFormat:@"%@", newsItem.rating];
     
-    BOOL isLikedByCurrentUser = [newsItem.likeAddedUsers containsObject:[ITBNewsAPI sharedInstance].currentUser];
-    NSLog(@"Select categories checking : currentUser = %@, likeAddedUsers count = %li", [ITBNewsAPI sharedInstance].currentUser.username, (long)[newsItem.likeAddedUsers count]);
-    for (ITBUser* likeAddedUser in newsItem.likeAddedUsers) {
-        NSLog(@"likeAddedUser %@ for newsItem %@", likeAddedUser.username, newsItem.title);
-    }
-    
-//    NSLog(@"after login i'm checking count of newsItem.likeAddedUsers - %li for newsItem.title - %@", [newsItem.likeAddedUsers count], newsItem.title);
+    BOOL isLikedByCurrentUser = ([newsItem.isLikedByCurrentUser intValue] > 0);
     
     cell.addLikeButton.enabled = !isLikedByCurrentUser;
     cell.subtractLikeButton.enabled = isLikedByCurrentUser;
-    
-    NSLog(@"cell.addLikeButton.enabled = %i for newsItem - %@", !cell.addLikeButton.enabled, newsItem.title);
     
 }
 
@@ -278,10 +260,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         NSError *error = nil;
         if (![context save:&error]) {
-            // Replace this implementation with code to handle the error appropriately.
-            // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-            //            abort();
+            
         }
     }
 }
@@ -356,9 +335,9 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     self.loginButton.title = @"Logout";
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        
-        self.categoriesPickerButton.enabled = ([ITBNewsAPI sharedInstance].currentUser != nil);
-        self.refreshButton.enabled = self.categoriesPickerButton.enabled;
+
+        self.categoriesPickerButton.enabled = YES;
+        self.refreshButton.enabled = YES;
         
         [self.tableView reloadData];
         
@@ -372,13 +351,9 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     [ITBNewsAPI sharedInstance].currentUser.selectedCategories = [NSSet setWithArray:categoriesVC.categoriesOfCurrentUserArray];
     
-    NSLog(@"number of self.dataManager.currentUser.categories NSSet = %li", (long)[[ITBNewsAPI sharedInstance].currentUser.selectedCategories count]);
-    
-    // здесь идет сохранение в permanent store
-    [[ITBNewsAPI sharedInstance].managedObjectContext save:nil];
+    [[ITBNewsAPI sharedInstance] saveMainContext];
     
     self.fetchedResultsController = nil;
-
     [self.tableView reloadData];
 }
 
@@ -417,7 +392,16 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
-    BOOL isLikedByCurrentUser = [newsItem.likeAddedUsers containsObject:[ITBNewsAPI sharedInstance].currentUser];
+    BOOL isLikedByCurrentUser = NO;
+    
+    for (ITBUser* likeAddedUser in newsItem.likeAddedUsers) {
+        
+        if ([likeAddedUser.objectId isEqualToString:[ITBNewsAPI sharedInstance].currentUser.objectId]) {
+            
+            isLikedByCurrentUser = YES;
+            break;
+        }
+    }
     
     NSInteger ratingInt = [newsItem.rating integerValue];
     
@@ -425,16 +409,19 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         [newsItem removeLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
         --ratingInt;
+        newsItem.isLikedByCurrentUser = @0;
         
     } else {
         
         [newsItem addLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
         ++ratingInt;
+        newsItem.isLikedByCurrentUser = @1;
+        
     }
     
     newsItem.rating = [NSNumber numberWithInteger:ratingInt];
     
-    [[ITBNewsAPI sharedInstance].managedObjectContext save:nil];
+    [[ITBNewsAPI sharedInstance] saveMainContext];
     
     [self.tableView reloadData];
     
@@ -444,29 +431,48 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (void)refreshNews {
     
-    [[ITBNewsAPI sharedInstance]
-     updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess)
-     {
-         
-         if (isSuccess) {
+    __weak ITBHotNewsViewController* weakSelf = self;
+    
+    NSArray* allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
+    
+    if ([allLocalNews count] > 0) {
+        
+        [[ITBNewsAPI sharedInstance]
+         updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess)
+         {
              
-             __weak ITBHotNewsViewController* weakSelf = self;
+             if (isSuccess) {
+                 
+                 [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess)
+                  {
+                      
+                      dispatch_async(dispatch_get_main_queue(), ^{
+                          
+                          weakSelf.fetchedResultsController = nil;
+                          [weakSelf.tableView reloadData];
+                          
+                          [weakSelf.refreshControl endRefreshing];
+                          
+                      });
+                  }];
+             }
              
-             [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess)
-              {
-                  
-                  dispatch_async(dispatch_get_main_queue(), ^{
-                      
-                      weakSelf.fetchedResultsController = nil;
-                      [weakSelf.tableView reloadData];
-                      
-                      [weakSelf.refreshControl endRefreshing];
-                      
-                  });
-              }];
-         }
-         
-     }];
+         }];
+        
+    } else {
+        
+        [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess)
+         {
+             
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 weakSelf.fetchedResultsController = nil;
+                 [weakSelf.tableView reloadData];
+                 
+                 [weakSelf.refreshControl endRefreshing];
+             });
+         }];
+    }
     
 }
 
@@ -511,7 +517,24 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 - (IBAction)actionRefresh:(UIBarButtonItem *)sender {
     
-    [self updateCurrentUserFromLocalToServer];
+    [[ITBNewsAPI sharedInstance] checkNetworkConnectionOnSuccess:^(BOOL isSuccess)
+     {
+
+         if (isSuccess) {
+
+             NSArray* allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
+             
+             if ([allLocalNews count] > 0) {
+                 
+                 [self updateCurrentUserFromLocalToServer];
+                 
+             } else {
+                 
+                 [self createLocalDataSource];
+             }
+         }
+         
+     }];
     
 }
 
@@ -533,9 +556,27 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
 }
 
-- (void) updateCurrentUserFromLocalToServer
+- (void) createLocalDataSource
 {
     
+    __weak ITBHotNewsViewController* weakSelf = self;
+    
+    [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess)
+     {
+         
+         dispatch_async(dispatch_get_main_queue(), ^{
+             
+             weakSelf.fetchedResultsController = nil;
+             [weakSelf.tableView reloadData];
+             
+         });
+     }];
+    
+}
+
+- (void) updateCurrentUserFromLocalToServer
+{
+
     [[ITBNewsAPI sharedInstance]
      updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess)
      {
@@ -546,6 +587,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
          }
          
      }];
+
 }
 
 @end

@@ -14,9 +14,26 @@
 
 @interface ITBCoreDataManager : NSObject
 
-@property (readonly, strong, nonatomic) NSManagedObjectContext *managedObjectContext;
+// main-thread context
+@property (readonly, strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
 
-- (void)saveContext;
+// background-thread context
+@property (readonly, strong, nonatomic) NSManagedObjectContext *bgManagedObjectContext;
+
+- (NSManagedObjectContext* )getContextForBGTask;
+
+- (void)saveMainContext;
+- (void)saveContextForBGTask:(NSManagedObjectContext *)bgTaskContext;
+
+- (void) saveCurrentContext:(NSManagedObjectContext *) context;
+
+- (NSManagedObjectContext* )getCurrentThreadContext;
+
+// universal fetch method
+- (NSArray*)getObjectsOfType:(NSString*) type
+         withSortDescriptors:(NSArray*) descriptors
+                andPredicate:(NSPredicate*) predicate
+                   inContext:(NSManagedObjectContext *) context;
 
 - (ITBUser* )fetchCurrentUserForObjectId:(NSString* ) objectId;
 - (NSArray* )fetchAllCategories;
@@ -27,6 +44,28 @@
 - (NSArray* )addNewsToLocalDBFromLoadedArray:(NSArray* ) dicts;
 - (NSArray* )addCategoriesToLocalDBFromLoadedArray:(NSArray* ) dicts;
 
+// using context
+- (NSArray* )addNewsToLocalDBFromLoadedArray:(NSArray* ) dicts
+                                usingContext:(NSManagedObjectContext* ) context;
+- (NSArray* )addCategoriesToLocalDBFromLoadedArray:(NSArray* ) dicts
+                                      usingContext:(NSManagedObjectContext* ) context;
+- (void) addRelationsToLocalDBFromNewsDictsArray:(NSArray* ) newsDicts
+                                    forNewsArray:(NSArray* ) newsArray
+                          fromCategoryDictsArray:(NSArray* ) categoryDicts
+                              forCategoriesArray:(NSArray* ) categoriesArray
+                                         forUser: (ITBUser* ) currentUser
+                                    usingContext:(NSManagedObjectContext* ) context
+                                       onSuccess:(void(^)(BOOL isSuccess)) success;
+
+- (NSArray *)allObjectsForName:(NSString* ) entityName
+                  usingContext:(NSManagedObjectContext* ) context; // universal fetching by entityName
+- (ITBUser* )fetchCurrentUserForObjectId:(NSString* ) objectId
+                            usingContext:(NSManagedObjectContext* ) context;
+
+- (void)deleteObjectsInArray:(NSArray* ) array
+                usingContext:(NSManagedObjectContext* ) context;
+// end using context
+
 - (void) addRelationsToLocalDBFromNewsDictsArray:(NSArray* ) newsDicts
                                     forNewsArray:(NSArray* ) newsArray
                           fromCategoryDictsArray:(NSArray* ) categoryDicts
@@ -36,5 +75,6 @@
 
 - (void)deleteAllObjects;
 - (void)deleteObjectsInArray:(NSArray* ) array;
+- (void)deleteAllUsers;
 
 @end

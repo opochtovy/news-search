@@ -27,6 +27,10 @@
 - (void)getUsersOnSuccess:(void(^)(NSArray *dicts)) success
                 onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
+- (void)checkNetworkConnectionWithSessionToken:(NSString* ) sessionToken
+                                      onSuccess:(void(^)(BOOL isSuccess)) success
+                              onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
 - (void)getAllObjectsForClassName:(NSString* ) className
                         onSuccess:(void(^)(NSArray *dicts)) success
                         onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
@@ -37,5 +41,13 @@
 
 - (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser* ) user
                                                                onSuccess:(void(^)(BOOL isSuccess)) success;
+
+- (void)updateCategoriesFromUser:(ITBUser* ) user
+                       onSuccess:(void(^)(NSDate* updatedAt)) success
+                       onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+
+// DELETION TEST
+
+//- (void) deleteRelationsForUser:(ITBUser* ) user;
 
 @end

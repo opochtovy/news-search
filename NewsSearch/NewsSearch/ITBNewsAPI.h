@@ -42,27 +42,23 @@ extern NSString *const beforeLogin;
                    onSuccess:(void(^)(BOOL isSuccess)) success;
 
 - (void)getUsersOnSuccess:(void(^)(NSSet *usernames)) success;
-- (void)getCategoriesOnSuccess:(void(^)(NSArray *categories)) success;
+
+- (void) checkNetworkConnectionOnSuccess:(void(^)(BOOL isSuccess)) success;
 
 // ITBCoreDataManager
 
-@property (strong, nonatomic) NSManagedObjectContext *managedObjectContext;
+@property (strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
 
-- (void)saveContext;
+- (void)saveMainContext;
 
-- (void)fetchCurrentUserForObjectId:(NSString* ) objectId;
 - (NSArray* )fetchAllCategories;
+- (NSArray* )fetchAllObjectsForEntity:(NSString* ) entityName;
 
-//- (void) createLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success;
+- (NSArray* )newsInLocalDB;
+
+- (void) createLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success;
 - (void) updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess)) success;
 
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess)) success;
-
-// TEST
-
-- (void) printAllObjectsOfLocalDB;
-- (void)fetchAllObjects;
-
-- (void)deleteLocalDB;
 
 @end

@@ -10,6 +10,7 @@
     </entity>
     <entity name="ITBNews" representedClassName="ITBNews" syncable="YES">
         <attribute name="createdAt" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="isLikedByCurrentUser" optional="YES" attributeType="Boolean" syncable="YES"/>
         <attribute name="newsURL" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="objectId" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="rating" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
@@ -33,7 +34,7 @@
     </entity>
     <elements>
         <element name="ITBCategory" positionX="-270" positionY="18" width="128" height="133"/>
-        <element name="ITBNews" positionX="-63" positionY="-18" width="128" height="178"/>
+        <element name="ITBNews" positionX="-63" positionY="-18" width="128" height="193"/>
         <element name="ITBUser" positionX="187" positionY="26" width="128" height="193"/>
     </elements>
 </model>

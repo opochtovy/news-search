@@ -21,7 +21,9 @@
 
 @implementation ITBCoreDataManager
 
-@synthesize managedObjectContext = _managedObjectContext;
+@synthesize mainManagedObjectContext = _mainManagedObjectContext;
+@synthesize bgManagedObjectContext = _bgManagedObjectContext;
+
 @synthesize managedObjectModel = _managedObjectModel;
 @synthesize persistentStoreCoordinator = _persistentStoreCoordinator;
 
@@ -29,8 +31,8 @@
     
     self = [super init];
     
-    if (self != nil) {
-        
+    if (self != nil)
+    {
     }
     
     return self;
@@ -82,66 +84,147 @@
     return _persistentStoreCoordinator;
 }
 
-- (NSManagedObjectContext *)managedObjectContext {
+- (NSManagedObjectContext *)mainManagedObjectContext {
     
     // Returns the managed object context for the application (which is already bound to the persistent store coordinator for the application.)
-    if (_managedObjectContext != nil) {
-        return _managedObjectContext;
+    if (_mainManagedObjectContext != nil) {
+        return _mainManagedObjectContext;
     }
     
     NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
+    
     if (coordinator == nil) {
         return nil;
     }
-    _managedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
     
-    [_managedObjectContext setPersistentStoreCoordinator:coordinator];
+    _mainManagedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
+    [_mainManagedObjectContext setPersistentStoreCoordinator:coordinator];
     
-    return _managedObjectContext;
+    return _mainManagedObjectContext;
+}
+
+- (NSManagedObjectContext *)bgManagedObjectContext
+{
+    if (_bgManagedObjectContext != nil) {
+        return _bgManagedObjectContext;
+    }
+    
+    _bgManagedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    [_bgManagedObjectContext setParentContext:_mainManagedObjectContext];
+    
+    return _bgManagedObjectContext;
+}
+
+- (NSManagedObjectContext* )getContextForBGTask {
+    
+    NSManagedObjectContext *context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    
+    [context setParentContext:_mainManagedObjectContext];
+    
+    return context;
+}
+
+- (NSManagedObjectContext* )getCurrentThreadContext {
+    
+    NSManagedObjectContext *result = nil;
+    
+    if ([NSThread isMainThread]) {
+        
+        result = _mainManagedObjectContext;
+        
+    } else {
+        
+        result = [self getContextForBGTask];
+    }
+    
+    return result;
 }
 
 #pragma mark - Core Data Saving support
 
-- (void)saveContext {
+- (void)saveContextForBGTask:(NSManagedObjectContext *)bgTaskContext {
     
-    NSManagedObjectContext *managedObjectContext = self.managedObjectContext;
-    
-    if (managedObjectContext != nil) {
+    if (bgTaskContext.hasChanges) {
         
-        NSError *error = nil;
-        
-        if ([managedObjectContext hasChanges] && ![managedObjectContext save:&error]) {
-            // Replace this implementation with code to handle the error appropriately.
-            // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
+        [bgTaskContext performBlockAndWait:^{
             
-            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-            abort();
-            /*
-             UIAlertController* alert = [UIAlertController
-             alertControllerWithTitle:@"Error"
-             message:[error localizedDescription]
-             preferredStyle:UIAlertControllerStyleAlert];
-             UIAlertAction* defaultAction = [UIAlertAction
-             actionWithTitle:@"OK"
-             style:UIAlertActionStyleDefault
-             
-             handler:^(UIAlertAction * action) {}];
-             
-             [alert addAction:defaultAction];
-             [self presentViewController:alert animated:YES completion:nil];
-             */
-        }
+            NSError *error = nil;
+            [bgTaskContext save:&error];
+            
+        }];
+        
+        // Save main context
+        [self saveMainContext];
+        
     }
 }
 
+- (void)saveMainContext {
+    
+    if (_mainManagedObjectContext.hasChanges) {
+        
+        [_mainManagedObjectContext performBlockAndWait:^{
+            
+            NSError *error = nil;
+            [_mainManagedObjectContext save:&error];
+            
+        }];
+    }
+}
+
+- (void) saveCurrentContext:(NSManagedObjectContext *) context {
+    
+    if ([NSThread isMainThread]) {
+        
+        [self saveMainContext];
+        
+    } else {
+        
+        [self saveContextForBGTask:context];
+    }
+}
+
+// universal fetch method
+- (NSArray*)getObjectsOfType:(NSString*) type
+         withSortDescriptors:(NSArray*) descriptors
+                andPredicate:(NSPredicate*) predicate
+                   inContext:(NSManagedObjectContext *) context {
+    
+    NSFetchRequest* request = [[NSFetchRequest alloc] init];
+    
+    [request setReturnsObjectsAsFaults:NO];
+    
+    NSEntityDescription* desc = [NSEntityDescription entityForName:type inManagedObjectContext:context];
+    
+    [request setEntity:desc];
+    
+    if (descriptors != nil)
+        [request setSortDescriptors:descriptors];
+    
+    if (predicate != nil)
+        [request setPredicate:predicate];
+    
+    NSError* error = nil;
+    NSArray* result = nil;
+    
+    result = [context executeFetchRequest:request error:&error];
+    
+    if ((result == nil) || (error != nil))
+        
+        return nil;
+    
+    return result;
+}
 
 - (ITBUser* )fetchCurrentUserForObjectId:(NSString* ) objectId {
+    
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
     
     NSFetchRequest *request = [[NSFetchRequest alloc] init];
     
     NSEntityDescription *description = [NSEntityDescription
                                         entityForName:@"ITBUser"
-                                        inManagedObjectContext:self.managedObjectContext];
+                                        inManagedObjectContext:context];
     
     [request setEntity:description];
     
@@ -150,7 +233,33 @@
     
     NSError *requestError = nil;
     
-    NSArray *currentUserArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    NSArray *currentUserArray = [context executeFetchRequest:request error:&requestError];
+    
+    if (requestError != nil) {
+        NSLog(@"%@", [requestError localizedDescription]);
+    }
+    
+    return [currentUserArray firstObject];
+    
+}
+
+- (ITBUser* )fetchCurrentUserForObjectId:(NSString* ) objectId
+                            usingContext:(NSManagedObjectContext* ) context {
+    
+    NSFetchRequest *request = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description = [NSEntityDescription
+                                        entityForName:@"ITBUser"
+                                        inManagedObjectContext:context];
+    
+    [request setEntity:description];
+    
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
+    [request setPredicate:predicate];
+    
+    NSError *requestError = nil;
+    
+    NSArray *currentUserArray = [context executeFetchRequest:request error:&requestError];
     
     if (requestError != nil) {
         NSLog(@"%@", [requestError localizedDescription]);
@@ -166,13 +275,13 @@
     
     NSEntityDescription *description = [NSEntityDescription
                                         entityForName:@"ITBCategory"
-                                        inManagedObjectContext:self.managedObjectContext];
+                                        inManagedObjectContext:self.mainManagedObjectContext];
     
     [request setEntity:description];
     
     NSError *requestError = nil;
     
-    NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    NSArray *resultArray = [self.mainManagedObjectContext executeFetchRequest:request error:&requestError];
     
     if (requestError != nil) {
         NSLog(@"%@", [requestError localizedDescription]);
@@ -184,53 +293,91 @@
 
 - (NSArray *)allObjectsForName:(NSString* ) entityName {
     
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
+    
     NSFetchRequest *request = [[NSFetchRequest alloc] init];
     
     NSEntityDescription *description = [NSEntityDescription
                                         entityForName:entityName
-                                        inManagedObjectContext:self.managedObjectContext];
+                                        inManagedObjectContext:context];
     
     [request setEntity:description];
     
     NSError *requestError = nil;
     
-    NSArray *resultArray = [self.managedObjectContext executeFetchRequest:request error:&requestError];
+    NSArray *resultArray = [context executeFetchRequest:request error:&requestError];
     
     if (requestError) {
         NSLog(@"%@", [requestError localizedDescription]);
     }
     
-    NSLog(@"count of %@ objects - %li", entityName, (long)[resultArray count]);
-    
     return resultArray;
     
 }
 
-- (void)deleteAllObjectsForName:(NSString* ) entityName {
+- (NSArray *)allObjectsForName:(NSString* ) entityName
+                   usingContext:(NSManagedObjectContext* ) context
+{
+    NSFetchRequest *request = [[NSFetchRequest alloc] init];
     
-    NSArray *allObjects = [self allObjectsForName:entityName];
+    NSEntityDescription *description = [NSEntityDescription
+                                        entityForName:entityName
+                                        inManagedObjectContext:context];
     
-    for (id object in allObjects) {
-        [self.managedObjectContext deleteObject:object];
+    [request setEntity:description];
+    
+    NSError *requestError = nil;
+    
+    NSArray *resultArray = [context executeFetchRequest:request error:&requestError];
+    
+    if (requestError) {
+        NSLog(@"%@", [requestError localizedDescription]);
     }
     
-    // здесь идет сохранение в permanent store
-    [self.managedObjectContext save:nil];
+    return resultArray;
+}
+
+- (void)deleteAllObjectsForName:(NSString* ) entityName {
+    
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
+    
+    NSArray *allObjects = [self allObjectsForName:entityName usingContext:context];
+    
+    for (id object in allObjects) {
+        
+        [context deleteObject:object];
+    }
+    
+    [self saveCurrentContext:context];
 }
 
 - (void)deleteAllObjects
 {
+    
     [self deleteAllObjectsForName:@"ITBNews"];
     [self deleteAllObjectsForName:@"ITBCategory"];
-    [self deleteAllObjectsForName:@"ITBUser"];
+}
+
+- (void)deleteAllUsers
+{
     
-    [self.managedObjectContext save:nil];
+    [self deleteAllObjectsForName:@"ITBUser"];
 }
 
 - (void)deleteObjectsInArray:(NSArray* ) array
 {
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
+    
     for (id object in array) {
-        [self.managedObjectContext deleteObject:object];
+        [context deleteObject:object];
+    }
+}
+
+- (void)deleteObjectsInArray:(NSArray* ) array
+                usingContext:(NSManagedObjectContext* ) context
+{
+    for (id object in array) {
+        [context deleteObject:object];
     }
 }
 
@@ -292,39 +439,33 @@
 
 - (NSArray* )addNewsToLocalDBFromLoadedArray:(NSArray* ) dicts
 {
-    // эта строка удаляет все объекты из permanent store
-//    [self deleteAllObjectsForName:@"ITBNews"];
+    
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
     
     NSMutableArray* newsArray = [NSMutableArray array];
     
     for (NSDictionary* newsDict in dicts) {
-/*
-        ITBNews *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNews" inManagedObjectContext:self.managedObjectContext];
         
-        newsItem.objectId = [newsDict objectForKey:@"objectId"];
-        newsItem.title = [newsDict objectForKey:@"title"];
-        newsItem.newsURL = [newsDict objectForKey:@"newsURL"];
-        
-        newsItem.createdAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"createdAt"]];
-        newsItem.updatedAt = [self convertToNSDateFromUTC:[newsDict objectForKey:@"updatedAt"]];
- */
-        ITBNews* newsItem = [[ITBNews alloc] insertObjectWithDictionary:newsDict inContext:self.managedObjectContext];
+        ITBNews* newsItem = [[ITBNews alloc] insertObjectWithDictionary:newsDict inContext:context];
         
         [newsArray addObject:newsItem];
     }
     
-//    NSLog(@"1st method");
-//    [self printAllObjectsForName:@"ITBNews"];
+    return [newsArray copy];
+}
+
+- (NSArray* )addNewsToLocalDBFromLoadedArray:(NSArray* ) dicts
+                                usingContext:(NSManagedObjectContext* ) context
+{
     
-/*
-    // здесь идет сохранение в permanent store
-    NSError *error = nil;
+    NSMutableArray* newsArray = [NSMutableArray array];
     
-    if (![self.managedObjectContext save:&error]) {
-     
-         NSLog(@"%@", [error localizedDescription]);
-     }
-*/
+    for (NSDictionary* newsDict in dicts) {
+        
+        ITBNews* newsItem = [[ITBNews alloc] insertObjectWithDictionary:newsDict inContext:context];
+        
+        [newsArray addObject:newsItem];
+    }
     
     return [newsArray copy];
 }
@@ -339,7 +480,7 @@
         
         ITBNews* newsItem = [updatedNewsArray objectAtIndex:[dicts indexOfObject:newsDict]];
         
-        [newsItem updateObjectWithDictionary:newsDict inContext:self.managedObjectContext];
+        [newsItem updateObjectWithDictionary:newsDict inContext:self.mainManagedObjectContext];
         
         [newsArray addObject:newsItem];
     }
@@ -350,22 +491,34 @@
 - (NSArray* )addCategoriesToLocalDBFromLoadedArray:(NSArray* ) dicts
 {
     
-    // эта строка удаляет все объекты из permanent store
-//    [self deleteAllObjectsForName:@"ITBCategory"];
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
     
     NSMutableArray* categoriesArray = [NSMutableArray array];
     
     for (NSDictionary* catDict in dicts) {
         
-        ITBCategory* category = [[ITBCategory alloc] insertObjectWithDictionary:catDict inContext:self.managedObjectContext];
+        ITBCategory* category = [[ITBCategory alloc] insertObjectWithDictionary:catDict inContext:context];
         
         [categoriesArray addObject:category];
     }
     
-//    NSLog(@"2nd method");
-//    [self printAllObjectsForName:@"ITBCategory"];
+    return [categoriesArray copy];
+}
+
+- (NSArray* )addCategoriesToLocalDBFromLoadedArray:(NSArray* ) dicts
+                                      usingContext:(NSManagedObjectContext* ) context
+{
+    NSMutableArray* categoriesArray = [NSMutableArray array];
+    
+    for (NSDictionary* catDict in dicts) {
+        
+        ITBCategory* category = [[ITBCategory alloc] insertObjectWithDictionary:catDict inContext:context];
+        
+        [categoriesArray addObject:category];
+    }
     
     return [categoriesArray copy];
+    
 }
 
 - (void) addRelationsToLocalDBFromNewsDictsArray:(NSArray* ) newsDicts
@@ -387,7 +540,6 @@
         if ([currentUser.objectId isEqualToString:[authorDict objectForKey:@"objectId"]]) {
             
             newsItem.author = currentUser;
-//            NSLog(@"Relation for news (author) %@ - %@", newsItem.title, currentUser.username);
         }
         
         for (NSDictionary* likeAddedUserDict in likeAddedUsersDictsArray) {
@@ -395,10 +547,69 @@
             if ([currentUser.objectId isEqualToString:[likeAddedUserDict objectForKey:@"objectId"]]) {
                 
                 [currentUser addLikedNewsObject:newsItem];
-//                NSLog(@"Relation for news (likeAddedUser) %@ - %@", newsItem.title, currentUser.username);
             }
         }
     
+        for (NSDictionary* categoryDict in categoryDicts) {
+            
+            ITBCategory* category = [categoriesArray objectAtIndex:[categoryDicts indexOfObject:categoryDict]];
+            
+            NSArray* signedUsersDictsArray = [categoryDict objectForKey:@"signedUsers"]; // for category
+            
+            if ([category.objectId isEqualToString:[categoryOfNewsItemDict objectForKey:@"objectId"]]) {
+                
+                newsItem.category = category;
+            }
+            
+            for (NSDictionary* signedUserDict in signedUsersDictsArray) {
+                
+                if ([currentUser.objectId isEqualToString:[signedUserDict objectForKey:@"objectId"]]) {
+                    
+                    [currentUser addSelectedCategoriesObject:category];
+                    
+                }
+            }
+        }
+    }
+    
+    NSManagedObjectContext* context = [self getCurrentThreadContext];
+    [self saveCurrentContext:context];
+    
+    [self printAllObjects];
+    
+    success(YES);
+}
+
+- (void) addRelationsToLocalDBFromNewsDictsArray:(NSArray* ) newsDicts
+                                     forNewsArray:(NSArray* ) newsArray
+                           fromCategoryDictsArray:(NSArray* ) categoryDicts
+                               forCategoriesArray:(NSArray* ) categoriesArray
+                                          forUser: (ITBUser* ) currentUser
+                                     usingContext:(NSManagedObjectContext* ) context
+                                        onSuccess:(void(^)(BOOL isSuccess)) success
+{
+    
+    for (NSDictionary* newsDict in newsDicts) {
+        
+        ITBNews* newsItem = [newsArray objectAtIndex:[newsDicts indexOfObject:newsDict]];
+        
+        NSDictionary* authorDict = [newsDict objectForKey:@"author"]; // for newsItem
+        NSArray* likeAddedUsersDictsArray = [newsDict objectForKey:@"likeAddedUsers"]; // for newsItem
+        NSDictionary* categoryOfNewsItemDict = [newsDict objectForKey:@"category"]; // for newsItem
+        
+        if ([currentUser.objectId isEqualToString:[authorDict objectForKey:@"objectId"]]) {
+            
+            newsItem.author = currentUser;
+        }
+        
+        for (NSString* likeAddedUserObjectId in likeAddedUsersDictsArray) {
+            
+            if ([currentUser.objectId isEqualToString:likeAddedUserObjectId]) {
+                
+                [currentUser addLikedNewsObject:newsItem];
+                newsItem.isLikedByCurrentUser = @1;
+            }
+        }
         
         for (NSDictionary* categoryDict in categoryDicts) {
             
@@ -409,29 +620,21 @@
             if ([category.objectId isEqualToString:[categoryOfNewsItemDict objectForKey:@"objectId"]]) {
                 
                 newsItem.category = category;
-//                NSLog(@"Relation for news (category) %@ - %@", newsItem.title, category.title);
                 
             }
             
-            for (NSDictionary* signedUserDict in signedUsersDictsArray) {
+            for (NSString* signedUserObjectId in signedUsersDictsArray) {
                 
-                if ([currentUser.objectId isEqualToString:[signedUserDict objectForKey:@"objectId"]]) {
+                if ([currentUser.objectId isEqualToString:signedUserObjectId ]) {
                     
                     [currentUser addSelectedCategoriesObject:category];
-//                    NSLog(@"Relation for user (selectedCategory) %@ - %@", currentUser.username, category.title);
                     
                 }
             }
         }
     }
     
-    NSError *error = nil;
-    if (![self.managedObjectContext save:&error]) {
-        
-        NSLog(@"error localizedDescription = %@", [error localizedDescription]);
-    }
-    
-    [self printAllObjects];
+    [self saveContextForBGTask:context];
     
     success(YES);
 }
