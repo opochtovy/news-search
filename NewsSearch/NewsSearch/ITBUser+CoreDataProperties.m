@@ -2,7 +2,7 @@
 //  ITBUser+CoreDataProperties.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 25.02.16.
+//  Created by Oleg Pochtovy on 01.03.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 //  Choose "Create NSManagedObject Subclass…" from the Core Data editor menu
@@ -23,5 +23,6 @@
 @dynamic createdNews;
 @dynamic likedNews;
 @dynamic selectedCategories;
+@dynamic favouriteNews;
 
 @end
