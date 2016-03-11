@@ -23,8 +23,6 @@
     
     self.imageView.image = nil;
     
-    NSLog(@"thumbnailPhoto.url = %@", _thumbnailPhoto.url);
-    
     __weak ITBThumbnailPhotoCell* weakSelf = self;
     
     [_thumbnailPhoto setImageWithURL:_thumbnailPhoto.url onSuccess:^(UIImage * _Nonnull image) {

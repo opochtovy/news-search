@@ -109,23 +109,46 @@
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="sgB-j1-g1v">
+                                <rect key="frame" x="0.0" y="30" width="600" height="540"/>
+                                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                            </imageView>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="xl2-BZ-UBp">
+                                <rect key="frame" x="0.0" y="30" width="600" height="540"/>
+                            </view>
+                            <activityIndicatorView hidden="YES" opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="5Tu-nc-3Mk">
+                                <rect key="frame" x="282" y="281" width="37" height="37"/>
+                                <color key="color" red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                            </activityIndicatorView>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                         <constraints>
                             <constraint firstItem="CnY-yp-ln1" firstAttribute="top" secondItem="CMw-ad-Tes" secondAttribute="bottom" constant="10" id="7Tt-AX-G3Y"/>
+                            <constraint firstItem="xl2-BZ-UBp" firstAttribute="top" secondItem="nes-ug-wmb" secondAttribute="bottom" constant="10" id="FUN-5i-6Px"/>
                             <constraint firstItem="2nl-Xe-SEj" firstAttribute="top" secondItem="CnY-yp-ln1" secondAttribute="bottom" id="IW0-wd-jd2"/>
                             <constraint firstItem="CnY-yp-ln1" firstAttribute="leading" secondItem="paS-pK-6qb" secondAttribute="leading" id="O1N-M6-mQ0"/>
+                            <constraint firstItem="2nl-Xe-SEj" firstAttribute="top" secondItem="xl2-BZ-UBp" secondAttribute="bottom" constant="30" id="RZi-bw-yyT"/>
                             <constraint firstAttribute="trailing" secondItem="CMw-ad-Tes" secondAttribute="trailing" constant="10" id="Wee-fQ-YBL"/>
+                            <constraint firstItem="5Tu-nc-3Mk" firstAttribute="centerX" secondItem="paS-pK-6qb" secondAttribute="centerX" id="Y0L-ty-3aj"/>
+                            <constraint firstItem="sgB-j1-g1v" firstAttribute="top" secondItem="nes-ug-wmb" secondAttribute="bottom" constant="10" id="Yws-OG-yWc"/>
                             <constraint firstItem="CMw-ad-Tes" firstAttribute="leading" secondItem="paS-pK-6qb" secondAttribute="leading" constant="10" id="boI-6K-v1T"/>
                             <constraint firstItem="USg-ff-hxZ" firstAttribute="leading" secondItem="paS-pK-6qb" secondAttribute="leading" constant="10" id="cU5-BN-yoC"/>
+                            <constraint firstItem="5Tu-nc-3Mk" firstAttribute="centerY" secondItem="paS-pK-6qb" secondAttribute="centerY" id="e0o-od-Hje"/>
+                            <constraint firstItem="xl2-BZ-UBp" firstAttribute="leading" secondItem="paS-pK-6qb" secondAttribute="leading" id="fST-XZ-fO1"/>
                             <constraint firstAttribute="trailing" secondItem="USg-ff-hxZ" secondAttribute="trailing" constant="10" id="ggT-Yc-Eou"/>
+                            <constraint firstItem="2nl-Xe-SEj" firstAttribute="top" secondItem="sgB-j1-g1v" secondAttribute="bottom" constant="30" id="hEC-RS-lU0"/>
+                            <constraint firstAttribute="trailing" secondItem="sgB-j1-g1v" secondAttribute="trailing" id="jgm-yl-Qkq"/>
                             <constraint firstAttribute="trailing" secondItem="CnY-yp-ln1" secondAttribute="trailing" id="rC1-V3-HKO"/>
                             <constraint firstItem="USg-ff-hxZ" firstAttribute="top" secondItem="nes-ug-wmb" secondAttribute="bottom" constant="10" id="rYS-cW-qzR"/>
                             <constraint firstItem="CMw-ad-Tes" firstAttribute="top" secondItem="USg-ff-hxZ" secondAttribute="bottom" constant="10" id="u30-DI-Ub6"/>
+                            <constraint firstAttribute="trailing" secondItem="xl2-BZ-UBp" secondAttribute="trailing" id="wsQ-DO-bh3"/>
+                            <constraint firstItem="sgB-j1-g1v" firstAttribute="leading" secondItem="paS-pK-6qb" secondAttribute="leading" id="yNi-to-RQk"/>
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="activityIndicator" destination="5Tu-nc-3Mk" id="6KR-0l-rMn"/>
                         <outlet property="messageLabel" destination="CMw-ad-Tes" id="0EH-10-ZvG"/>
+                        <outlet property="photoView" destination="xl2-BZ-UBp" id="gTh-NS-rJH"/>
                         <outlet property="thumbnailPhotosCollectionView" destination="CnY-yp-ln1" id="7K8-fy-6Y8"/>
                         <outlet property="titleLabel" destination="USg-ff-hxZ" id="uLl-EE-fWK"/>
                     </connections>

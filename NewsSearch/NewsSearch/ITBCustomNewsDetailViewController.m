@@ -29,12 +29,18 @@ typedef enum {
 @property (weak, nonatomic) IBOutlet UILabel *titleLabel;
 @property (weak, nonatomic) IBOutlet UILabel *messageLabel;
 
+@property (weak, nonatomic) IBOutlet UIView *photoView;
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+
 @property (assign, nonatomic) ITBPickerType chosenPickerType;
 
 @property (copy, nonatomic) NSArray *photosArray;
 @property (copy, nonatomic) NSArray *thumbnailPhotosArray;
 
 @property (strong, nonatomic) ITBNews *newsItem;
+
+@property (strong, nonatomic) UIButton *closePhotoViewButton;
+@property (strong, nonatomic) UIImageView *photoImageView;
 
 @end
 
@@ -44,7 +50,6 @@ typedef enum {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
     
     self.newsItem = [self.delegate sendNewsItemTo:self];
     
@@ -59,14 +64,15 @@ typedef enum {
     
     self.thumbnailPhotosCollectionView.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:@"bg_cork.png"]];
     
+    self.photoView.backgroundColor = [UIColor lightTextColor];
+    
+    [self.photoView setHidden:YES];
+    self.photoView.alpha = 0.f;
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
-
-// UICollectionViewDelegateFlowLayout
 
 #pragma mark - UICollectionViewDataSource
 
@@ -106,6 +112,45 @@ typedef enum {
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     
+    [self.activityIndicator startAnimating];
+    
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    [button addTarget:self action:@selector(closePhotoView:) forControlEvents:UIControlEventTouchUpInside];
+    
+    [button setTitle:@"Close" forState:UIControlStateNormal];
+    button.frame = CGRectMake(self.photoView.frame.size.width - 100.0, 10.0, 90.0, 40.0);
+    button.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.3];
+    [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    
+    self.closePhotoViewButton = button;
+    
+    CGRect rect = CGRectMake(0, 0, self.photoView.frame.size.width, self.photoView.frame.size.height);
+    self.photoImageView = [[UIImageView alloc] initWithFrame:rect];
+    self.photoImageView.image = nil;
+    [self.photoView addSubview:self.photoImageView];
+    
+    [self.photoView addSubview:self.closePhotoViewButton];
+    
+    [self.photoView setHidden:NO];
+    [UIView animateWithDuration:0.25 animations:^{
+        
+        self.photoView.alpha = 1.0f;
+        
+    } completion:^(BOOL finished) {
+    }];
+    
+    __weak ITBCustomNewsDetailViewController *weakSelf = self;
+    
+    ITBPhoto *photo = [self.photosArray objectAtIndex:indexPath.row];
+    
+    [photo setImageWithURL:photo.url onSuccess:^(UIImage * _Nonnull image) {
+        
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            
+            weakSelf.photoImageView.image = image;
+            [weakSelf.activityIndicator stopAnimating];
+        });
+    }];
 }
 
 #pragma mark - UICollectionViewDelegateFlowLayout
@@ -113,6 +158,22 @@ typedef enum {
 - (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
     
     return UIEdgeInsetsMake(0, 10, 50, 10);
+}
+
+- (void)closePhotoView:(UIButton *)sender {
+    
+    [self.activityIndicator stopAnimating];
+    
+    [self.closePhotoViewButton removeFromSuperview];
+    [self.photoImageView removeFromSuperview];
+    
+    [self.photoView setHidden:YES];
+    [UIView animateWithDuration:0.25 animations:^{
+        
+        self.photoView.alpha = 0.0f;
+        
+    } completion:^(BOOL finished) {
+    }];
 }
 
 @end

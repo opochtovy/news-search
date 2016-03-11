@@ -265,44 +265,50 @@ static NSString * const loginSegueId = @"login";
 
 - (void)refreshNews {
     
-    __weak ITBHotNewsViewController *weakSelf = self;
-    
-    NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
-    
-    if ([allLocalNews count] > 0) {
+    if (self.refreshButton.enabled) {
         
-        [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
+        __weak ITBHotNewsViewController *weakSelf = self;
+        
+        NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
+        
+        if ([allLocalNews count] > 0) {
             
-            if (isSuccess) {
+            [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
                 
-                [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                if (isSuccess) {
                     
-                    dispatch_async(dispatch_get_main_queue(), ^{
+                    [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
                         
-                        weakSelf.fetchedResultsController = nil;
-                        [weakSelf.tableView reloadData];
-                        
-                        [weakSelf.refreshControl endRefreshing];
-                        
-                    });
-                }];
-            }
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            
+                            weakSelf.fetchedResultsController = nil;
+                            [weakSelf.tableView reloadData];
+                            
+                            [weakSelf.refreshControl endRefreshing];
+                            
+                        });
+                    }];
+                }
+                
+            }];
             
-        }];
-        
+        } else {
+            
+            [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    
+                    weakSelf.fetchedResultsController = nil;
+                    [weakSelf.tableView reloadData];
+                    
+                    [weakSelf.refreshControl endRefreshing];
+                    
+                });
+            }];
+        }
     } else {
         
-        [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
-            
-            dispatch_async(dispatch_get_main_queue(), ^{
-                
-                weakSelf.fetchedResultsController = nil;
-                [weakSelf.tableView reloadData];
-                
-                [weakSelf.refreshControl endRefreshing];
-                
-            });
-        }];
+        [self.refreshControl endRefreshing];
     }
 }
 
