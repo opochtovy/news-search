@@ -22,11 +22,3 @@
 @property (weak, nonatomic) IBOutlet UIButton *subtractLikeButton;
 
 @end
-
-@protocol ITBNewsCellDelegate <NSObject>
-
-- (void)newsCellDidTapAdd:(ITBNewsCell *) cell;
-- (void)newsCellDidTapSubtract:(ITBNewsCell *) cell;
-- (void)newsCellDidTapDetail:(ITBNewsCell *) cell;
-
-@end

@@ -28,11 +28,13 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
 
-@property (strong, nonatomic) NSSet* usernamesSet;
+@property (copy, nonatomic) NSSet *usernamesSet;
 
 @end
 
 @implementation ITBSignInTableViewController
+
+#pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -53,21 +55,17 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     // Dispose of any resources that can be recreated.
 }
 
-#pragma mark - Private Methods
+#pragma mark - Private
 
 - (void)registerUser {
     
-    [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text
-                                         withPassword:self.passwordField.text
-                                            onSuccess:^(BOOL isSuccess)
-    {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            
-            [self.activityIndicator stopAnimating];
-            
-            [self dismissViewControllerAnimated:YES completion:nil];
-            
-        });
+    [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text password:self.passwordField.text onSuccess:^(BOOL isSuccess) {
+        
+        [self.activityIndicator stopAnimating];
+        
+        [self.delegate signingDidPassSuccessfully:self forUsername:self.usernameField.text password:self.passwordField.text];
+        
+        [self dismissViewControllerAnimated:YES completion:nil];
     }];
     
 }
@@ -122,7 +120,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
     
-    NSMutableString* result = [textField.text mutableCopy];
+    NSMutableString *result = [textField.text mutableCopy];
                                
     [result replaceCharactersInRange:range withString:string];
     
@@ -136,7 +134,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
         } else {
             
             self.uniqueUsernameLabel.text = NSLocalizedString(okUnique, nil);
-            self.uniqueUsernameLabel.textColor = [UIColor greenColor];
+            self.uniqueUsernameLabel.textColor = [UIColor blueColor];
             
         }
         
@@ -145,7 +143,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
         if ([result isEqual:self.passwordField.text]) {
             
             self.passwordConfirmationLabel.text = NSLocalizedString(okPassConfirm, nil);
-            self.passwordConfirmationLabel.textColor = [UIColor greenColor];
+            self.passwordConfirmationLabel.textColor = [UIColor blueColor];
             
         } else {
             
@@ -156,6 +154,8 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     
     return YES;
 }
+
+#pragma mark - IBActions
 
 - (IBAction)actionSignIn:(UIButton *)sender {
     

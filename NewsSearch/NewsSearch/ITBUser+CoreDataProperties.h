@@ -2,7 +2,7 @@
 //  ITBUser+CoreDataProperties.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 01.03.16.
+//  Created by Oleg Pochtovy on 09.03.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 //  Choose "Create NSManagedObject Subclass…" from the Core Data editor menu
@@ -23,9 +23,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nullable, nonatomic, retain) NSDate *updatedAt;
 @property (nullable, nonatomic, retain) NSString *username;
 @property (nullable, nonatomic, retain) NSSet<ITBNews *> *createdNews;
+@property (nullable, nonatomic, retain) NSSet<ITBNews *> *favouriteNews;
 @property (nullable, nonatomic, retain) NSSet<ITBNews *> *likedNews;
 @property (nullable, nonatomic, retain) NSSet<ITBCategory *> *selectedCategories;
-@property (nullable, nonatomic, retain) NSSet<ITBNews *> *favouriteNews;
 
 @end
 
@@ -36,6 +36,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addCreatedNews:(NSSet<ITBNews *> *)values;
 - (void)removeCreatedNews:(NSSet<ITBNews *> *)values;
 
+- (void)addFavouriteNewsObject:(ITBNews *)value;
+- (void)removeFavouriteNewsObject:(ITBNews *)value;
+- (void)addFavouriteNews:(NSSet<ITBNews *> *)values;
+- (void)removeFavouriteNews:(NSSet<ITBNews *> *)values;
+
 - (void)addLikedNewsObject:(ITBNews *)value;
 - (void)removeLikedNewsObject:(ITBNews *)value;
 - (void)addLikedNews:(NSSet<ITBNews *> *)values;
@@ -45,11 +50,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeSelectedCategoriesObject:(ITBCategory *)value;
 - (void)addSelectedCategories:(NSSet<ITBCategory *> *)values;
 - (void)removeSelectedCategories:(NSSet<ITBCategory *> *)values;
-
-- (void)addFavouriteNewsObject:(ITBNews *)value;
-- (void)removeFavouriteNewsObject:(ITBNews *)value;
-- (void)addFavouriteNews:(NSSet<ITBNews *> *)values;
-- (void)removeFavouriteNews:(NSSet<ITBNews *> *)values;
 
 @end
 

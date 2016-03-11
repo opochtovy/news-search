@@ -1,5 +1,5 @@
 //
-//  ITBCategory+CoreDataProperties.m
+//  ITBPhoto+CoreDataProperties.m
 //  NewsSearch
 //
 //  Created by Oleg Pochtovy on 09.03.16.
@@ -9,15 +9,12 @@
 //  to delete and recreate this implementation file for your updated model.
 //
 
-#import "ITBCategory+CoreDataProperties.h"
+#import "ITBPhoto+CoreDataProperties.h"
 
-@implementation ITBCategory (CoreDataProperties)
+@implementation ITBPhoto (CoreDataProperties)
 
-@dynamic createdAt;
 @dynamic objectId;
-@dynamic title;
-@dynamic updatedAt;
-@dynamic news;
-@dynamic signedUsers;
+@dynamic name;
+@dynamic url;
 
 @end

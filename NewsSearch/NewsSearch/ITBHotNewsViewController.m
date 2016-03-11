@@ -7,37 +7,53 @@
 //
 
 #import "ITBHotNewsViewController.h"
+
+#import "ITBUtils.h"
+
 #import <CoreData/CoreData.h>
 
 #import "ITBNewsAPI.h"
+#import "ITBActiveNewsCell.h"
+#import "ITBNewsCellDelegate.h"
 
 #import "ITBNews.h"
 #import "ITBCategory.h"
 #import "ITBUser.h"
+#import "ITBPhoto.h"
 
 #import "ITBLoginTableViewController.h"
 
 #import "ITBNewsDetailViewController.h"
+#import "ITBCustomNewsDetailViewController.h"
+#import "ITBAddCustomNewsViewController.h"
 
 #import "ITBCategoriesViewController.h"
 
 #import "ITBNewsCell.h"
 
-NSString *const hotNewsTitle = @"HOT NEWS";
+#import <Social/Social.h>
 
-@interface ITBHotNewsViewController () <NSFetchedResultsControllerDelegate, ITBLoginTableViewControllerDelegate, ITBNewsCellDelegate, ITBCategoriesPickerDelegate>
+static NSString * const hotNewsTitle = @"NEWS";
+static NSString * const loginSegueId = @"login";
+
+@interface ITBHotNewsViewController () <NSFetchedResultsControllerDelegate, ITBLoginTableViewControllerDelegate, ITBNewsCellDelegate, ITBCategoriesPickerDelegate, ITBCustomNewsDetailViewControllerDataSource>
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *loginButton;
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *categoriesPickerButton;
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *refreshButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *addNewsButton;
 
 @property (strong, nonatomic) NSFetchedResultsController *fetchedResultsController;
+
+@property (assign, nonatomic) ITBSortingType chosenSortingType;
+
+@property (strong, nonatomic) ITBNews *customNewsItem;
 
 @end
 
 @implementation ITBHotNewsViewController
 
-@synthesize fetchedResultsController = _fetchedResultsController;
+#pragma mark - Lifecycle
 
 - (id)init {
     
@@ -45,10 +61,14 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     if (self != nil) {
         
-        
     }
     
     return self;
+}
+
+- (void)dealloc {
+    
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)viewDidLoad {
@@ -60,16 +80,48 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 200.0;
     
-    self.categoriesPickerButton.enabled = ([ITBNewsAPI sharedInstance].currentUser.username != nil);
-    self.refreshButton.enabled = self.categoriesPickerButton.enabled;
+    BOOL wasUserSavedLocally = ([ITBNewsAPI sharedInstance].currentUser.username != nil);
     
-    self.loginButton.title = self.categoriesPickerButton.enabled ? NSLocalizedString(logout, nil) : NSLocalizedString(login, nil);
+    self.categoriesPickerButton.enabled = wasUserSavedLocally;
+    self.refreshButton.enabled = wasUserSavedLocally;
+    self.addNewsButton.enabled = wasUserSavedLocally;
+    
+    self.loginButton.title = wasUserSavedLocally ? NSLocalizedString(logout, nil) : NSLocalizedString(login, nil);
     
     // refresh
     UIRefreshControl *refresh = [[UIRefreshControl alloc] init];
     
     [refresh addTarget:self action:@selector(refreshNews) forControlEvents:UIControlEventValueChanged];
     self.refreshControl = refresh;
+    
+    // initializing of self.chosenSortingType
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    
+    NSNumber *number = [userDefaults objectForKey:kSettingsChosenSortingType];
+    self.chosenSortingType = [number intValue];
+
+    [[NSNotificationCenter defaultCenter] addObserverForName:NSManagedObjectContextDidSaveNotification object:nil queue:nil usingBlock:^(NSNotification* note) {
+        
+        NSManagedObjectContext *mainContext = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
+        NSManagedObjectContext *syncContext = [ITBNewsAPI sharedInstance].syncManagedObjectContext;
+        
+        NSManagedObjectContext *otherContext = note.object;
+        
+        if (otherContext.persistentStoreCoordinator == mainContext.persistentStoreCoordinator) {
+            
+            if (otherContext == syncContext) {
+            
+                [mainContext performBlock:^(){
+                    
+                    [mainContext mergeChangesFromContextDidSaveNotification:note];
+                    
+                    [[ITBNewsAPI sharedInstance] saveMainContext];
+                    [[ITBNewsAPI sharedInstance] saveSaveContext];
+                }];
+            }
+        }
+    }];
+ 
 }
 
 - (void)didReceiveMemoryWarning {
@@ -77,15 +129,188 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     // Dispose of any resources that can be recreated.
 }
 
-// пока мне вообще не нужен этот метод добавления нового объекта (т.е. новости)
-- (void)insertNewObject:(id)sender {
+#pragma mark - Custom Accessors
+
+- (NSFetchedResultsController *)fetchedResultsController {
+    
+    if (_fetchedResultsController != nil) {
+        
+        return _fetchedResultsController;
+    }
+    
+    NSManagedObjectContext *context = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
+    
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:@"ITBUser" usingContext:context];
+    ITBUser *currentUser = [users firstObject];
+    
+    if (currentUser.objectId != nil) {
+        
+        [context performBlockAndWait:^{
+            
+            NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+            
+            NSEntityDescription *description = [NSEntityDescription entityForName:@"ITBNews" inManagedObjectContext:context];
+            
+            [fetchRequest setEntity:description];
+            
+            NSString *descriptorKey;
+            
+            NSPredicate *predicate;
+            
+            if ([currentUser.selectedCategories count] != 0) {
+                
+                predicate = [NSPredicate predicateWithFormat:@"category IN %@", currentUser.selectedCategories];
+                
+            } else {
+                
+                predicate = [NSPredicate predicateWithFormat:@"category.title == %@", @"nothing"];
+            }
+            
+            switch (self.chosenSortingType) {
+                    
+                case ITBSortingTypeHot:
+                    descriptorKey = @"rating";
+                    break;
+                    
+                case ITBSortingTypeNew:
+                    descriptorKey = @"createdAt";
+                    break;
+                    
+                case ITBSortingTypeCreated: {
+                    descriptorKey = @"title";
+                    
+                    if ([currentUser.selectedCategories count] != 0) {
+                        
+                        predicate = [NSPredicate predicateWithFormat:@"(category IN %@) AND (author.objectId == %@)", currentUser.selectedCategories, currentUser.objectId];
+                        
+                    } else {
+                        
+                        predicate = [NSPredicate predicateWithFormat:@"(category.title == %@) AND (author.objectId == %@)", @"nothing", currentUser.objectId];
+                        
+                    }
+                    break;
+                }
+                    
+                case ITBSortingTypeFavourites: {
+                    descriptorKey = @"title";
+                    
+                    if ([currentUser.favouriteNews count] != 0) {
+                        
+                        predicate = [NSPredicate predicateWithFormat:@"SELF IN %@", currentUser.favouriteNews];
+                        
+                    } else {
+                        
+                        predicate = [NSPredicate predicateWithFormat:@"objectId == %@", @"nothing"];
+                        
+                    }
+                    break;
+                }
+            }
+            
+            NSSortDescriptor *descriptor = [[NSSortDescriptor alloc] initWithKey:descriptorKey ascending:NO];
+            [fetchRequest setSortDescriptors:@[descriptor]];
+            
+            [fetchRequest setPredicate:predicate];
+            
+            NSFetchedResultsController *aFetchedResultsController = [[NSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:context sectionNameKeyPath:nil cacheName:nil];
+            
+            aFetchedResultsController.delegate = self;
+            
+            self.fetchedResultsController = aFetchedResultsController;
+            
+            NSError *error = nil;
+            
+            if (![self.fetchedResultsController performFetch:&error]) {
+                
+                NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
+            }
+            
+        }];
+        
+        return _fetchedResultsController;
+    }
+    
+    return nil;
+}
+
+#pragma mark - Private
+
+- (void)getNewsCellForSender:(UITableViewCell *)cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+
+    BOOL isLikedByCurrentUser = [newsItem.isLikedByCurrentUser boolValue];
+    
+    NSInteger ratingInt = [newsItem.rating integerValue];
+    
+    if (isLikedByCurrentUser) {
+        
+        [newsItem removeLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
+        --ratingInt;
+        newsItem.isLikedByCurrentUser = @0;
+        
+    } else {
+        
+        [newsItem addLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
+        ++ratingInt;
+        newsItem.isLikedByCurrentUser = @1;
+        
+    }
+    
+    newsItem.rating = [NSNumber numberWithInteger:ratingInt];
+    
+}
+
+- (void)refreshNews {
+    
+    __weak ITBHotNewsViewController *weakSelf = self;
+    
+    NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
+    
+    if ([allLocalNews count] > 0) {
+        
+        [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
+            
+            if (isSuccess) {
+                
+                [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                    
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        
+                        weakSelf.fetchedResultsController = nil;
+                        [weakSelf.tableView reloadData];
+                        
+                        [weakSelf.refreshControl endRefreshing];
+                        
+                    });
+                }];
+            }
+            
+        }];
+        
+    } else {
+        
+        [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                weakSelf.fetchedResultsController = nil;
+                [weakSelf.tableView reloadData];
+                
+                [weakSelf.refreshControl endRefreshing];
+                
+            });
+        }];
+    }
 }
 
 #pragma mark - UIViewController methods
 
 - (BOOL)shouldPerformSegueWithIdentifier:(NSString *)identifier sender:(nullable id)sender {
     
-    if ([self.loginButton.title isEqualToString:NSLocalizedString(logout, nil)]) {
+    if ( ([identifier isEqualToString:loginSegueId]) && ([ITBNewsAPI sharedInstance].currentUser.sessionToken != nil) ) {
         
         [[ITBNewsAPI sharedInstance] logOut];
         
@@ -93,6 +318,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         self.categoriesPickerButton.enabled = NO;
         self.refreshButton.enabled = NO;
+        self.addNewsButton.enabled = NO;
         
         [self.tableView reloadData];
         
@@ -102,72 +328,17 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     return YES;
 }
 
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
-{
-    if ([[segue identifier] isEqualToString:@"login"])
-    {
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    
+    if ([[segue identifier] isEqualToString:loginSegueId]) {
         
         UINavigationController *loginNavVC = [segue destinationViewController];
         
-        ITBLoginTableViewController* loginVC = (ITBLoginTableViewController* )loginNavVC.topViewController;
+        ITBLoginTableViewController *loginVC = (ITBLoginTableViewController *)loginNavVC.topViewController;
         
         loginVC.delegate = self;
         
     }
-}
-
-#pragma mark - NSFetchedResultsController
-
-- (NSFetchedResultsController *)fetchedResultsController
-{
-    
-    if (_fetchedResultsController != nil) {
-        return _fetchedResultsController;
-    }
-    
-    if ([ITBNewsAPI sharedInstance].currentUser.objectId != nil) {
-        
-        NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
-        
-        NSEntityDescription *description = [NSEntityDescription entityForName:@"ITBNews"
-                                                       inManagedObjectContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext];
-        
-        [fetchRequest setEntity:description];
-        
-        NSSortDescriptor *ratingDescriptor = [[NSSortDescriptor alloc] initWithKey:@"rating" ascending:YES];
-        [fetchRequest setSortDescriptors:@[ratingDescriptor]];
-        
-        if ([[ITBNewsAPI sharedInstance].currentUser.selectedCategories count] != 0) {
-            
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"category IN %@", [ITBNewsAPI sharedInstance].currentUser.selectedCategories];
-            [fetchRequest setPredicate:predicate];
-            
-        } else {
-            
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"category.title == %@", @"nothing"];
-            [fetchRequest setPredicate:predicate];
-        }
-        
-        NSFetchedResultsController *aFetchedResultsController = [[NSFetchedResultsController alloc]
-                                                                 initWithFetchRequest:fetchRequest
-                                                                 managedObjectContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext
-                                                                 sectionNameKeyPath:nil cacheName:nil];
-        
-        aFetchedResultsController.delegate = self;
-        
-        self.fetchedResultsController = aFetchedResultsController;
-        
-        NSError *error = nil;
-        
-        if (![self.fetchedResultsController performFetch:&error]) {
-            
-            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        }
-        
-        return _fetchedResultsController;
-    }
-    
-    return nil;
     
 }
 
@@ -183,7 +354,6 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         return 1;
     }
-    
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -203,15 +373,35 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
     if ([ITBNewsAPI sharedInstance].currentUser != nil) {
         
+        ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+        
         static NSString *identifier = @"NewsCell";
+        static NSString *activeIdentifier = @"ActiveNewsCell";
         
-        ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+//        ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
         
-        cell.delegate = self;
+        BOOL isTitlePressed = [newsItem.isTitlePressed boolValue];
         
-        [self configureCell:cell atIndexPath:indexPath];
+        if (isTitlePressed) {
+            
+            ITBActiveNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:activeIdentifier];
+            
+            cell.activeDelegate = self;
+            
+            [self configureActiveCell:cell atIndexPath:indexPath];
+            
+            return cell;
         
-        return cell;
+        } else {
+            
+            ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+            
+            cell.delegate = self;
+            
+            [self configureCell:cell atIndexPath:indexPath];
+            
+            return cell;
+        }
         
     } else {
         
@@ -232,9 +422,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
     cell.titleLabel.text = newsItem.title;
-    
     cell.categoryLabel.text = newsItem.category.title;
-    
     cell.ratingLabel.text = [NSString stringWithFormat:@"%@", newsItem.rating];
     
     BOOL isLikedByCurrentUser = ([newsItem.isLikedByCurrentUser intValue] > 0);
@@ -244,6 +432,20 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     
 }
 
+- (void)configureActiveCell:(ITBActiveNewsCell *)cell atIndexPath:(NSIndexPath *)indexPath {
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    cell.titleLabel.text = newsItem.title;
+    cell.categoryLabel.text = newsItem.category.title;
+    cell.ratingLabel.text = [NSString stringWithFormat:@"%@", newsItem.rating];
+    
+    BOOL isLikedByCurrentUser = ([newsItem.isLikedByCurrentUser intValue] > 0);
+    
+    cell.addLikeButton.enabled = !isLikedByCurrentUser;
+    cell.subtractLikeButton.enabled = isLikedByCurrentUser;
+    
+}
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
     
@@ -256,12 +458,19 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     if (editingStyle == UITableViewCellEditingStyleDelete) {
         
         NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
-        [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
         
-        NSError *error = nil;
-        if (![context save:&error]) {
+        [context performBlockAndWait:^{
             
-        }
+            [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
+            
+            if (context == [ITBNewsAPI sharedInstance].mainManagedObjectContext) {
+
+                [[ITBNewsAPI sharedInstance] saveMainContext];
+                [[ITBNewsAPI sharedInstance] saveSaveContext];
+                
+            }
+            
+        }];
     }
 }
 
@@ -274,15 +483,14 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 #pragma mark - NSFetchedResultsControllerDelegate
 
-- (void)controllerWillChangeContent:(NSFetchedResultsController *)controller
-{
+- (void)controllerWillChangeContent:(NSFetchedResultsController *)controller {
+    
     [self.tableView beginUpdates];
 }
 
-- (void)controller:(NSFetchedResultsController *)controller didChangeSection:(id <NSFetchedResultsSectionInfo>)sectionInfo
-           atIndex:(NSUInteger)sectionIndex forChangeType:(NSFetchedResultsChangeType)type
-{
-    switch(type) {
+- (void)controller:(NSFetchedResultsController *)controller didChangeSection:(id <NSFetchedResultsSectionInfo>)sectionInfo atIndex:(NSUInteger)sectionIndex forChangeType:(NSFetchedResultsChangeType)type {
+    
+    switch (type) {
             
         case NSFetchedResultsChangeInsert:
             [self.tableView insertSections:[NSIndexSet indexSetWithIndex:sectionIndex] withRowAnimation:UITableViewRowAnimationFade];
@@ -297,9 +505,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
     }
 }
 
-- (void)controller:(NSFetchedResultsController *)controller didChangeObject:(id)anObject
-       atIndexPath:(NSIndexPath *)indexPath forChangeType:(NSFetchedResultsChangeType)type
-      newIndexPath:(NSIndexPath *)newIndexPath
+- (void)controller:(NSFetchedResultsController *)controller didChangeObject:(id)anObject atIndexPath:(NSIndexPath *)indexPath forChangeType:(NSFetchedResultsChangeType)type newIndexPath:(NSIndexPath *)newIndexPath
 {
     UITableView *tableView = self.tableView;
     
@@ -316,21 +522,22 @@ NSString *const hotNewsTitle = @"HOT NEWS";
             [self configureCell:[tableView cellForRowAtIndexPath:indexPath] atIndexPath:indexPath];
             break;
             
-        case NSFetchedResultsChangeMove:
+        case NSFetchedResultsChangeMove: {
             [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
             [tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationFade];
             break;
+        }
     }
 }
 
-- (void)controllerDidChangeContent:(NSFetchedResultsController *)controller
-{
+- (void)controllerDidChangeContent:(NSFetchedResultsController *)controller {
+    
     [self.tableView endUpdates];
 }
 
 #pragma mark - ITBLoginTableViewControllerDelegate
 
-- (void) loginDidPassSuccessfully:(ITBLoginTableViewController *)vc {
+- (void)loginDidPassSuccessfully:(ITBLoginTableViewController *)vc {
     
     self.loginButton.title = @"Logout";
     
@@ -338,6 +545,7 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
         self.categoriesPickerButton.enabled = YES;
         self.refreshButton.enabled = YES;
+        self.addNewsButton.enabled = YES;
         
         [self.tableView reloadData];
         
@@ -347,144 +555,201 @@ NSString *const hotNewsTitle = @"HOT NEWS";
 
 #pragma mark - ITBCategoriesPickerDelegate
 
-- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC {
+- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withCategoriesOfCurrentUserArray:(NSArray *)categoriesOfCurrentUser sortingNamesArray:(NSArray *)categoryNames sortingType:(NSInteger)index {
     
-    [ITBNewsAPI sharedInstance].currentUser.selectedCategories = [NSSet setWithArray:categoriesVC.categoriesOfCurrentUserArray];
+    // saving chosenSortingType
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
     
-    [[ITBNewsAPI sharedInstance] saveMainContext];
+    [userDefaults setObject:[NSNumber numberWithInteger:index] forKey:kSettingsChosenSortingType];
     
-    self.fetchedResultsController = nil;
-    [self.tableView reloadData];
+    self.chosenSortingType = (int)index;
+    
+    [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
+        
+        [ITBNewsAPI sharedInstance].currentUser.selectedCategories = [NSSet setWithArray:categoriesOfCurrentUser];
+        
+        [[ITBNewsAPI sharedInstance] saveMainContext];
+        [[ITBNewsAPI sharedInstance] saveSaveContext];
+        
+        self.title = [categoryNames objectAtIndex:index];
+        [userDefaults setObject:self.title forKey:kSettingsChosenSortingName];
+        
+        self.fetchedResultsController = nil;
+        [self.tableView reloadData];
+        
+    }];
 }
 
 #pragma mark - ITBNewsCellDelegate
 
-- (void)newsCellDidTapAdd:(ITBNewsCell *) cell {
+- (void)newsCellDidTapAdd:(UITableViewCell *)cell {
     
-    [self getNewsCellForSender: cell];
-}
-
-- (void)newsCellDidTapSubtract:(ITBNewsCell *) cell {
-    
-    [self getNewsCellForSender: cell];
-}
-
-- (void)newsCellDidTapDetail:(ITBNewsCell *) cell {
-    
-    ITBNewsDetailViewController *newsDetailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBNewsDetailViewController"];
-    
-    NSIndexPath* indexPath = [self.tableView indexPathForCell:cell];
-    
-    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    
-    NSURL *url = [NSURL URLWithString: newsItem.newsURL];
-    
-    newsDetailVC.title = newsItem.title;
-    newsDetailVC.url = url;
-    
-    [self.navigationController pushViewController:newsDetailVC animated:YES];
-    
-}
-
-- (void) getNewsCellForSender:(ITBNewsCell* ) cell {
-    
-    NSIndexPath* indexPath = [self.tableView indexPathForCell:cell];
-    
-    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    
-    BOOL isLikedByCurrentUser = NO;
-    
-    for (ITBUser* likeAddedUser in newsItem.likeAddedUsers) {
+    [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
         
-        if ([likeAddedUser.objectId isEqualToString:[ITBNewsAPI sharedInstance].currentUser.objectId]) {
+        [self getNewsCellForSender:cell];
+        
+        [[ITBNewsAPI sharedInstance] saveMainContext];
+        [[ITBNewsAPI sharedInstance] saveSaveContext];
+        
+        [self.tableView reloadData];
+        
+    }];
+}
+
+- (void)newsCellDidTapSubtract:(UITableViewCell *)cell {
+    
+    [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
+        
+        [self getNewsCellForSender:cell];
+        
+        [[ITBNewsAPI sharedInstance] saveMainContext];
+        [[ITBNewsAPI sharedInstance] saveSaveContext];
+        
+        [self.tableView reloadData];
+        
+    }];
+}
+
+- (void)newsCellDidTapDetail:(UITableViewCell *)cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    if (newsItem.newsURL != nil) {
+        
+        ITBNewsDetailViewController *newsDetailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBNewsDetailViewController"];
+        
+        NSURL *url = [NSURL URLWithString:newsItem.newsURL];
+        
+        newsDetailVC.title = newsItem.title;
+        newsDetailVC.url = url;
+        
+        [self.navigationController pushViewController:newsDetailVC animated:YES];
+        
+    } else {
+        
+        ITBCustomNewsDetailViewController *customNewsDetailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCustomNewsDetailViewController"];
+        
+        customNewsDetailVC.delegate = self;
+        
+        self.customNewsItem = newsItem;
+        
+        [self.navigationController pushViewController:customNewsDetailVC animated:YES];
+    }
+    
+}
+
+- (void)newsCellDidSelectTitle:(UITableViewCell *) cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    newsItem.isTitlePressed = [NSNumber numberWithBool:YES];
+    
+    [self.tableView beginUpdates];
+    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    [self.tableView endUpdates];
+    
+}
+
+- (void)newsCellDidSelectHide:(UITableViewCell *)cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    newsItem.isTitlePressed = [NSNumber numberWithBool:NO];
+    
+    [self.tableView beginUpdates];
+    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    [self.tableView endUpdates];
+    
+}
+
+- (void)newsCellDidAddToFavourites:(UITableViewCell *)cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    ITBUser *currentUser = [ITBNewsAPI sharedInstance].currentUser;
+    
+    if (![currentUser.favouriteNews containsObject:newsItem]) {
+        
+        [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
             
-            isLikedByCurrentUser = YES;
-            break;
+            [currentUser addFavouriteNewsObject:newsItem];
+            
+            [[ITBNewsAPI sharedInstance] saveMainContext];
+            [[ITBNewsAPI sharedInstance] saveSaveContext];
+            
+        }];
+        
+    }
+}
+
+- (void)newsCellDidTapTweetButton:(UITableViewCell *)cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    if ([SLComposeViewController isAvailableForServiceType:SLServiceTypeTwitter]) {
+        
+        SLComposeViewController *tweetSheet = [SLComposeViewController composeViewControllerForServiceType:SLServiceTypeTwitter];
+        
+        [tweetSheet setInitialText:newsItem.title];
+        
+        if (newsItem.newsURL != nil) {
+            
+            [tweetSheet addURL:[NSURL URLWithString:newsItem.newsURL]];
+            
         }
-    }
-    
-    NSInteger ratingInt = [newsItem.rating integerValue];
-    
-    if (isLikedByCurrentUser) {
         
-        [newsItem removeLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
-        --ratingInt;
-        newsItem.isLikedByCurrentUser = @0;
+        [self presentViewController:tweetSheet animated:YES completion:nil];
         
-    } else {
-        
-        [newsItem addLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
-        ++ratingInt;
-        newsItem.isLikedByCurrentUser = @1;
-        
-    }
-    
-    newsItem.rating = [NSNumber numberWithInteger:ratingInt];
-    
-    [[ITBNewsAPI sharedInstance] saveMainContext];
-    
-    [self.tableView reloadData];
-    
-}
-
-#pragma mark - Private Methods
-
-- (void)refreshNews {
-    
-    __weak ITBHotNewsViewController* weakSelf = self;
-    
-    NSArray* allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
-    
-    if ([allLocalNews count] > 0) {
-        
-        [[ITBNewsAPI sharedInstance]
-         updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess)
-         {
-             
-             if (isSuccess) {
-                 
-                 [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess)
-                  {
-                      
-                      dispatch_async(dispatch_get_main_queue(), ^{
-                          
-                          weakSelf.fetchedResultsController = nil;
-                          [weakSelf.tableView reloadData];
-                          
-                          [weakSelf.refreshControl endRefreshing];
-                          
-                      });
-                  }];
-             }
-             
-         }];
-        
-    } else {
-        
-        [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess)
-         {
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-                 weakSelf.fetchedResultsController = nil;
-                 [weakSelf.tableView reloadData];
-                 
-                 [weakSelf.refreshControl endRefreshing];
-             });
-         }];
     }
     
 }
 
-#pragma mark - Actions
+- (void)newsCellDidTapFacebookButton:(UITableViewCell *)cell {
+    
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    
+    ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    if([SLComposeViewController isAvailableForServiceType:SLServiceTypeFacebook]) {
+        
+        SLComposeViewController *facebookSheet = [SLComposeViewController composeViewControllerForServiceType:SLServiceTypeFacebook];
+        
+        if (newsItem.newsURL != nil) {
+            
+            [facebookSheet addURL:[NSURL URLWithString:newsItem.newsURL]];
+            
+        } else {
+            
+            [facebookSheet setInitialText:newsItem.title];
+            
+        }
+        
+        [self presentViewController:facebookSheet animated:YES completion:Nil];
+    }
+}
+
+#pragma mark - ITBCustomNewsDetailViewControllerDataSource
+
+- (ITBNews *)sendNewsItemTo:(ITBCustomNewsDetailViewController *)newsDetailVC {
+    
+    return self.customNewsItem;
+}
+
+#pragma mark - IBActions
 
 - (IBAction)actionChooseCategories:(UIBarButtonItem *)sender {
     
     ITBCategoriesViewController *vc = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCategoriesViewController"];
-    
-    vc.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchAllCategories];
-    
-    vc.categoriesOfCurrentUserArray = [[ITBNewsAPI sharedInstance].currentUser.selectedCategories allObjects];
     
     vc.delegate = self;
     
@@ -497,11 +762,10 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         }
         
         nav.modalPresentationStyle = UIModalPresentationPopover;
-//        nav.preferredContentSize = CGSizeMake(300, 400);
         
         [self presentViewController:nav animated:YES completion:nil];
         
-        UIPopoverPresentationController* popoverPresentationController = nav.popoverPresentationController;
+        UIPopoverPresentationController *popoverPresentationController = nav.popoverPresentationController;
         
         popoverPresentationController.sourceView = self.view;
         
@@ -512,82 +776,56 @@ NSString *const hotNewsTitle = @"HOT NEWS";
         
         [self presentViewController:nav animated:YES completion:nil];
     }
-    
 }
 
 - (IBAction)actionRefresh:(UIBarButtonItem *)sender {
+
+    [self.refreshControl beginRefreshing];
+    self.tableView.contentOffset = CGPointMake(0.f, -120.f);
     
-    [[ITBNewsAPI sharedInstance] checkNetworkConnectionOnSuccess:^(BOOL isSuccess)
-     {
+    __weak ITBHotNewsViewController *weakSelf = self;
+    
+    NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
 
-         if (isSuccess) {
+    if ([allLocalNews count] > 0) {
 
-             NSArray* allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
+        [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
              
-             if ([allLocalNews count] > 0) {
+             if (isSuccess) {
                  
-                 [self updateCurrentUserFromLocalToServer];
-                 
-             } else {
-                 
-                 [self createLocalDataSource];
+                 [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                      
+                      dispatch_async(dispatch_get_main_queue(), ^{
+                          
+                          weakSelf.fetchedResultsController = nil;
+                          [weakSelf.tableView reloadData];
+                          
+                          weakSelf.tableView.contentOffset = CGPointMake(0.f, 0.f);
+                          
+                          [weakSelf.refreshControl endRefreshing];
+                          
+                      });
+                  }];
              }
-         }
-         
-     }];
-    
-}
-
-- (void) updateLocalDataSource
-{
-    
-    __weak ITBHotNewsViewController* weakSelf = self;
-    
-    [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess)
-     {
-         
-         dispatch_async(dispatch_get_main_queue(), ^{
              
-             weakSelf.fetchedResultsController = nil;
-             [weakSelf.tableView reloadData];
-             
-         });
-     }];
-    
-}
+         }];
 
-- (void) createLocalDataSource
-{
-    
-    __weak ITBHotNewsViewController* weakSelf = self;
-    
-    [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess)
-     {
-         
-         dispatch_async(dispatch_get_main_queue(), ^{
+        
+    } else {
+        
+        [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
              
-             weakSelf.fetchedResultsController = nil;
-             [weakSelf.tableView reloadData];
-             
-         });
-     }];
-    
-}
-
-- (void) updateCurrentUserFromLocalToServer
-{
-
-    [[ITBNewsAPI sharedInstance]
-     updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess)
-     {
-         
-         if (isSuccess) {
-             
-             [self updateLocalDataSource];
-         }
-         
-     }];
-
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 weakSelf.fetchedResultsController = nil;
+                 [weakSelf.tableView reloadData];
+                 
+                 weakSelf.tableView.contentOffset = CGPointMake(0.f, 0.f);
+                 
+                 [weakSelf.refreshControl endRefreshing];
+             });
+         }];
+    }
 }
 
 @end

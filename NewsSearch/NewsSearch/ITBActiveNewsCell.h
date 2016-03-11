@@ -8,6 +8,17 @@
 
 #import <UIKit/UIKit.h>
 
+@protocol ITBNewsCellDelegate;
+
 @interface ITBActiveNewsCell : UITableViewCell
+
+@property (nonatomic, weak) id <ITBNewsCellDelegate> activeDelegate;
+
+@property (weak, nonatomic) IBOutlet UILabel *titleLabel;
+@property (weak, nonatomic) IBOutlet UILabel *categoryLabel;
+@property (weak, nonatomic) IBOutlet UILabel *ratingLabel;
+
+@property (weak, nonatomic) IBOutlet UIButton *addLikeButton;
+@property (weak, nonatomic) IBOutlet UIButton *subtractLikeButton;
 
 @end

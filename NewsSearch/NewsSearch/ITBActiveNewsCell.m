@@ -8,16 +8,54 @@
 
 #import "ITBActiveNewsCell.h"
 
+#import "ITBNewsCellDelegate.h"
+
 @implementation ITBActiveNewsCell
 
 - (void)awakeFromNib {
-    // Initialization code
+    
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
+    
     [super setSelected:selected animated:animated];
+}
 
-    // Configure the view for the selected state
+#pragma mark - IBActions
+
+- (IBAction)actionAddLike:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidTapAdd:self];
+}
+
+- (IBAction)actionSubtractLike:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidTapSubtract:self];
+}
+
+- (IBAction)actionShowNewsPage:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidTapDetail:self];
+}
+
+- (IBAction)actionAddToFavourites:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidAddToFavourites:self];
+}
+
+- (IBAction)actionHideButtons:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidSelectHide:self];
+}
+
+- (IBAction)postToTwitter:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidTapTweetButton:self];
+}
+
+- (IBAction)postToFacebook:(UIButton *)sender {
+    
+    [self.activeDelegate newsCellDidTapFacebookButton:self];
 }
 
 @end

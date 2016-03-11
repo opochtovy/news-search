@@ -14,15 +14,10 @@
 
 @property (weak, nonatomic) id <ITBCategoriesPickerDelegate> delegate;
 
-@property (strong, nonatomic) NSArray *allCategoriesArray;
-@property (strong, nonatomic) NSArray *categoriesOfCurrentUserArray;
-
-@property (strong, nonatomic) NSManagedObjectContext* context;
-
 @end
 
 @protocol ITBCategoriesPickerDelegate
 
-- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC;
+- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withCategoriesOfCurrentUserArray:(NSArray *)categoriesOfCurrentUser sortingNamesArray:(NSArray *)categoryNames sortingType:(NSInteger)index;
 
 @end

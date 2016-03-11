@@ -19,6 +19,12 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
+//    UITabBarController *tabBarContr = (UITabBarController *)self.window.rootViewController;
+//    UITabBarItem* firstItem = [tabBarContr.tabBar.items firstObject];
+    
+//    NSLog(@"firstItem.finishedSelectedImage.size.height = %f", firstItem.finishedSelectedImage.size.height);
+//    NSLog(@"tabBarContr.tabBar.selectionIndicatorImage.size.height = %f", tabBarContr.tabBar.selectionIndicatorImage.size.height); // мне нужен этот selectionIndicatorImage для UITabBar 53*44 (106*88)
+    
     return YES;
 }
 

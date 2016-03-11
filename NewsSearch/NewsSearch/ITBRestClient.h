@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 @class ITBNews;
 @class ITBCategory;
@@ -14,40 +15,11 @@
 
 @interface ITBRestClient : NSObject
 
-- (void)authorizeWithUsername:(NSString* ) username
-                 withPassword:(NSString* ) password
-                    onSuccess:(void(^)(NSDictionary* userDict)) success
-                    onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
+- (void)makeRequestToServerForUrlString:(NSString *)urlString withHeaders:(NSDictionary *)headers withFields:(NSDictionary *)parameters withHTTPBody:(NSData *)data withHTTPMethod:(NSString *)method onSuccess:(void(^)(NSDictionary *responseBody))success onFailure:(void(^)(NSError *error, NSInteger statusCode))failure;
+- (void)loadImageForURL:(NSString *)url onSuccess:(void(^)(UIImage *image))success onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
 
-- (void)registerWithUsername:(NSString* ) username
-                withPassword:(NSString* ) password
-                   onSuccess:(void(^)(NSDictionary* userDict)) success
-                   onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-- (void)getUsersOnSuccess:(void(^)(NSArray *dicts)) success
-                onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-- (void)checkNetworkConnectionWithSessionToken:(NSString* ) sessionToken
-                                      onSuccess:(void(^)(BOOL isSuccess)) success
-                              onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-- (void)getAllObjectsForClassName:(NSString* ) className
-                        onSuccess:(void(^)(NSArray *dicts)) success
-                        onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-- (void)getCurrentUser:(NSString* ) objectId
-             onSuccess:(void(^)(NSDictionary *dict)) success
-             onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-- (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser* ) user
-                                                               onSuccess:(void(^)(BOOL isSuccess)) success;
-
-- (void)updateCategoriesFromUser:(ITBUser* ) user
-                       onSuccess:(void(^)(NSDate* updatedAt)) success
-                       onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure;
-
-// DELETION TEST
-
-//- (void) deleteRelationsForUser:(ITBUser* ) user;
+// осталось переделать
+- (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser *)user onSuccess:(void(^)(BOOL isSuccess))success;
+//- (void)getCurrentUser:(NSString *)objectId onSuccess:(void(^)(NSDictionary *dict))success onFailure:(void(^)(NSError *error, NSInteger statusCode))failure;
 
 @end

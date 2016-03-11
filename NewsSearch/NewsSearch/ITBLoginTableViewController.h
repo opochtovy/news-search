@@ -19,6 +19,6 @@
 
 @protocol ITBLoginTableViewControllerDelegate <NSObject>
 
-- (void) loginDidPassSuccessfully:(ITBLoginTableViewController *)vc;
+- (void)loginDidPassSuccessfully:(ITBLoginTableViewController *)vc;
 
 @end
