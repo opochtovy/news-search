@@ -15,8 +15,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ITBCategory : NSManagedObject
 
-// Insert code here to declare functionality of your managed object subclass
-
 + (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context;
 
 - (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context;

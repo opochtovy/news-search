@@ -14,8 +14,6 @@
 
 @implementation ITBUser
 
-// Insert code here to add functionality to your managed object subclass
-
 + (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
     
     NSLog(@"user was created");

@@ -18,6 +18,6 @@
 
 @protocol ITBCategoriesPickerDelegate
 
-- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withCategoriesOfCurrentUserArray:(NSArray *)categoriesOfCurrentUser sortingNamesArray:(NSArray *)categoryNames sortingType:(NSInteger)index;
+- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withSortingType:(NSInteger)sortingType sortingName:(NSString *)sortingName;
 
 @end

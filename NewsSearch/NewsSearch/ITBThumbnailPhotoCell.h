@@ -14,7 +14,7 @@
 
 @property (strong, nonatomic) ITBPhoto *thumbnailPhoto;
 
-@property (weak, nonatomic) IBOutlet UIImageView *imageView;
+@property (strong, nonatomic) IBOutlet UIImageView *imageView;
 
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
 

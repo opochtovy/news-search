@@ -8,6 +8,9 @@
 
 #import "ITBNewsDetailViewController.h"
 
+#import "ITBNewsAPI.h"
+#import "ITBNews.h"
+
 @interface ITBNewsDetailViewController () <UIWebViewDelegate>
 
 @property (weak, nonatomic) IBOutlet UIWebView *webView;
@@ -24,7 +27,6 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
     
     NSURLRequest *request = [NSURLRequest requestWithURL:self.url];
     
@@ -41,7 +43,6 @@
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
 #pragma mark - Private

@@ -16,15 +16,23 @@
 #import "ITBCategory.h"
 #import "ITBNews.h"
 
-static NSString * const categoriesTitle = @"Categories";
+#import <CoreLocation/CoreLocation.h>
+
+//static NSString * const categoriesTitle = @"Categories";
+static NSString * const categoriesTitle = @"Choose sorting & categories";
+static NSString * const categoriesiPhoneTitle = @"Sorting & categories";
 static NSString * const allCatsCell = @"All categories";
 
 @interface ITBCategoriesViewController () <UITableViewDataSource, UITableViewDelegate>
 
-@property (strong, nonatomic) NSArray *allCategoriesArray;
-@property (strong, nonatomic) NSArray *categoriesOfCurrentUserArray;
+@property (copy, nonatomic) NSArray *allCategoriesArray;
+@property (copy, nonatomic) NSArray *categoriesOfCurrentUserArray;
 
 @property (strong, nonatomic) NSArray *allSortingsArray;
+
+@property (weak, nonatomic) IBOutlet UINavigationItem *navBarItem;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *cancelButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *doneButton;
 
 @property (weak, nonatomic) IBOutlet UITableView *categoriesTableView;
 
@@ -32,6 +40,10 @@ static NSString * const allCatsCell = @"All categories";
 @property (assign, nonatomic) BOOL isAllChecked;
 
 @property (assign, nonatomic) NSInteger sortingCheckmarkIndex;
+
+@property (strong, nonatomic) ITBUser *currentUser;
+
+@property (assign, nonatomic) CLLocationCoordinate2D currentUserCoordinates;
 
 @end
 
@@ -42,37 +54,38 @@ static NSString * const allCatsCell = @"All categories";
 - (void)viewDidLoad {
     
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
     
-    self.title = NSLocalizedString(categoriesTitle, nil);
-    
-    // self.allCategoriesArray
     NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:@"title" ascending:YES];
-    self.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:@"ITBCategory" withSortDescriptors:@[titleDescriptor] predicate:nil inContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext];
+    self.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:@"ITBCategory" withSortDescriptors:@[titleDescriptor] predicate:nil];
     
-    // self.categoriesOfCurrentUserArray
+    NSLog(@"ITBCategoriesViewController : [self.allCategoriesArray count] = %li", (long)[self.allCategoriesArray count]);
+    
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
     NSString *objectId = [userDefaults objectForKey:kSettingsObjectId];
-    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
-    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:@"ITBUser" withSortDescriptors:nil predicate:predicate inContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext];
-    ITBUser *currentUser = [users firstObject];
-    self.categoriesOfCurrentUserArray = [currentUser.selectedCategories allObjects];
     
-    // self.sortingCheckmarkIndex
+    NSLog(@"ITBCategoriesViewController : objectId = %@", objectId);
+    
+    self.currentUserCoordinates = CLLocationCoordinate2DMake([[userDefaults objectForKey:kSettingsLatitude] doubleValue], [[userDefaults objectForKey:kSettingsLongitude] doubleValue]);
+    
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:@"ITBUser" withSortDescriptors:nil predicate:predicate];
+    self.currentUser = [users firstObject];
+    self.categoriesOfCurrentUserArray = [self.currentUser.selectedCategories allObjects];
+    
     NSNumber *number = [userDefaults objectForKey:kSettingsChosenSortingType];
     self.sortingCheckmarkIndex = [number intValue];
     
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         
-        UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(actionDone:)];
+        self.navBarItem.rightBarButtonItems = nil;
+        self.navBarItem.leftBarButtonItems = nil;
         
-        [self.navigationItem setRightBarButtonItem:doneButton animated:YES];
+        self.navBarItem.title = NSLocalizedString(categoriesTitle, nil);
         
+    } else {
+        
+        self.navBarItem.title = NSLocalizedString(categoriesiPhoneTitle, nil);
     }
-    
-    UIBarButtonItem *cancelButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(actionCancel:)];
-    
-    [self.navigationItem setLeftBarButtonItem:cancelButton animated:YES];
     
     self.checkBoxes = [[NSMutableArray alloc] init];
     
@@ -88,12 +101,33 @@ static NSString * const allCatsCell = @"All categories";
         [self.checkBoxes addObject:[NSNumber numberWithBool:checkBox]];
     }
     
-    self.allSortingsArray = @[@"Hot news", @"New news", @"Created news", @"Favourites"];
+    self.allSortingsArray = @[@"Hot news", @"New news", @"Created news", @"Favourites", @"News by geolocation"];
+    
+    if ((self.sortingCheckmarkIndex == ITBSortingTypeGeolocation) && (self.currentUserCoordinates.latitude == 0) && (self.currentUserCoordinates.longitude == 0)) {
+        
+        [self showAlertWithTitle:@"Help" message:@"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!"];
+    }
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
+}
+
+#pragma mark - Private
+
+- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *ok = [UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        
+        [alert dismissViewControllerAnimated:YES completion:nil];
+    }];
+    
+    [alert addAction:ok];
+    
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - UITableViewDataSource
@@ -226,6 +260,11 @@ static NSString * const allCatsCell = @"All categories";
         
         self.sortingCheckmarkIndex = indexPath.row;
         
+        if ((self.sortingCheckmarkIndex == ITBSortingTypeGeolocation) && (self.currentUserCoordinates.latitude == 0) && (self.currentUserCoordinates.longitude == 0)) {
+            
+            [self showAlertWithTitle:@"Help" message:@"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!"];
+        }
+        
         [self.categoriesTableView reloadData];
         
     } else if (indexPath.section == 1) {
@@ -300,15 +339,29 @@ static NSString * const allCatsCell = @"All categories";
         
         self.categoriesOfCurrentUserArray = [categoriesOfCurrentUser copy];
         
-        [self.delegate reloadCategoriesFrom:self withCategoriesOfCurrentUserArray:self.categoriesOfCurrentUserArray sortingNamesArray:self.allSortingsArray sortingType:self.sortingCheckmarkIndex];
+        NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+        [userDefaults setObject:[NSNumber numberWithInteger:self.sortingCheckmarkIndex] forKey:kSettingsChosenSortingType];
+        NSString *sortingName = [self.allSortingsArray objectAtIndex:self.sortingCheckmarkIndex];
+        [userDefaults setObject:sortingName forKey:kSettingsChosenSortingName];
+        
+        self.currentUser.selectedCategories = [NSSet setWithArray:self.categoriesOfCurrentUserArray];
+        
+        [[ITBNewsAPI sharedInstance] saveBgContext];
+        
+        [self.delegate reloadCategoriesFrom:self withSortingType:self.sortingCheckmarkIndex sortingName:sortingName];
         
     }
 }
 
 #pragma mark - Actions
 
-- (void)actionDone:(UIBarButtonItem *)sender {
+- (IBAction)actionCancel:(UIBarButtonItem *)sender {
+    
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
 
+- (IBAction)actionDone:(UIBarButtonItem *)sender {
+    
     NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
     
     for (ITBCategory *category in self.allCategoriesArray) {
@@ -325,16 +378,18 @@ static NSString * const allCatsCell = @"All categories";
     
     self.categoriesOfCurrentUserArray = [categoriesOfCurrentUser copy];
     
-    [self.delegate reloadCategoriesFrom:self withCategoriesOfCurrentUserArray:self.categoriesOfCurrentUserArray sortingNamesArray:self.allSortingsArray sortingType:self.sortingCheckmarkIndex];
- 
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    [userDefaults setObject:[NSNumber numberWithInteger:self.sortingCheckmarkIndex] forKey:kSettingsChosenSortingType];
+    NSString *sortingName = [self.allSortingsArray objectAtIndex:self.sortingCheckmarkIndex];
+    [userDefaults setObject:sortingName forKey:kSettingsChosenSortingName];
+    
+    self.currentUser.selectedCategories = [NSSet setWithArray:self.categoriesOfCurrentUserArray];
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
+    
+    [self.delegate reloadCategoriesFrom:self withSortingType:self.sortingCheckmarkIndex sortingName:sortingName];
+    
     [self dismissViewControllerAnimated:YES completion:nil];
-    
-}
-
-- (void)actionCancel:(UIBarButtonItem *)sender {
-    
-    [self dismissViewControllerAnimated:YES completion:nil];
-    
 }
 
 @end

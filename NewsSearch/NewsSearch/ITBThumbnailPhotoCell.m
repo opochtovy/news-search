@@ -9,10 +9,13 @@
 #import "ITBThumbnailPhotoCell.h"
 
 #import "ITBPhoto.h"
+#import "ITBNewsAPI.h"
+
+#import "ITBUtils.h"
 
 @implementation ITBThumbnailPhotoCell
 
-- (void) setThumbnailPhoto:(ITBPhoto *)thumbnailPhoto {
+- (void)setThumbnailPhoto:(ITBPhoto *)thumbnailPhoto {
     
     if (_thumbnailPhoto != thumbnailPhoto) {
         
@@ -20,19 +23,43 @@
     }
     
     [self.activityIndicator startAnimating];
-    
+
     self.imageView.image = nil;
     
     __weak ITBThumbnailPhotoCell* weakSelf = self;
     
-    [_thumbnailPhoto setImageWithURL:_thumbnailPhoto.url onSuccess:^(UIImage * _Nonnull image) {
+    if (thumbnailPhoto.imageData == nil) {
         
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        [self.activityIndicator startAnimating];
+        
+        [[ITBNewsAPI sharedInstance] loadImageForUrlString:_thumbnailPhoto.url onSuccess:^(NSData *data) {
             
-            weakSelf.imageView.image = image;
-            [weakSelf.activityIndicator stopAnimating];
-        });
-    }];
+            if (data != nil) {
+                
+                UIImage *image = [[UIImage alloc] initWithData:data];
+                _thumbnailPhoto.imageData = data;
+                
+                NSError *error = nil;
+                BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
+                
+                if (!saved) {
+                    
+                    NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
+                }
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    
+                    weakSelf.imageView.image = image;
+                    [weakSelf.activityIndicator stopAnimating];
+                });
+            }
+            
+        }];
+        
+    } else {
+        
+        self.imageView.image = [UIImage imageWithData:thumbnailPhoto.imageData];
+    }
     
 }
 

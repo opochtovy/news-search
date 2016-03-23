@@ -9,7 +9,6 @@
 #import <Foundation/Foundation.h>
 
 #import <CoreData/CoreData.h>
-#import <UIKit/UIKit.h>
 
 @class ITBNews, ITBCategory, ITBUser, ITBPhoto;
 
@@ -18,42 +17,37 @@
 @property (strong, nonatomic) ITBUser *currentUser;
 
 @property (strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
-@property (strong, nonatomic) NSManagedObjectContext *syncManagedObjectContext;
+@property (strong, nonatomic) NSManagedObjectContext *bgManagedObjectContext;
 
 + (ITBNewsAPI *)sharedInstance;
 
-- (void)saveSaveContext;
 - (void)saveMainContext;
+- (void)saveBgContext;
 
-// NSUserDefaults
 - (void)saveCurrentUser;
 - (void)loadCurrentUser;
 
 - (void)logOut;
 
-// ITBRestClient
-- (void)checkNetworkConnectionOnSuccess:(void(^)(BOOL isSuccess))success;
-- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(ITBUser *user))success;
-- (void)registerWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(BOOL isSuccess))success;
-- (void)getUsersOnSuccess:(void(^)(NSSet *usernames))success;
+- (void)checkNetworkConnectionOnSuccess:(void(^)(BOOL isConnected))success;
+- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(ITBUser *user, BOOL isConnected))success;
+- (void)registerWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(BOOL isConnected))success;
+- (void)getUsersOnSuccess:(void(^)(NSSet *usernames, BOOL isConnected))success;
 
-- (void)loadImageForURL:(NSString *)url onSuccess:(void(^)(UIImage *image))success;
+- (void)loadImageForUrlString:(NSString *)urlString onSuccess:(void(^)(NSData *data))success;
 
+- (void)createNewObjectsForPhotoDataArray:(NSArray *)photos thumbnailPhotoDataArray:(NSArray *)thumbnailPhotos onSuccess:(void(^)(NSDictionary *responseBody))success;
 - (void)createCustomNewsForTitle:(NSString *)title message:(NSString *)message categoryTitle:(NSString *)categoryTitle photosArray:(NSArray *)photos thumbnailPhotos:(NSArray *)thumbnailPhotos onSuccess:(void(^)(BOOL isSuccess))success;
-- (void)uploadPhotosForCreatingNewsToServerForPhotosArray:(NSArray *)photos thumbnailPhotos:(NSArray *)thumbnailPhotos onSuccess:(void(^)(NSDictionary *responseBody))success;
-- (void)uploadPhotoToServerForName:(NSString *)name withData:(NSData *)data onSuccess:(void(^)(NSDictionary *responseBody))success;
-- (void)createPhotoOnServerForName:(NSString *)name url:(NSString *)url onSuccess:(void(^)(ITBPhoto *photo))success;
+- (void)uploadPhotosForCreatingNewsToServerForPhotoDataArray:(NSArray *)photoDataArray thumbnailPhotoDataArray:(NSArray *)thumbnailPhotoDataArray photoObjectsArray:(NSArray *)photosArray thumbnailPhotoObjectsArray:(NSArray *)thumbnailPhotosArray onSuccess:(void(^)(NSDictionary *responseBody))success;
 
-// ITBCoreDataManager
 - (void)createLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess))success;
 - (void)updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess))success;
 
 - (NSArray *)fetchObjectsForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate inContext:(NSManagedObjectContext *)context;
 - (NSArray *)fetchObjectsForEntity:(NSString *)entityName usingContext:(NSManagedObjectContext *)context;
 
-- (NSArray *)newsInLocalDB;
+- (NSArray *)fetchObjectsInBackgroundForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate;
 
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess))success;
-
 
 @end

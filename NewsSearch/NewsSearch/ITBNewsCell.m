@@ -7,7 +7,6 @@
 //
 
 #import "ITBNewsCell.h"
-
 #import "ITBNewsCellDelegate.h"
 
 @implementation ITBNewsCell

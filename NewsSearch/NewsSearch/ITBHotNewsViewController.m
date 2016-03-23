@@ -33,8 +33,22 @@
 
 #import <Social/Social.h>
 
-static NSString * const hotNewsTitle = @"NEWS";
+#import <CoreLocation/CoreLocation.h>
+
+static NSString * const hotNewsTitle = @"News";
+
 static NSString * const loginSegueId = @"login";
+static NSString * const chooseCategoriesSegueId = @"chooseCategories";
+static NSString * const showNewsPageSegueId = @"showNewsPage";
+static NSString * const showCustomNewsPageSegueId = @"showCustomNewsPage";
+
+static NSString * const ITBNewsCellReuseIdentifier = @"NewsCell";
+static NSString * const ITBActiveNewsCellReuseIdentifier = @"ActiveNewsCell";
+static NSString * const noDataReuseIdentifier = @"noData";
+
+static NSString * const logoutTitleOfLoginButton = @"Logout";
+
+static NSString * const errorMessage = @"Unresolved error:";
 
 @interface ITBHotNewsViewController () <NSFetchedResultsControllerDelegate, ITBLoginTableViewControllerDelegate, ITBNewsCellDelegate, ITBCategoriesPickerDelegate, ITBCustomNewsDetailViewControllerDataSource>
 
@@ -47,28 +61,21 @@ static NSString * const loginSegueId = @"login";
 
 @property (assign, nonatomic) ITBSortingType chosenSortingType;
 
-@property (strong, nonatomic) ITBNews *customNewsItem;
+@property (strong, nonatomic) ITBNews *newsItemForDetailPage;
+
+@property (strong, nonatomic) NSArray *newsByGeolocationArray;
 
 @end
 
 @implementation ITBHotNewsViewController
 
-#pragma mark - Lifecycle
+@synthesize fetchedResultsController = _fetchedResultsController;
 
-- (id)init {
-    
-    self = [super initWithStyle:UITableViewStylePlain];
-    
-    if (self != nil) {
-        
-    }
-    
-    return self;
-}
+#pragma mark - Lifecycle
 
 - (void)dealloc {
     
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSManagedObjectContextDidSaveNotification object:[ITBNewsAPI sharedInstance].bgManagedObjectContext];
 }
 
 - (void)viewDidLoad {
@@ -88,45 +95,37 @@ static NSString * const loginSegueId = @"login";
     
     self.loginButton.title = wasUserSavedLocally ? NSLocalizedString(logout, nil) : NSLocalizedString(login, nil);
     
-    // refresh
     UIRefreshControl *refresh = [[UIRefreshControl alloc] init];
-    
     [refresh addTarget:self action:@selector(refreshNews) forControlEvents:UIControlEventValueChanged];
     self.refreshControl = refresh;
     
-    // initializing of self.chosenSortingType
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    
     NSNumber *number = [userDefaults objectForKey:kSettingsChosenSortingType];
     self.chosenSortingType = [number intValue];
-
-    [[NSNotificationCenter defaultCenter] addObserverForName:NSManagedObjectContextDidSaveNotification object:nil queue:nil usingBlock:^(NSNotification* note) {
-        
-        NSManagedObjectContext *mainContext = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
-        NSManagedObjectContext *syncContext = [ITBNewsAPI sharedInstance].syncManagedObjectContext;
-        
-        NSManagedObjectContext *otherContext = note.object;
-        
-        if (otherContext.persistentStoreCoordinator == mainContext.persistentStoreCoordinator) {
-            
-            if (otherContext == syncContext) {
-            
-                [mainContext performBlock:^(){
-                    
-                    [mainContext mergeChangesFromContextDidSaveNotification:note];
-                    
-                    [[ITBNewsAPI sharedInstance] saveMainContext];
-                    [[ITBNewsAPI sharedInstance] saveSaveContext];
-                }];
-            }
-        }
-    }];
- 
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshDataForMainContext:) name:NSManagedObjectContextDidSaveNotification object:[ITBNewsAPI sharedInstance].bgManagedObjectContext];
+    
+    self.tableView.contentOffset = CGPointMake(0, 0 - self.tableView.contentInset.top);
+    
+    [self hideSharingButtons];
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+}
+
+- (void)refreshDataForMainContext:(NSNotification *)notification {
+    
+    NSManagedObjectContext *mainContext = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
+    
+    [mainContext mergeChangesFromContextDidSaveNotification:notification];
+    
+    NSError *error = nil;
+    BOOL saved = [mainContext save:&error];
+    if (!saved) {
+        NSLog(@"%@ %@", contextSavingError, error);
+    }
+
 }
 
 #pragma mark - Custom Accessors
@@ -140,92 +139,111 @@ static NSString * const loginSegueId = @"login";
     
     NSManagedObjectContext *context = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
     
-    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:@"ITBUser" usingContext:context];
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:ITBUserEntityName usingContext:context];
     ITBUser *currentUser = [users firstObject];
     
     if (currentUser.objectId != nil) {
         
-        [context performBlockAndWait:^{
+        NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+        
+        NSEntityDescription *description = [NSEntityDescription entityForName:ITBNewsEntityName inManagedObjectContext:context];
+        
+        [fetchRequest setEntity:description];
+        
+        NSString *descriptorKey;
+        
+        NSPredicate *predicate;
+        
+        if ([currentUser.selectedCategories count] != 0) {
             
-            NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+            predicate = [NSPredicate predicateWithFormat:@"category IN %@", currentUser.selectedCategories];
             
-            NSEntityDescription *description = [NSEntityDescription entityForName:@"ITBNews" inManagedObjectContext:context];
+        } else {
             
-            [fetchRequest setEntity:description];
-            
-            NSString *descriptorKey;
-            
-            NSPredicate *predicate;
-            
-            if ([currentUser.selectedCategories count] != 0) {
+            predicate = [NSPredicate predicateWithFormat:@"category.title == %@", nothingPredicateFormat];
+        }
+        
+        switch (self.chosenSortingType) {
                 
-                predicate = [NSPredicate predicateWithFormat:@"category IN %@", currentUser.selectedCategories];
+            case ITBSortingTypeHot:
+                descriptorKey = frcRatingDescriptorKey;
+                break;
                 
-            } else {
+            case ITBSortingTypeNew:
+                descriptorKey = createdAtDescriptorKey;
+                break;
                 
-                predicate = [NSPredicate predicateWithFormat:@"category.title == %@", @"nothing"];
-            }
-            
-            switch (self.chosenSortingType) {
+            case ITBSortingTypeCreated: {
+                descriptorKey = titleDescriptorKey;
+                
+                if ([currentUser.selectedCategories count] != 0) {
                     
-                case ITBSortingTypeHot:
-                    descriptorKey = @"rating";
-                    break;
+                    predicate = [NSPredicate predicateWithFormat:@"(category IN %@) AND (author.objectId == %@)", currentUser.selectedCategories, currentUser.objectId];
                     
-                case ITBSortingTypeNew:
-                    descriptorKey = @"createdAt";
-                    break;
+                } else {
                     
-                case ITBSortingTypeCreated: {
-                    descriptorKey = @"title";
+                    predicate = [NSPredicate predicateWithFormat:@"(category.title == %@) AND (author.objectId == %@)", nothingPredicateFormat, currentUser.objectId];
                     
-                    if ([currentUser.selectedCategories count] != 0) {
-                        
-                        predicate = [NSPredicate predicateWithFormat:@"(category IN %@) AND (author.objectId == %@)", currentUser.selectedCategories, currentUser.objectId];
-                        
-                    } else {
-                        
-                        predicate = [NSPredicate predicateWithFormat:@"(category.title == %@) AND (author.objectId == %@)", @"nothing", currentUser.objectId];
-                        
-                    }
-                    break;
                 }
-                    
-                case ITBSortingTypeFavourites: {
-                    descriptorKey = @"title";
-                    
-                    if ([currentUser.favouriteNews count] != 0) {
-                        
-                        predicate = [NSPredicate predicateWithFormat:@"SELF IN %@", currentUser.favouriteNews];
-                        
-                    } else {
-                        
-                        predicate = [NSPredicate predicateWithFormat:@"objectId == %@", @"nothing"];
-                        
-                    }
-                    break;
-                }
+                break;
             }
+                
+            case ITBSortingTypeFavourites: {
+                descriptorKey = titleDescriptorKey;
+                
+                if ([currentUser.favouriteNews count] != 0) {
+                    
+                    predicate = [NSPredicate predicateWithFormat:@"SELF IN %@", currentUser.favouriteNews];
+                    
+                } else {
+                    
+                    predicate = [NSPredicate predicateWithFormat:@"objectId == %@", nothingPredicateFormat];
+                    
+                }
+                break;
+            }
+                
+            case ITBSortingTypeGeolocation:
+                descriptorKey = titleDescriptorKey;
+                
+                if ([currentUser.selectedCategories count] != 0) {
+                    
+                    predicate = [NSPredicate predicateWithFormat:@"(category IN %@) AND (isValidByGeolocation != %@)", currentUser.selectedCategories, @0];
+                    
+                } else {
+                    
+                    predicate = [NSPredicate predicateWithFormat:@"(category.title == %@) AND (isValidByGeolocation != %@)", nothingPredicateFormat, @0];
+                    
+                }
+                break;
+        }
+        
+        NSSortDescriptor *descriptor = [[NSSortDescriptor alloc] initWithKey:descriptorKey ascending:NO];
+        
+        if (self.chosenSortingType == ITBSortingTypeHot) {
             
-            NSSortDescriptor *descriptor = [[NSSortDescriptor alloc] initWithKey:descriptorKey ascending:NO];
+            NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:titleDescriptorKey ascending:NO];
+            [fetchRequest setSortDescriptors:@[descriptor, titleDescriptor]];
+            
+        } else {
+            
             [fetchRequest setSortDescriptors:@[descriptor]];
+        }
+        
+        [fetchRequest setPredicate:predicate];
+        
+        NSFetchedResultsController *aFetchedResultsController = [[NSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:context sectionNameKeyPath:nil cacheName:nil];
+        
+        aFetchedResultsController.delegate = self;
+        
+        self.fetchedResultsController = aFetchedResultsController;
+        
+        NSError *error = nil;
+        
+        if (![self.fetchedResultsController performFetch:&error]) {
             
-            [fetchRequest setPredicate:predicate];
-            
-            NSFetchedResultsController *aFetchedResultsController = [[NSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:context sectionNameKeyPath:nil cacheName:nil];
-            
-            aFetchedResultsController.delegate = self;
-            
-            self.fetchedResultsController = aFetchedResultsController;
-            
-            NSError *error = nil;
-            
-            if (![self.fetchedResultsController performFetch:&error]) {
-                
-                NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-            }
-            
-        }];
+            NSLog(@"%@ %@, %@", errorMessage, error, [error userInfo]);
+        }
         
         return _fetchedResultsController;
     }
@@ -240,6 +258,14 @@ static NSString * const loginSegueId = @"login";
     NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
     
     ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    NSPredicate *newsPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", newsItem.objectId];
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:newsPredicate];
+    newsItem = [news firstObject];
+    
+    NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", [ITBNewsAPI sharedInstance].currentUser.objectId];
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBUserEntityName withSortDescriptors:nil predicate:userPredicate];
+    ITBUser *currentUser = [users firstObject];
 
     BOOL isLikedByCurrentUser = [newsItem.isLikedByCurrentUser boolValue];
     
@@ -247,19 +273,21 @@ static NSString * const loginSegueId = @"login";
     
     if (isLikedByCurrentUser) {
         
-        [newsItem removeLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
+        [newsItem removeLikeAddedUsersObject:currentUser];
         --ratingInt;
         newsItem.isLikedByCurrentUser = @0;
         
     } else {
         
-        [newsItem addLikeAddedUsersObject:[ITBNewsAPI sharedInstance].currentUser];
+        [newsItem addLikeAddedUsersObject:currentUser];
         ++ratingInt;
         newsItem.isLikedByCurrentUser = @1;
         
     }
     
     newsItem.rating = [NSNumber numberWithInteger:ratingInt];
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
     
 }
 
@@ -269,47 +297,117 @@ static NSString * const loginSegueId = @"login";
         
         __weak ITBHotNewsViewController *weakSelf = self;
         
-        NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
+        NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:ITBNewsEntityName usingContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext];
         
-        if ([allLocalNews count] > 0) {
+        [[ITBNewsAPI sharedInstance] checkNetworkConnectionOnSuccess:^(BOOL isConnected) {
             
-            [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
+            if (isConnected) {
                 
-                if (isSuccess) {
+                if ([allLocalNews count] > 0) {
                     
-                    [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                    [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
+                        
+                        if (isSuccess) {
+                            
+                            [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                                
+                                dispatch_async(dispatch_get_main_queue(), ^{
+                                    
+                                    [weakSelf prefetchValidByGeolocationNews];
+                                    
+                                    weakSelf.fetchedResultsController = nil;
+                                    [weakSelf.tableView reloadData];
+                                    
+                                    weakSelf.tableView.contentOffset = CGPointMake(0, 0 - self.tableView.contentInset.top);
+                                    [weakSelf.refreshControl endRefreshing];
+                                    
+                                });
+                            }];
+                        }
+                        
+                    }];
+                    
+                    
+                } else {
+                    
+                    [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
                         
                         dispatch_async(dispatch_get_main_queue(), ^{
                             
-                            weakSelf.fetchedResultsController = nil;
-                            [weakSelf.tableView reloadData];
+                            [self prefetchValidByGeolocationNews];
                             
-                            [weakSelf.refreshControl endRefreshing];
+                            self.fetchedResultsController = nil;
+                            [self.tableView reloadData];
                             
+                            self.tableView.contentOffset = CGPointMake(0, 0 - self.tableView.contentInset.top);
+                            [self.refreshControl endRefreshing];
                         });
                     }];
                 }
                 
-            }];
-            
-        } else {
-            
-            [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+            } else {
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
                     
-                    weakSelf.fetchedResultsController = nil;
-                    [weakSelf.tableView reloadData];
+                    self.tableView.contentOffset = CGPointMake(0, 0 - self.tableView.contentInset.top);
+                    [self.refreshControl endRefreshing];
                     
-                    [weakSelf.refreshControl endRefreshing];
+                    UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                    
+                    UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                        
+                        [alert dismissViewControllerAnimated:YES completion:nil];
+                    }];
+                    
+                    [alert addAction:ok];
+                    
+                    [self presentViewController:alert animated:YES completion:nil];
                     
                 });
-            }];
-        }
+            }
+            
+        }];
+        
     } else {
         
         [self.refreshControl endRefreshing];
     }
+}
+
+- (void)prefetchValidByGeolocationNews {
+    
+    self.newsByGeolocationArray = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    NSNumber *latNumber = [userDefaults objectForKey:kSettingsLatitude];
+    NSNumber *longNumber = [userDefaults objectForKey:kSettingsLongitude];
+    
+    CLLocation *currentUserLocation = [[CLLocation alloc] initWithLatitude:[latNumber doubleValue] longitude:[longNumber doubleValue]];
+    
+    for (ITBNews *newsItem in self.newsByGeolocationArray) {
+        
+        CLLocation *newsItemLocation = [[CLLocation alloc] initWithLatitude:[newsItem.latitude doubleValue] longitude:[newsItem.longitude doubleValue]];
+        
+        CLLocationDistance distance = [newsItemLocation distanceFromLocation:currentUserLocation];
+        
+        BOOL isValid = (distance <= maxDistance) ? YES : NO;
+        newsItem.isValidByGeolocation = [NSNumber numberWithBool:isValid];
+    }
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
+    
+}
+
+- (void)hideSharingButtons {
+    
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
+    
+    for (ITBNews *newsItem in news) {
+        newsItem.isTitlePressed = @0;
+    }
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
+    
 }
 
 #pragma mark - UIViewController methods
@@ -329,6 +427,22 @@ static NSString * const loginSegueId = @"login";
         [self.tableView reloadData];
         
         return NO;
+        
+    } else if ([identifier isEqualToString:showNewsPageSegueId]) {
+        
+        if (self.newsItemForDetailPage.newsURL == nil) {
+            
+            return NO;
+            
+        }
+        
+    } else if ([identifier isEqualToString:showCustomNewsPageSegueId]) {
+        
+        if (self.newsItemForDetailPage.newsURL != nil) {
+            
+            return NO;
+            
+        }
     }
     
     return YES;
@@ -338,14 +452,35 @@ static NSString * const loginSegueId = @"login";
     
     if ([[segue identifier] isEqualToString:loginSegueId]) {
         
-        UINavigationController *loginNavVC = [segue destinationViewController];
-        
-        ITBLoginTableViewController *loginVC = (ITBLoginTableViewController *)loginNavVC.topViewController;
-        
+        ITBLoginTableViewController *loginVC = [segue destinationViewController];
         loginVC.delegate = self;
         
+    } else if ([[segue identifier] isEqualToString:chooseCategoriesSegueId]) {
+        
+        ITBCategoriesViewController *categoriesVC = [segue destinationViewController];
+        categoriesVC.delegate = self;
+        
+    } else if ([[segue identifier] isEqualToString:showNewsPageSegueId]) {
+        
+        if (self.newsItemForDetailPage.newsURL != nil) {
+            
+            ITBNewsDetailViewController *newsDetailVC = [segue destinationViewController];
+            
+            NSURL *url = [NSURL URLWithString:self.newsItemForDetailPage.newsURL];
+            
+            newsDetailVC.title = self.newsItemForDetailPage.title;
+            newsDetailVC.url = url;
+            
+        }
+    } else if ([[segue identifier] isEqualToString:showCustomNewsPageSegueId]) {
+        
+        if (self.newsItemForDetailPage.newsURL == nil) {
+            
+            ITBCustomNewsDetailViewController *customNewsDetailVC = [segue destinationViewController];
+            customNewsDetailVC.delegate = self;
+            
+        }
     }
-    
 }
 
 #pragma mark - UITableViewDataSource
@@ -381,16 +516,11 @@ static NSString * const loginSegueId = @"login";
         
         ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
         
-        static NSString *identifier = @"NewsCell";
-        static NSString *activeIdentifier = @"ActiveNewsCell";
-        
-//        ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
-        
         BOOL isTitlePressed = [newsItem.isTitlePressed boolValue];
         
         if (isTitlePressed) {
             
-            ITBActiveNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:activeIdentifier];
+            ITBActiveNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:ITBActiveNewsCellReuseIdentifier];
             
             cell.activeDelegate = self;
             
@@ -400,7 +530,7 @@ static NSString * const loginSegueId = @"login";
         
         } else {
             
-            ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+            ITBNewsCell *cell = [tableView dequeueReusableCellWithIdentifier:ITBNewsCellReuseIdentifier];
             
             cell.delegate = self;
             
@@ -411,7 +541,7 @@ static NSString * const loginSegueId = @"login";
         
     } else {
         
-        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"noData"];
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:noDataReuseIdentifier];
         
         cell.textLabel.text = NSLocalizedString(beforeLogin, nil);
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
@@ -455,7 +585,6 @@ static NSString * const loginSegueId = @"login";
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    // Return NO if you do not want the specified item to be editable.
     return YES;
 }
 
@@ -465,18 +594,15 @@ static NSString * const loginSegueId = @"login";
         
         NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
         
-        [context performBlockAndWait:^{
+        [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
+        
+        NSError *error = nil;
+        BOOL saved = [context save:&error];
+        
+        if (!saved) {
             
-            [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
-            
-            if (context == [ITBNewsAPI sharedInstance].mainManagedObjectContext) {
-
-                [[ITBNewsAPI sharedInstance] saveMainContext];
-                [[ITBNewsAPI sharedInstance] saveSaveContext];
-                
-            }
-            
-        }];
+            NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
+        }
     }
 }
 
@@ -525,7 +651,7 @@ static NSString * const loginSegueId = @"login";
             break;
             
         case NSFetchedResultsChangeUpdate:
-            [self configureCell:[tableView cellForRowAtIndexPath:indexPath] atIndexPath:indexPath];
+            [tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
             break;
             
         case NSFetchedResultsChangeMove: {
@@ -545,7 +671,7 @@ static NSString * const loginSegueId = @"login";
 
 - (void)loginDidPassSuccessfully:(ITBLoginTableViewController *)vc {
     
-    self.loginButton.title = @"Logout";
+    self.loginButton.title = logoutTitleOfLoginButton;
     
     dispatch_async(dispatch_get_main_queue(), ^{
 
@@ -561,59 +687,30 @@ static NSString * const loginSegueId = @"login";
 
 #pragma mark - ITBCategoriesPickerDelegate
 
-- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withCategoriesOfCurrentUserArray:(NSArray *)categoriesOfCurrentUser sortingNamesArray:(NSArray *)categoryNames sortingType:(NSInteger)index {
+- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withSortingType:(NSInteger)sortingType sortingName:(NSString *)sortingName {
     
-    // saving chosenSortingType
-    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    [self hideSharingButtons];
     
-    [userDefaults setObject:[NSNumber numberWithInteger:index] forKey:kSettingsChosenSortingType];
+    self.chosenSortingType = (int)sortingType;
+    self.title = sortingName;
     
-    self.chosenSortingType = (int)index;
+    self.fetchedResultsController = nil;
+    [self.tableView reloadData];
     
-    [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
-        
-        [ITBNewsAPI sharedInstance].currentUser.selectedCategories = [NSSet setWithArray:categoriesOfCurrentUser];
-        
-        [[ITBNewsAPI sharedInstance] saveMainContext];
-        [[ITBNewsAPI sharedInstance] saveSaveContext];
-        
-        self.title = [categoryNames objectAtIndex:index];
-        [userDefaults setObject:self.title forKey:kSettingsChosenSortingName];
-        
-        self.fetchedResultsController = nil;
-        [self.tableView reloadData];
-        
-    }];
 }
 
 #pragma mark - ITBNewsCellDelegate
 
 - (void)newsCellDidTapAdd:(UITableViewCell *)cell {
     
-    [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
-        
-        [self getNewsCellForSender:cell];
-        
-        [[ITBNewsAPI sharedInstance] saveMainContext];
-        [[ITBNewsAPI sharedInstance] saveSaveContext];
-        
-        [self.tableView reloadData];
-        
-    }];
+    [self getNewsCellForSender:cell];
+ 
 }
 
 - (void)newsCellDidTapSubtract:(UITableViewCell *)cell {
     
-    [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
-        
-        [self getNewsCellForSender:cell];
-        
-        [[ITBNewsAPI sharedInstance] saveMainContext];
-        [[ITBNewsAPI sharedInstance] saveSaveContext];
-        
-        [self.tableView reloadData];
-        
-    }];
+    [self getNewsCellForSender:cell];
+    
 }
 
 - (void)newsCellDidTapDetail:(UITableViewCell *)cell {
@@ -622,28 +719,17 @@ static NSString * const loginSegueId = @"login";
     
     ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
-    if (newsItem.newsURL != nil) {
+    self.newsItemForDetailPage = newsItem;
+    
+    if (self.newsItemForDetailPage.newsURL != nil) {
         
-        ITBNewsDetailViewController *newsDetailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBNewsDetailViewController"];
-        
-        NSURL *url = [NSURL URLWithString:newsItem.newsURL];
-        
-        newsDetailVC.title = newsItem.title;
-        newsDetailVC.url = url;
-        
-        [self.navigationController pushViewController:newsDetailVC animated:YES];
+        [self performSegueWithIdentifier:showNewsPageSegueId sender:cell];
         
     } else {
         
-        ITBCustomNewsDetailViewController *customNewsDetailVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCustomNewsDetailViewController"];
+        [self performSegueWithIdentifier:showCustomNewsPageSegueId sender:cell];
         
-        customNewsDetailVC.delegate = self;
-        
-        self.customNewsItem = newsItem;
-        
-        [self.navigationController pushViewController:customNewsDetailVC animated:YES];
     }
-    
 }
 
 - (void)newsCellDidSelectTitle:(UITableViewCell *) cell {
@@ -680,18 +766,21 @@ static NSString * const loginSegueId = @"login";
     
     ITBNews *newsItem = [self.fetchedResultsController objectAtIndexPath:indexPath];
     
+    NSPredicate *newsPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", newsItem.objectId];
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:newsPredicate];
+    newsItem = [news firstObject];
+    
     ITBUser *currentUser = [ITBNewsAPI sharedInstance].currentUser;
+    
+    NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", currentUser.objectId];
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBUserEntityName withSortDescriptors:nil predicate:userPredicate];
+    currentUser = [users firstObject];
     
     if (![currentUser.favouriteNews containsObject:newsItem]) {
         
-        [[ITBNewsAPI sharedInstance].mainManagedObjectContext performBlockAndWait:^{
-            
-            [currentUser addFavouriteNewsObject:newsItem];
-            
-            [[ITBNewsAPI sharedInstance] saveMainContext];
-            [[ITBNewsAPI sharedInstance] saveSaveContext];
-            
-        }];
+        [currentUser addFavouriteNewsObject:newsItem];
+        
+        [[ITBNewsAPI sharedInstance] saveBgContext];
         
     }
 }
@@ -748,90 +837,17 @@ static NSString * const loginSegueId = @"login";
 
 - (ITBNews *)sendNewsItemTo:(ITBCustomNewsDetailViewController *)newsDetailVC {
     
-    return self.customNewsItem;
+    return self.newsItemForDetailPage;
 }
 
 #pragma mark - IBActions
-
-- (IBAction)actionChooseCategories:(UIBarButtonItem *)sender {
-    
-    ITBCategoriesViewController *vc = [self.storyboard instantiateViewControllerWithIdentifier:@"ITBCategoriesViewController"];
-    
-    vc.delegate = self;
-    
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-    
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        
-        if (sender == nil) {
-            return;
-        }
-        
-        nav.modalPresentationStyle = UIModalPresentationPopover;
-        
-        [self presentViewController:nav animated:YES completion:nil];
-        
-        UIPopoverPresentationController *popoverPresentationController = nav.popoverPresentationController;
-        
-        popoverPresentationController.sourceView = self.view;
-        
-        [popoverPresentationController setPermittedArrowDirections:UIPopoverArrowDirectionUp];
-        
-        
-    } else {
-        
-        [self presentViewController:nav animated:YES completion:nil];
-    }
-}
 
 - (IBAction)actionRefresh:(UIBarButtonItem *)sender {
 
     [self.refreshControl beginRefreshing];
     self.tableView.contentOffset = CGPointMake(0.f, -120.f);
     
-    __weak ITBHotNewsViewController *weakSelf = self;
-    
-    NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] newsInLocalDB];
-
-    if ([allLocalNews count] > 0) {
-
-        [[ITBNewsAPI sharedInstance] updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
-             
-             if (isSuccess) {
-                 
-                 [[ITBNewsAPI sharedInstance] updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
-                      
-                      dispatch_async(dispatch_get_main_queue(), ^{
-                          
-                          weakSelf.fetchedResultsController = nil;
-                          [weakSelf.tableView reloadData];
-                          
-                          weakSelf.tableView.contentOffset = CGPointMake(0.f, 0.f);
-                          
-                          [weakSelf.refreshControl endRefreshing];
-                          
-                      });
-                  }];
-             }
-             
-         }];
-
-        
-    } else {
-        
-        [[ITBNewsAPI sharedInstance] createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-                 weakSelf.fetchedResultsController = nil;
-                 [weakSelf.tableView reloadData];
-                 
-                 weakSelf.tableView.contentOffset = CGPointMake(0.f, 0.f);
-                 
-                 [weakSelf.refreshControl endRefreshing];
-             });
-         }];
-    }
+    [self refreshNews];
 }
 
 @end

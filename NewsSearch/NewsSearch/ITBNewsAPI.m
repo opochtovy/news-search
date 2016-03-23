@@ -8,8 +8,6 @@
 
 #import "ITBNewsAPI.h"
 
-#import <UIKit/UIKit.h>
-
 #import "ITBUtils.h"
 
 #import "ITBRestClient.h"
@@ -20,8 +18,21 @@
 #import "ITBUser.h"
 #import "ITBPhoto.h"
 
-static NSString * const kSettingsInitialCompleteKey = @"initialSyncCompleted";
-static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted";
+static NSString * const defaultTitle = @"News";
+
+static NSString * const checkNetworkUrl = @"https://api.parse.com/1/users/me";
+static NSString * const authorizationUrl = @"https://api.parse.com/1/login?&username=";
+static NSString * const passwordSection = @"&password=";
+static NSString * const filesUrl = @"https://api.parse.com/1/files/";
+
+static NSString * const userClass = @"_User";
+static NSString * const testValue = @"test";
+
+static NSString * const photoNamePath = @"photo";
+static NSString * const thumbPhotoNamePath = @"thumbnailPhoto";
+static NSString * const jpgExtension = @".jpg";
+
+static NSString * const uploadPhotoError = @"There is no valid photo";
 
 @interface ITBNewsAPI ()
 
@@ -59,9 +70,6 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
         
         _coreDataManager = [[ITBCoreDataManager alloc] init];
         
-        _mainManagedObjectContext = [_coreDataManager mainManagedObjectContext];
-        _syncManagedObjectContext = [_coreDataManager syncManagedObjectContext];
-        
         [self loadCurrentUser];
         
     }
@@ -80,14 +88,15 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     return _mainManagedObjectContext;
 }
 
-- (NSManagedObjectContext *)syncManagedObjectContext {
+- (NSManagedObjectContext *)bgManagedObjectContext {
     
-    if (_syncManagedObjectContext == nil) {
+    if (_bgManagedObjectContext == nil) {
         
-        _syncManagedObjectContext = [_coreDataManager syncManagedObjectContext];
+        _bgManagedObjectContext = [_coreDataManager bgManagedObjectContext];
+        [_bgManagedObjectContext setMergePolicy:NSOverwriteMergePolicy];
     }
     
-    return _syncManagedObjectContext;
+    return _bgManagedObjectContext;
 }
 
 #pragma mark - Core Data Saving support
@@ -97,14 +106,14 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     [self.coreDataManager saveMainContext];
 }
 
-- (void)saveSyncContext {
+- (void)saveBgContext {
     
-    [self.coreDataManager saveSyncContext];
-}
-
-- (void)saveSaveContext {
+    [[self.coreDataManager bgManagedObjectContext] performBlockAndWait:^{
+        
+        [self.coreDataManager saveBgContext];
+        
+    }];
     
-    [self.coreDataManager saveSaveContext];
 }
 
 #pragma mark - NSUserDefaults
@@ -129,7 +138,8 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     if (objectId != nil) {
         
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
-        NSArray *users = [self.coreDataManager fetchObjectsForName:@"ITBUser" withSortDescriptor:nil predicate:predicate inContext:self.mainManagedObjectContext];
+        NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:self.mainManagedObjectContext];
+        
         self.currentUser = [users firstObject];
         
     }
@@ -137,26 +147,17 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
 
 #pragma mark - Public
 
-- (void)checkNetworkConnectionOnSuccess:(void(^)(BOOL isSuccess))success {
+- (void)checkNetworkConnectionOnSuccess:(void(^)(BOOL isConnected))success {
     
     if (self.currentUser.sessionToken != nil) {
         
-        NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/users/me"];
-        NSString *method = @"GET";
+        NSDictionary *headers = checkNetworkHeaders(self.currentUser.sessionToken);
         
-        NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                                   @"x-parse-rest-api-key": restApiKey,
-                                   @"x-parse-session-token": self.currentUser.sessionToken };
-        
-        [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
+        [self.restClient makeRequestToServerForUrlString:checkNetworkUrl withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
-            NSString *username = [responseBody objectForKey:@"username"];
+            BOOL isConnected = (responseBody == nil) ? NO : YES;
             
-            if (username != nil) {
-                
-                success(YES);
-                
-            }
+            success(isConnected);
             
         } onFailure:^(NSError *error, NSInteger statusCode) {
             
@@ -165,55 +166,52 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     } else {
         
         [self loadCurrentUser];
+        
+        success(NO);
     }
 }
 
-- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(ITBUser *user))success {
+- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(ITBUser *user, BOOL isConnected))success {
     
-    NSString *urlString = [NSString stringWithFormat: @"%@%@%@%@", @"https://api.parse.com/1/login?&username=", username, @"&password=", password];
+    NSString *urlString = [NSString stringWithFormat: @"%@%@%@%@", authorizationUrl, username, passwordSection, password];
     
-    NSString *method = @"GET";
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey };
-    
-    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
+    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
         
-        NSInteger code = [[responseBody objectForKey:@"code"] integerValue];
+        NSInteger code = [[responseBody objectForKey:codeDictKey] integerValue];
         
-        if (code == 0) {
+        if (responseBody == nil) {
             
-            NSString *objectId = [responseBody objectForKey:@"objectId"];
+            success(nil, NO);
+            
+        } else if (code == 0) {
+            
+            NSString *objectId = [responseBody objectForKey:objectIdDictKey];
             
             NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
 
             NSManagedObjectContext *context = self.mainManagedObjectContext;
             
-            NSArray *users = [self.coreDataManager fetchObjectsForName:@"ITBUser" withSortDescriptor:nil predicate:predicate inContext:context];
+            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
             
-            [context performBlockAndWait:^{
+            ITBUser *user = [users firstObject];
+            
+            [user updateObjectWithDictionary:responseBody inContext:context];
+            
+            if (user == nil) {
                 
-                ITBUser *user = [users firstObject];
-                
-                [user updateObjectWithDictionary:responseBody inContext:context];
-                
-                if (user == nil) {
-                    
-                    user = [ITBUser initObjectWithDictionary:responseBody inContext:context];
-                }
-                
-                self.currentUser = user;
-                [self saveCurrentUser];
-                
-                [self saveMainContext];
-                
-                success(user);
-                
-            }];
+                user = [ITBUser initObjectWithDictionary:responseBody inContext:context];
+            }
+            
+            self.currentUser = user;
+            [self saveCurrentUser];
+
+            [self saveMainContext];
+            
+            success(user, YES);
             
         } else {
             
-            success(nil);
+            success(nil, YES);
         }
         
     } onFailure:^(NSError *error, NSInteger statusCode) {
@@ -222,28 +220,79 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     
 }
 
-- (void)uploadPhotosForCreatingNewsToServerForPhotosArray:(NSArray *)photos thumbnailPhotos:(NSArray *)thumbnailPhotos onSuccess:(void(^)(NSDictionary *responseBody))success {
+- (void)registerWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(BOOL isConnected))success {
     
-    dispatch_group_t group = dispatch_group_create();
+    NSDictionary *parameters = @{ usernameDictKey: username,
+                                  passwordDictKey: password };
     
-    NSMutableArray *photosArray = [NSMutableArray array];
-    NSMutableArray *thumbnailPhotosArray = [NSMutableArray array];
+    [self.restClient makeRequestToServerForUrlString:usersUrl withHeaders:postHeaders(json) withFields:parameters withHTTPBody:nil withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
+        
+        BOOL isConnected = (responseBody == nil) ? NO : YES;
+        
+        success(isConnected);
+        
+    } onFailure:^(NSError *error, NSInteger statusCode) {
+        
+    }];
+}
+
+- (void)getUsersOnSuccess:(void(^)(NSSet *usernames, BOOL isConnected))success {
     
-    for (NSData *photoData in photos) {
+    [self.restClient makeRequestToServerForUrlString:usersUrl withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
         
-        NSInteger index = [photos indexOfObject:photoData];
-        
-        NSString *photoName = [NSString stringWithFormat:@"photo%i.jpg", (int)index];
-        
-        if (photoData != nil) {
+        if (responseBody == nil) {
             
-            dispatch_group_enter(group);
-            [self uploadPhotoToServerForName:photoName withData:photoData onSuccess:^(NSDictionary *responseBody) {
+            success(nil, NO);
+            
+        } else {
+            
+            NSArray *dictsArray = [responseBody objectForKey:resultsDictKey];
+            
+            NSMutableArray *usernamesArray = [NSMutableArray array];
+            
+            for (NSDictionary *dict in dictsArray) {
                 
-                NSString *name = [responseBody objectForKey:@"name"];
-                NSString *url = [responseBody objectForKey:@"url"];
+                NSString *username = [dict objectForKey:usernameDictKey];
                 
-                [self createPhotoOnServerForName:name url:url onSuccess:^(ITBPhoto *photo) {
+                [usernamesArray addObject:username];
+            }
+            
+            NSSet *usernamesSet = [NSSet setWithArray:usernamesArray];
+            
+            success(usernamesSet, YES);
+            
+        }
+        
+    } onFailure:^(NSError *error, NSInteger statusCode) {
+        
+    }];
+}
+
+- (void)createNewObjectsForPhotoDataArray:(NSArray *)photos thumbnailPhotoDataArray:(NSArray *)thumbnailPhotos onSuccess:(void(^)(NSDictionary *responseBody))success {
+    
+    if ([photos count] == 0) {
+        
+        success(nil);
+        
+    } else {
+        
+        NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
+        
+        [context performBlock:^{
+            
+            NSMutableArray *photosArray = [NSMutableArray array];
+            NSMutableArray *thumbnailPhotosArray = [NSMutableArray array];
+            
+            dispatch_group_t group = dispatch_group_create();
+            
+            for (int i=0; i < [photos count]; i++) {
+                
+                NSData *photoData = [photos objectAtIndex:i];
+                
+                dispatch_group_enter(group);
+                [self createPhotoOnServerOnSuccess:^(ITBPhoto *photo) {
+                    
+                    photo.imageData = photoData;
                     
                     [photosArray addObject:photo];
                     
@@ -251,60 +300,248 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
                     
                 }];
                 
-            }];
-            
-            
-        }
-        
-        NSData *thumbnailPhotoData = [thumbnailPhotos objectAtIndex:index];
-        
-        NSString *thumbnailPhotoName = [NSString stringWithFormat:@"thumbPhoto%i.jpg", index];
-        
-        dispatch_group_enter(group);
-        if (thumbnailPhotoData != nil) {
-            
-            [self uploadPhotoToServerForName:thumbnailPhotoName withData:thumbnailPhotoData onSuccess:^(NSDictionary *responseBody) {
+                NSData *thumbnailPhotoData = [thumbnailPhotos objectAtIndex:i];
                 
-                NSString *name = [responseBody objectForKey:@"name"];
-                NSString *url = [responseBody objectForKey:@"url"];
-                
-                [self createPhotoOnServerForName:name url:url onSuccess:^(ITBPhoto *photo) {
+                dispatch_group_enter(group);
+                [self createPhotoOnServerOnSuccess:^(ITBPhoto *photo) {
+                    
+                    photo.imageData = thumbnailPhotoData;
                     
                     [thumbnailPhotosArray addObject:photo];
                     
                     dispatch_group_leave(group);
                     
                 }];
-                
-            }];
+            }
             
+            dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+                
+                NSDictionary *allPhotos = @{photosDictKey: [photosArray copy], thumbnailPhotosDictKey: [thumbnailPhotosArray copy]};
+                
+                success(allPhotos);
+                
+            });
+            
+        }];
+        
+    }
+}
+
+- (void)createCustomNewsForTitle:(NSString *)title message:(NSString *)message categoryTitle:(NSString *)categoryTitle photosArray:(NSArray *)photos thumbnailPhotos:(NSArray *)thumbnailPhotos onSuccess:(void(^)(BOOL isSuccess))success {
+    
+    NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
+    
+    [context performBlock:^{
+        
+        NSString *urlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBNewsEntityName];
+        
+        NSDictionary *headers = postHeaders(json);
+        
+        NSPredicate *categoryPredicate = [NSPredicate predicateWithFormat:@"title == %@", categoryTitle];
+        NSArray *categories = [self.coreDataManager fetchObjectsForName:ITBCategoryEntityName withSortDescriptor:nil predicate:categoryPredicate inContext:context];
+        ITBCategory *category = [categories firstObject];
+        
+        NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", self.currentUser.objectId];
+        NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:userPredicate inContext:context];
+        ITBUser *user = [users firstObject];
+        
+        NSMutableArray *photosArray = [NSMutableArray array];
+        for (ITBPhoto *photo in photos) {
+            
+            NSDictionary *dict = classDict(ITBPhotoEntityName, photo.objectId);
+            
+            [photosArray addObject:dict];
+        }
+        
+        NSMutableArray *thumbnailPhotosArray = [NSMutableArray array];
+        for (ITBPhoto *thumbnailPhoto in thumbnailPhotos) {
+            
+            NSDictionary *dict = classDict(ITBPhotoEntityName, thumbnailPhoto.objectId);
+            
+            [thumbnailPhotosArray addObject:dict];
+        }
+        
+        NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+        NSNumber *latNumber = [userDefaults objectForKey:kSettingsLatitude];
+        NSNumber *longNumber = [userDefaults objectForKey:kSettingsLongitude];
+        
+        NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                     title, titleDictKey,
+                                     message, messageDictKey,
+                                     (latNumber != nil) ? latNumber : [NSNumber numberWithDouble:grodnoLatitude], latitudeDictKey,
+                                     (longNumber != nil) ? longNumber : [NSNumber numberWithDouble:grodnoLongitude], longitudeDictKey,
+                                     classDict(userClass, self.currentUser.objectId), authorDictKey,
+                                     classDict(ITBCategoryEntityName, category.objectId), categoryDictKey, nil];
+        
+        if ([photos count] > 0) {
+            
+            [dict setObject:photosArray forKey:photosDictKey];
+            [dict setObject:thumbnailPhotosArray forKey:thumbnailPhotosDictKey];
+        }
+        
+        NSDictionary *parameters = [dict copy];
+        
+        [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:parameters withHTTPBody:nil withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
+            
+            ITBNews *newsItem = [ITBNews initObjectWithDictionary:responseBody inContext:context];
+            newsItem.title = title;
+            newsItem.message = message;
+            
+            newsItem.author = user;
+            newsItem.category = category;
+            
+            for (ITBPhoto *photo in photos) {
+                
+                [newsItem addPhotosObject:photo];
+                
+                ITBPhoto *thumbnailPhoto = [thumbnailPhotos objectAtIndex:[photos indexOfObject:photo]];
+                [newsItem addThumbnailPhotosObject:thumbnailPhoto];
+            }
+            
+            [self.coreDataManager saveBgContext];
+            
+            success(YES);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+        }];
+        
+    }];
+}
+
+- (void)uploadPhotosForCreatingNewsToServerForPhotoDataArray:(NSArray *)photoDataArray thumbnailPhotoDataArray:(NSArray *)thumbnailPhotoDataArray photoObjectsArray:(NSArray *)photosArray thumbnailPhotoObjectsArray:(NSArray *)thumbnailPhotosArray onSuccess:(void(^)(NSDictionary *responseBody))success {
+    
+    NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
+    
+    [context performBlock:^{
+    
+        dispatch_group_t group = dispatch_group_create();
+        
+        for (NSData *photoData in photoDataArray) {
+            
+            NSInteger photoIndex = [photoDataArray indexOfObject:photoData];
+            
+            NSString *photoName = [NSString stringWithFormat:@"%@%i%@", photoNamePath, (int)photoIndex, jpgExtension];
+            
+            if (photoData != nil) {
+                
+                dispatch_group_enter(group);
+                [self uploadPhotoToServerForName:photoName withData:photoData onSuccess:^(NSDictionary *responseBody) {
+                    
+                    if (responseBody != nil) {
+                        
+                        NSString *name = [responseBody objectForKey:nameDictKey];
+                        NSString *url = [responseBody objectForKey:urlDictKey];
+                        
+                        ITBPhoto *photo = [photosArray objectAtIndex:photoIndex];
+                        photo.name = name;
+                        photo.url = url;
+                        
+                        NSDictionary *parameters = @{ nameDictKey: name,
+                                                      urlDictKey: url };
+                        
+                        [self udpatePhotoOnServerForObjectId:photo.objectId withFields:parameters onSuccess:^(BOOL isSuccess) {
+                            
+                            dispatch_group_leave(group);
+                            
+                        }];
+                        
+                    } else {
+                        
+                        dispatch_group_leave(group);
+                    }
+                    
+                    NSData *thumbnailPhotoData = [thumbnailPhotoDataArray objectAtIndex:photoIndex];
+                    
+                    NSString *thumbnailPhotoName = [NSString stringWithFormat:@"%@%i%@", thumbPhotoNamePath, (int)photoIndex, jpgExtension];
+                    
+                    if (thumbnailPhotoData != nil) {
+                        
+                        dispatch_group_enter(group);
+                        [self uploadPhotoToServerForName:thumbnailPhotoName withData:thumbnailPhotoData onSuccess:^(NSDictionary *responseBody) {
+                            
+                            if (responseBody != nil) {
+                                
+                                NSString *name = [responseBody objectForKey:nameDictKey];
+                                NSString *url = [responseBody objectForKey:urlDictKey];
+                                
+                                ITBPhoto *thumbnailPhoto = [thumbnailPhotosArray objectAtIndex:photoIndex];
+                                thumbnailPhoto.name = name;
+                                thumbnailPhoto.url = url;
+                                
+                                NSDictionary *parameters = @{ nameDictKey: name,
+                                                              urlDictKey: url };
+                                
+                                [self udpatePhotoOnServerForObjectId:thumbnailPhoto.objectId withFields:parameters onSuccess:^(BOOL isSuccess) {
+                                    
+                                    dispatch_group_leave(group);
+                                    
+                                }];
+                                
+                            } else {
+                                
+                                dispatch_group_leave(group);
+                            }
+                            
+                        }];
+                    }
+                    
+                }];
+            }
             
         }
         
-    }
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            
+            [self.coreDataManager saveBgContext];
+            
+            NSDictionary *allPhotos = nil;
+            
+            if ([photosArray count] > 0) {
+                
+                allPhotos = @{photosDictKey: [photosArray copy], thumbnailPhotosDictKey: [thumbnailPhotosArray copy]};
+            }
+            
+            success(allPhotos);
+            
+        });
+        
+    }];
+}
+
+- (void)createPhotoOnServerOnSuccess:(void(^)(ITBPhoto *photo))success {
     
-    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+    NSString *urlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBPhotoEntityName];
+    
+    NSDictionary *parameters = @{ nameDictKey: testValue,
+                                  urlDictKey: testValue };
+    
+    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:postHeaders(json) withFields:parameters withHTTPBody:nil withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
         
-        NSDictionary *allPhotos = @{@"photos": [photosArray copy], @"thumbnailPhotos": [thumbnailPhotosArray copy]};
+        NSString *objectId = [responseBody objectForKey:objectIdDictKey];
         
-        success(allPhotos);
+        if (objectId != nil) {
+            
+            ITBPhoto *photo = [NSEntityDescription insertNewObjectForEntityForName:ITBPhotoEntityName inManagedObjectContext:[self.coreDataManager bgManagedObjectContext]];
+            
+            photo.objectId = objectId;
+            
+            success(photo);
+        }
         
-    });
+    } onFailure:^(NSError *error, NSInteger statusCode) {
+        
+    }];
+    
 }
 
 - (void)uploadPhotoToServerForName:(NSString *)name withData:(NSData *)data onSuccess:(void(^)(NSDictionary *responseBody))success {
     
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/files/%@", name];
-    
-    NSString *method = @"POST";
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey,
-                               @"content-type": jpg };
+    NSString *urlString = [NSString stringWithFormat:@"%@%@", filesUrl, name];
     
     if (data != nil) {
         
-        [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:nil withHTTPBody:data withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
+        [self.restClient makeRequestToServerForUrlString:urlString withHeaders:postHeaders(jpg) withFields:nil withHTTPBody:data withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
             
             success(responseBody);
             
@@ -314,111 +551,18 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
         
     } else {
         
-        NSLog(@"there is no valid photo");
+        NSLog(@"%@", uploadPhotoError);
     }
     
 }
 
-- (void)createCustomNewsForTitle:(NSString *)title message:(NSString *)message categoryTitle:(NSString *)categoryTitle photosArray:(NSArray *)photos thumbnailPhotos:(NSArray *)thumbnailPhotos onSuccess:(void(^)(BOOL isSuccess))success {
+- (void)udpatePhotoOnServerForObjectId:(NSString *)objectId withFields:(NSDictionary *)parameters onSuccess:(void(^)(BOOL isSuccess))success {
     
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews"];
+    NSString *urlString = [NSString stringWithFormat:@"%@%@/%@", classesUrl, ITBPhotoEntityName, objectId];
     
-    NSString *method = @"POST";
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey,
-                               @"content-type": json };
-    
-    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"title == %@", categoryTitle];
-    NSArray *categories = [self.coreDataManager fetchObjectsForName:@"ITBCategory" withSortDescriptor:nil predicate:predicate inContext:[self.coreDataManager syncManagedObjectContext]];
-    ITBCategory *category = [categories firstObject];
-    
-    NSMutableArray *photosArray = [NSMutableArray array];
-    for (ITBPhoto *photo in photos) {
-        
-        NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:@"Pointer", @"__type",
-                              @"ITBPhoto", @"className",
-                              photo.objectId, @"objectId", nil];
-        
-        [photosArray addObject:dict];
-    }
-    
-    NSMutableArray *thumbnailPhotosArray = [NSMutableArray array];
-    for (ITBPhoto *thumbnailPhoto in thumbnailPhotos) {
-        
-        NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:@"Pointer", @"__type",
-                              @"ITBPhoto", @"className",
-                              thumbnailPhoto.objectId, @"objectId", nil];
-        
-        [thumbnailPhotosArray addObject:dict];
-    }
-    
-    NSDictionary *parameters = @{ @"title": title,
-                                  @"message": message,
-                                  @"author": @{ @"__type": @"Pointer", @"className": @"_User", @"objectId": self.currentUser.objectId },
-                                  @"category": @{ @"__type": @"Pointer", @"className": @"ITBCategory", @"objectId": category.objectId },
-                                  @"photos": photosArray,
-                                  @"thumbnailPhotos": thumbnailPhotosArray };
-    
-    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:parameters withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        ITBNews *newsItem = [ITBNews initObjectWithDictionary:responseBody inContext:[self.coreDataManager syncManagedObjectContext]];
-        newsItem.title = title;
-        newsItem.message = message;
-        
-        NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", self.currentUser.objectId];
-        NSArray *users = [self.coreDataManager fetchObjectsForName:@"ITBUser" withSortDescriptor:nil predicate:userPredicate inContext:[self.coreDataManager syncManagedObjectContext]];
-        ITBUser *user = [users firstObject];
-        
-        newsItem.author = user;
-        newsItem.category = category;
-        for (ITBPhoto *photo in photos) {
+    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:postHeaders(json) withFields:parameters withHTTPBody:nil withHTTPMethod:@"PUT" onSuccess:^(NSDictionary *responseBody) {
             
-            [newsItem addPhotosObject:photo];
-            
-            ITBPhoto *thumbnailPhoto = [thumbnailPhotos objectAtIndex:[photos indexOfObject:photo]];
-            [newsItem addThumbnailPhotosObject:thumbnailPhoto];
-        }
-        
-        [self saveSyncContext];
-        [self saveSaveContext];
-        
-        success(YES);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-    }];
-    
-    
-}
-
-- (void)createPhotoOnServerForName:(NSString *)name url:(NSString *)url onSuccess:(void(^)(ITBPhoto *photo))success {
-    
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBPhoto"];
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                                     @"x-parse-rest-api-key": restApiKey,
-                                     @"content-type": json };
-    
-    NSDictionary *parameters = @{ @"name": name,
-                                  @"url": url };
-    
-    NSString *method = @"POST";
-    
-    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:parameters withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        NSString *objectId = [responseBody objectForKey:@"objectId"];
-        
-        if (objectId != nil) {
-            
-            ITBPhoto *photo = [NSEntityDescription insertNewObjectForEntityForName:@"ITBPhoto" inManagedObjectContext:[self.coreDataManager syncManagedObjectContext]];
-            
-            photo.objectId = objectId;
-            photo.name = name;
-            photo.url = url;
-            
-            success(photo);
-        }
+            success(YES);
         
     } onFailure:^(NSError *error, NSInteger statusCode) {
         
@@ -430,409 +574,324 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     
     [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
     
-    NSManagedObjectContext *context = [self.coreDataManager syncManagedObjectContext];
+    NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
     
-    NSString *method = @"GET";
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey };
-    
-    dispatch_group_t group = dispatch_group_create();
-    
-    __block ITBUser *user;
-    
-    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    NSString *objectId = [userDefaults objectForKey:kSettingsObjectId];
-    NSString *sessionToken = [userDefaults objectForKey:kSettingsSessionToken];
-    
-    NSString *userUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/users/%@", objectId];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:userUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
+    [context performBlock:^{
         
-        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
+        dispatch_group_t group = dispatch_group_create();
         
-        NSArray *users = [self.coreDataManager fetchObjectsForName:@"ITBUser" withSortDescriptor:nil predicate:predicate inContext:context];
+        __block ITBUser *user;
         
-        user = [users firstObject];
+        NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+        NSString *objectId = [userDefaults objectForKey:kSettingsObjectId];
+        NSString *sessionToken = [userDefaults objectForKey:kSettingsSessionToken];
         
-        [user updateObjectWithDictionary:responseBody inContext:context];
-        user.sessionToken = sessionToken;
+        NSString *userUrlString = [NSString stringWithFormat:@"%@/%@", usersUrl, objectId];
         
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    NSString *newsUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews"];
-    
-    __block NSArray *news = [NSArray array];
-    __block NSArray *newsDicts = [NSArray array];
-    
-    __block NSArray *categories = [NSArray array];
-    __block NSArray *categoryDicts = [NSArray array];
-    
-    __block NSArray *photos = [NSArray array];
-    __block NSArray *photoDicts = [NSArray array];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        newsDicts = [responseBody objectForKey:@"results"];
-        
-        NSMutableArray *newsArray = [NSMutableArray array];
-        for (NSDictionary *newsDict in newsDicts) {
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:userUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
-            ITBNews *newsItem = [ITBNews initObjectWithDictionary:newsDict inContext:context];
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
             
-            [newsArray addObject:newsItem];
-        }
-        news = [newsArray copy];
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    NSString *categoryUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBCategory"];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        categoryDicts = [responseBody objectForKey:@"results"];
-        
-        NSMutableArray *categoriesArray = [NSMutableArray array];
-        for (NSDictionary *catDict in categoryDicts) {
+            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
             
-            ITBCategory *category = [ITBCategory initObjectWithDictionary:catDict inContext:context];
+            user = [users firstObject];
             
-            [categoriesArray addObject:category];
-        }
-        categories = [categoriesArray copy];
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    NSString *photoUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBPhoto"];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        photoDicts = [responseBody objectForKey:@"results"];
-        
-        NSMutableArray *photosArray = [NSMutableArray array];
-        for (NSDictionary *photoDict in photoDicts) {
+            [user updateObjectWithDictionary:responseBody inContext:context];
+            user.sessionToken = sessionToken;
             
-            ITBPhoto *photo = [ITBPhoto initObjectWithDictionary:photoDict inContext:context];
+            dispatch_group_leave(group);
             
-            [photosArray addObject:photo];
-        }
-        photos = [photosArray copy];
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    
-    
-    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-
-        [self.coreDataManager addRelationsToLocalDBFromNewsDictsArray:newsDicts forNewsArray:news fromCategoryDictsArray:categoryDicts forCategoriesArray:categories fromPhotoDictsArray:photoDicts forPhotosArray:photos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
+        } onFailure:^(NSError *error, NSInteger statusCode) {
             
-            [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-            
-            success(isSuccess);
-            
+            dispatch_group_leave(group);
         }];
         
-    });
+        NSString *newsUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBNewsEntityName];
+        
+        __block NSArray *news = [NSArray array];
+        __block NSArray *newsDicts = [NSArray array];
+        
+        __block NSArray *categories = [NSArray array];
+        __block NSArray *categoryDicts = [NSArray array];
+        
+        __block NSArray *photos = [NSArray array];
+        __block NSArray *photoDicts = [NSArray array];
+        
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+            
+            newsDicts = [responseBody objectForKey:resultsDictKey];
+            
+            NSMutableArray *newsArray = [NSMutableArray array];
+            for (NSDictionary *newsDict in newsDicts) {
+                
+                ITBNews *newsItem = [ITBNews initObjectWithDictionary:newsDict inContext:context];
+                
+                [newsArray addObject:newsItem];
+            }
+            news = [newsArray copy];
+            
+            dispatch_group_leave(group);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+            dispatch_group_leave(group);
+        }];
+        
+        NSString *categoryUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBCategoryEntityName];
+        
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+            
+            categoryDicts = [responseBody objectForKey:resultsDictKey];
+            
+            NSMutableArray *categoriesArray = [NSMutableArray array];
+            for (NSDictionary *catDict in categoryDicts) {
+                
+                ITBCategory *category = [ITBCategory initObjectWithDictionary:catDict inContext:context];
+                
+                [categoriesArray addObject:category];
+            }
+            categories = [categoriesArray copy];
+            
+            dispatch_group_leave(group);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+            dispatch_group_leave(group);
+        }];
+        
+        NSString *photoUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBPhotoEntityName];
+        
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+            
+            photoDicts = [responseBody objectForKey:resultsDictKey];
+            
+            NSMutableArray *photosArray = [NSMutableArray array];
+            for (NSDictionary *photoDict in photoDicts) {
+                
+                ITBPhoto *photo = [ITBPhoto initObjectWithDictionary:photoDict inContext:context];
+                
+                [photosArray addObject:photo];
+            }
+            photos = [photosArray copy];
+            
+            dispatch_group_leave(group);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+            dispatch_group_leave(group);
+        }];
+        
+        dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+
+            [self.coreDataManager addRelationsToLocalDBFromNewsDictsArray:newsDicts forNewsArray:news fromCategoryDictsArray:categoryDicts forCategoriesArray:categories fromPhotoDictsArray:photoDicts forPhotosArray:photos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
+                
+                [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+                
+                success(isSuccess);
+                
+            }];
+ 
+        });
+        
+    }];
+}
+
+- (void)getFromServerUpdatedDictsArray:(NSMutableArray *)updatedDictsArray withUpdatedLocalObjectsArray:(NSMutableArray *)updatedArray usingFromServerDictsArray:(NSMutableArray *)dictsArray withLocalObjectsArray:(NSMutableArray *)array forClass:(id)EntityClass inContext:(NSManagedObjectContext *)context {
+    
+    for (int i = (int)[dictsArray count] - 1; i>=0; i--) {
+        
+        NSDictionary *dict = [dictsArray objectAtIndex:i];
+        
+        for (int j = (int)[array count] - 1; j>=0; j--) {
+            
+            id object = [array objectAtIndex:j];
+            
+            NSString *objectId = nil;
+            if (object != nil) {
+                
+                SEL selector = NSSelectorFromString(objectIdDictKey);
+                IMP imp = [object methodForSelector:selector];
+                NSString *(*func)(id, SEL) = (void *)imp;
+                objectId = func(object, selector);
+                
+            }
+            
+            if ([objectId isEqualToString:[dict objectForKey:objectIdDictKey]]) {
+                
+                [updatedArray addObject:object];
+                [updatedDictsArray addObject:dict];
+                
+                [array removeObject:object];
+                [dictsArray removeObject:dict];
+                
+            }
+        }
+    }
+    
+    for (NSDictionary *dict in updatedDictsArray) {
+        
+        id object = [updatedArray objectAtIndex:[updatedDictsArray indexOfObject:dict]];
+        
+        if (object != nil) {
+            
+            SEL selector = NSSelectorFromString(updateObjectMethodSelector);
+            IMP imp = [object methodForSelector:selector];
+            void (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
+            func(object, selector, dict, context);
+            
+        }
+    }
+    
+    if ([array count] > 0) {
+        
+        for (id object in array) {
+            [context deleteObject:object];
+        }
+    }
+    
+    if ([dictsArray count] > 0) {
+        
+        for (NSDictionary *dict in dictsArray) {
+            
+            if (EntityClass != nil) {
+                
+                SEL selector = NSSelectorFromString(initObjectMethodSelector);
+                IMP imp = [EntityClass methodForSelector:selector];
+                id (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
+                id object = EntityClass ? func(EntityClass, selector, dict, context) : nil;
+                
+                [updatedArray addObject:object];
+                [updatedDictsArray addObject:dict];
+                
+            }
+        }
+    }
 }
 
 - (void)updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess))success {
     
-    dispatch_group_t group = dispatch_group_create();
-    
     [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
     
-    NSManagedObjectContext *context = [self.coreDataManager syncManagedObjectContext];
+    NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
     
-    NSString *method = @"GET";
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey };
-    
-    __block NSMutableArray *updatedNewsDicts = [NSMutableArray array];
-    __block NSMutableArray *updatedNews = [NSMutableArray array];
-    __block NSMutableArray *updatedCategoryDicts = [NSMutableArray array];
-    __block NSMutableArray *updatedCategories = [NSMutableArray array];
-    __block NSMutableArray *updatedPhotoDicts = [NSMutableArray array];
-    __block NSMutableArray *updatedPhotos = [NSMutableArray array];
-    __block ITBUser *user;
-    
-    NSString *userUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/users/%@", self.currentUser.objectId];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:userUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
+    [context performBlock:^{
         
-        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", self.currentUser.objectId];
+        dispatch_group_t group = dispatch_group_create();
         
-        NSArray *users = [self.coreDataManager fetchObjectsForName:@"ITBUser" withSortDescriptor:nil predicate:predicate inContext:context];
-        user = [users firstObject];
+        __block NSMutableArray *updatedNewsDicts = [NSMutableArray array];
+        __block NSMutableArray *updatedNews = [NSMutableArray array];
+        __block NSMutableArray *updatedCategoryDicts = [NSMutableArray array];
+        __block NSMutableArray *updatedCategories = [NSMutableArray array];
+        __block NSMutableArray *updatedPhotoDicts = [NSMutableArray array];
+        __block NSMutableArray *updatedPhotos = [NSMutableArray array];
+        __block ITBUser *user;
         
-        [user updateObjectWithDictionary:responseBody inContext:context];
+        NSString *userUrlString = [NSString stringWithFormat:@"%@/%@", usersUrl, self.currentUser.objectId];
         
-        user.sessionToken = self.currentUser.sessionToken;
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-        
-    }];
-    
-    // ITBNews - синхронизация атрибутов всех объектов класса ITBNews
-    NSString *newsUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews"];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        NSMutableArray *newsDicts = [[responseBody objectForKey:@"results"] mutableCopy];
-        
-        NSMutableArray *newsArray = [ [self.coreDataManager allObjectsForName:@"ITBNews" usingContext:context] mutableCopy];
-        
-        // наполнение массива updatedNews (и updatedNewsDicts)
-        for (int i = (int)[newsDicts count] - 1; i>=0; i--) {
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:userUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
-            NSDictionary *newsDict = [newsDicts objectAtIndex:i];
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", self.currentUser.objectId];
+            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
             
-            for (int j = (int)[newsArray count] - 1; j>=0; j--) {
-                
-                ITBNews *newsItem = [newsArray objectAtIndex:j];
-                
-                if ([newsItem.objectId isEqualToString:[newsDict objectForKey:@"objectId"]]) {
-                    
-                    [updatedNews addObject:newsItem];
-                    [updatedNewsDicts addObject:newsDict];
-                    
-                    [newsArray removeObject:newsItem];
-                    [newsDicts removeObject:newsDict];
-                    
-                }
-            }
-        }
-        
-        NSMutableArray *deletedNews = newsArray;
-        NSMutableArray *insertedNewsDicts = newsDicts;
-        
-        // updating of attributes
-        for (NSDictionary *newsDict in updatedNewsDicts) {
+            user = [users firstObject];
+            [user updateObjectWithDictionary:responseBody inContext:context];
+            user.sessionToken = self.currentUser.sessionToken;
             
-            ITBNews *newsItem = [updatedNews objectAtIndex:[updatedNewsDicts indexOfObject:newsDict]];
-            [newsItem updateObjectWithDictionary:newsDict inContext:context];
-        }
-        
-        // creating of attributes for inserted news and merge updated and inserted objects (and dicts)
-        if ([insertedNewsDicts count] > 0) {
+            dispatch_group_leave(group);
             
-            for (NSDictionary *newsDict in insertedNewsDicts) {
-                
-                ITBNews *newsItem = [ITBNews initObjectWithDictionary:newsDict inContext:context];
-                
-                [updatedNews addObject:newsItem];
-                [updatedNewsDicts addObject:newsItem];
-            }
-        }
-        
-        // deleting
-        if ([deletedNews count] > 0) {
+        } onFailure:^(NSError *error, NSInteger statusCode) {
             
-            for (id object in deletedNews) {
-                [context deleteObject:object];
-            }
-        }
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    // ITBCategory - синхронизация атрибутов всех объектов класса ITBCategory
-    NSString *categoryUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBCategory"];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        NSArray *dictsArray = [responseBody objectForKey:@"results"];
-        NSMutableArray *categoryDicts = [dictsArray mutableCopy];
-        
-        NSMutableArray *categoriesArray = [ [self.coreDataManager allObjectsForName:@"ITBCategory" usingContext:context] mutableCopy];
-        
-        // наполнение массива updatedCategories (и updatedCategoryDicts)
-        for (int i = (int)[categoryDicts count] - 1; i>=0; i--) {
-            
-            NSDictionary *categoryDict = [categoryDicts objectAtIndex:i];
-            
-            for (int j = (int)[categoriesArray count] - 1; j>=0; j--) {
-                
-                ITBCategory *category = [categoriesArray objectAtIndex:j];
-                
-                if ([category.objectId isEqualToString:[categoryDict objectForKey:@"objectId"]]) {
-                    
-                    [updatedCategories addObject:category];
-                    [updatedCategoryDicts addObject:categoryDict];
-                    
-                    [categoriesArray removeObject:category];
-                    [categoryDicts removeObject:categoryDict];
-                }
-            }
-        }
-        
-        NSMutableArray *deletedCategories = categoriesArray;
-        NSMutableArray *insertedCategoryDicts = categoryDicts;
-        
-        // updating of attributes
-        for (NSDictionary *categoryDict in updatedCategoryDicts) {
-            
-            ITBCategory *category = [updatedCategories objectAtIndex:[updatedCategoryDicts indexOfObject:categoryDict]];
-            
-            [category updateObjectWithDictionary:categoryDict inContext:context];
-        }
-        
-        // creating of attributes for inserted categories and merge updated and inserted objects (and dicts)
-        if ([insertedCategoryDicts count] > 0) {
-            
-            for (NSDictionary *catDict in insertedCategoryDicts) {
-                
-                ITBCategory *category = [ITBCategory initObjectWithDictionary:catDict inContext:context];
-                
-                [updatedCategories addObject:category];
-                [updatedCategoryDicts addObject:catDict];
-                
-            }
-        }
-        
-        // deleting
-        if ([deletedCategories count] > 0) {
-            
-            for (id object in deletedCategories) {
-                [context deleteObject:object];
-            }
-        }
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    // ITBPhoto - синхронизация атрибутов всех объектов класса ITBPhoto
-    NSString *photoUrlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBPhoto"];
-    
-    dispatch_group_enter(group);
-    [self.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        NSArray *dictsArray = [responseBody objectForKey:@"results"];
-        NSMutableArray *photoDicts = [dictsArray mutableCopy];
-        
-        NSMutableArray *photosArray = [ [self.coreDataManager allObjectsForName:@"ITBPhoto" usingContext:context] mutableCopy];
-        
-        // наполнение массива updatedPhotos (и updatedPhotoDicts)
-        for (int i = (int)[photoDicts count] - 1; i>=0; i--) {
-            
-            NSDictionary *photoDict = [photoDicts objectAtIndex:i];
-            
-            for (int j = (int)[photosArray count] - 1; j>=0; j--) {
-                
-                ITBPhoto *photo = [photosArray objectAtIndex:j];
-                
-                if ([photo.objectId isEqualToString:[photoDict objectForKey:@"objectId"]]) {
-                    
-                    [updatedPhotos addObject:photo];
-                    [updatedPhotoDicts addObject:photoDict];
-                    
-                    [photosArray removeObject:photo];
-                    [photoDicts removeObject:photoDict];
-                }
-            }
-        }
-        
-        NSMutableArray *deletedPhotos = photosArray;
-        NSMutableArray *insertedPhotoDicts = photoDicts;
-        
-        // updating of attributes
-        for (NSDictionary *photoDict in updatedPhotoDicts) {
-            
-            ITBPhoto *photo = [updatedPhotos objectAtIndex:[updatedPhotoDicts indexOfObject:photoDict]];
-            
-            [photo updateObjectWithDictionary:photoDict inContext:context];
-        }
-        
-        // creating of attributes for inserted photos and merge updated and inserted objects (and dicts)
-        if ([insertedPhotoDicts count] > 0) {
-            
-            for (NSDictionary *photoDict in insertedPhotoDicts) {
-                
-                ITBPhoto *photo = [ITBPhoto initObjectWithDictionary:photoDict inContext:context];
-                
-                [updatedPhotos addObject:photo];
-                [updatedPhotoDicts addObject:photoDict];
-                
-            }
-        }
-        
-        // deleting
-        if ([deletedPhotos count] > 0) {
-            
-            for (id object in deletedPhotos) {
-                [context deleteObject:object];
-            }
-        }
-        
-        dispatch_group_leave(group);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-        dispatch_group_leave(group);
-    }];
-    
-    
-    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        
-        [self.coreDataManager addRelationsToLocalDBFromNewsDictsArray:updatedNewsDicts forNewsArray:updatedNews fromCategoryDictsArray:updatedCategoryDicts forCategoriesArray:updatedCategories fromPhotoDictsArray:updatedPhotoDicts forPhotosArray:updatedPhotos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
-            
-            [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-            
-            success(isSuccess);
+            dispatch_group_leave(group);
             
         }];
         
-    });
+        NSString *newsUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBNewsEntityName];
+        
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+            
+            NSMutableArray *newsDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
+            NSMutableArray *newsArray = [ [self.coreDataManager allObjectsForName:ITBNewsEntityName usingContext:context] mutableCopy];
+            
+            [self getFromServerUpdatedDictsArray:updatedNewsDicts withUpdatedLocalObjectsArray:updatedNews usingFromServerDictsArray:newsDicts withLocalObjectsArray:newsArray forClass:[ITBNews class] inContext:context];
+            
+            dispatch_group_leave(group);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+            dispatch_group_leave(group);
+        }];
+        
+        NSString *categoryUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBCategoryEntityName];
+        
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+            
+            NSMutableArray *categoryDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
+            NSMutableArray *categoriesArray = [ [self.coreDataManager allObjectsForName:ITBCategoryEntityName usingContext:context] mutableCopy];
+            
+            [self getFromServerUpdatedDictsArray:updatedCategoryDicts withUpdatedLocalObjectsArray:updatedCategories usingFromServerDictsArray:categoryDicts withLocalObjectsArray:categoriesArray forClass:[ITBCategory class] inContext:context];
+            
+            dispatch_group_leave(group);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+            dispatch_group_leave(group);
+        }];
+        
+        NSString *photoUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBPhotoEntityName];
+        
+        dispatch_group_enter(group);
+        [self.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+            
+            NSMutableArray *photoDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
+            NSMutableArray *photosArray = [ [self.coreDataManager allObjectsForName:ITBPhotoEntityName usingContext:context] mutableCopy];
+            
+            [self getFromServerUpdatedDictsArray:updatedPhotoDicts withUpdatedLocalObjectsArray:updatedPhotos usingFromServerDictsArray:photoDicts withLocalObjectsArray:photosArray forClass:[ITBPhoto class] inContext:context];
+            
+            dispatch_group_leave(group);
+            
+        } onFailure:^(NSError *error, NSInteger statusCode) {
+            
+            dispatch_group_leave(group);
+        }];
+        
+        
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            
+            [self.coreDataManager addRelationsToLocalDBFromNewsDictsArray:updatedNewsDicts forNewsArray:updatedNews fromCategoryDictsArray:updatedCategoryDicts forCategoriesArray:updatedCategories fromPhotoDictsArray:updatedPhotoDicts forPhotosArray:updatedPhotos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
+                
+                [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+                
+                success(isSuccess);
+                
+            }];
+            
+        });
+        
+    }];
 }
 
 - (void)logOut {
     
     self.currentUser = nil;
     [self saveCurrentUser];
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    [userDefaults setObject:@0 forKey:kSettingsChosenSortingType];
+    [userDefaults setObject:defaultTitle forKey:kSettingsChosenSortingName];
 }
 
-- (void)loadImageForURL:(NSString *)url onSuccess:(void(^)(UIImage *image))success {
+- (void)loadImageForUrlString:(NSString *)urlString onSuccess:(void(^)(NSData *data))success {
     
-    [self.restClient loadImageForURL:url onSuccess:^(UIImage *image) {
+    [self.restClient loadDataForUrlString:urlString onSuccess:^(NSData *data) {
         
-        success(image);
+        success(data);
         
     } onFailure:^(NSError *error, NSInteger statusCode) {
         
@@ -850,68 +909,19 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
     
 }
 
-- (NSArray *)newsInLocalDB {
+- (NSArray *)fetchObjectsInBackgroundForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate {
     
-    NSArray *result = [self.coreDataManager allObjectsForName:@"ITBNews" usingContext:self.mainManagedObjectContext];
+    NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
+    
+    __block NSArray *result;
+    
+    [context performBlockAndWait:^{
+        
+        result = [self.coreDataManager fetchObjectsForName:entityName withSortDescriptor:descriptors predicate:predicate inContext:context];
+        
+    }];
     
     return result;
-}
-
-- (void)registerWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(BOOL isSuccess))success {
-    
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/users"];
-    
-    NSString *method = @"POST";
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey,
-                               @"content-type": json };
-    
-    NSDictionary *parameters = @{ @"username": username,
-                                  @"password": password };
-    
-    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:parameters withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        NSString *objectId = [responseBody objectForKey:@"objectId"];
-        
-        BOOL isSucces = (objectId == nil) ? NO : YES;
-        
-        success(isSucces);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-    }];
-}
-
-- (void)getUsersOnSuccess:(void(^)(NSSet *usernames))success {
-    
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/users"];
-    
-    NSString *method = @"GET";
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey };
-    
-    [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:nil withHTTPBody:nil withHTTPMethod:method onSuccess:^(NSDictionary *responseBody) {
-        
-        NSArray *dictsArray = [responseBody objectForKey:@"results"];
-        
-        NSMutableArray *usernamesArray = [NSMutableArray array];
-        
-        for (NSDictionary *dict in dictsArray) {
-            
-            NSString *username = [dict objectForKey:@"username"];
-            
-            [usernamesArray addObject:username];
-        }
-        
-        NSSet *usernamesSet = [NSSet setWithArray:usernamesArray];
-        
-        success(usernamesSet);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-    }];
 }
 
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess))success {
@@ -926,18 +936,6 @@ static NSString * const kSettingsSyncCompletedNotificationName = @"syncCompleted
             
         }];
     }
-}
-
-// deletion of local db
-
-- (void)deleteLocalDB {
-    
-    [self.coreDataManager deleteAllObjects];
-}
-
-- (void)deleteAllUsersLocally {
-    
-    [self.coreDataManager deleteAllUsers];
 }
 
 @end

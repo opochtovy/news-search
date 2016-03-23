@@ -15,6 +15,14 @@
 #import "ITBUser.h"
 #import "ITBPhoto.h"
 
+static NSString * const urlSessionTaskError = @"URL Session Task Failed:";
+
+static NSString * const addOperation = @"AddUnique";
+static NSString * const removeOperation = @"Remove";
+
+static NSString * const opDictKey = @"__op";
+static NSString * const objectsDictKey = @"objects";
+
 @interface ITBRestClient ()
 
 @property (strong, nonatomic) NSURLSession *session;
@@ -80,12 +88,11 @@
                 
             } else {
                 
-                // Failure
-                NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+                NSLog(@"%@ %@", urlSessionTaskError, [error localizedDescription]);
             }
         } else {
             
-//            NSLog(@"There is no connection to server");
+            success(nil);
         }
         
     }];
@@ -94,88 +101,165 @@
   
 }
 
-- (void)loadImageForURL:(NSString *)url onSuccess:(void(^)(UIImage *image))success onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
+- (void)loadDataForUrlString:(NSString *)urlString onSuccess:(void(^)(NSData *data))success onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
     
-    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-    
-    dispatch_async(queue, ^{
+    NSURLSessionDownloadTask *getImageTask = [self.session downloadTaskWithURL:[NSURL URLWithString:urlString] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
         
-        NSError *error = nil;
-        
-        NSData *imageData = [NSData dataWithContentsOfURL:[NSURL URLWithString:url] options:0 error:&error];
-        
-        if (error) {
+        if (!error) {
             
-            failure(error, error.code);
+            NSData *data = [NSData dataWithContentsOfURL:location];
+            success(data);
             
         } else {
-            
-            UIImage *image = [UIImage imageWithData:imageData];
-            
-            success(image);
+            success(nil);
         }
-        
-    });
+    }];
+    
+    [getImageTask resume];
+    
 }
 
-- (void)uploadToServerRelationsForObjectId:(NSString *)objectId forUrlString:(NSString *)urlString withHeaders:(NSDictionary *)headers withParameters:(NSDictionary *)parameters onSuccess:(void(^)(NSDate *updatedAt))success onFailure:(void(^)(NSError *error, NSInteger statusCode)) failure {
+- (void)changeObject:(id)object forEntityName:(NSString *)entityName inRelation:(NSString *)relation ofCurrentUser:(ITBUser *)user forGroup:(dispatch_group_t)group {
     
-    NSURL *url = [NSURL URLWithString:urlString];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:10.0];
+    NSString *objectId = nil;
+    NSString *operation = addOperation;
     
-    request.HTTPMethod = @"PUT";
-    
-    NSData *postData = [NSJSONSerialization dataWithJSONObject:parameters options:0 error:nil];
-    
-    [request setAllHTTPHeaderFields:headers];
-    
-    [request setHTTPBody:postData];
-    
-    NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    if ((([object isKindOfClass:[ITBNews class]]) || ([object isKindOfClass:[ITBCategory class]])) && (object != nil)) {
         
-        if (data != nil) {
+        SEL selector = NSSelectorFromString(objectIdDictKey);
+        IMP imp = [object methodForSelector:selector];
+        NSString *(*func)(id, SEL) = (void *)imp;
+        objectId = func(object, selector);
+        
+    } else if (object != nil) {
+        
+        SEL selector = NSSelectorFromString(objectForKeyMethodSelector);
+        IMP imp = [object methodForSelector:selector];
+        NSString *(*func)(id, SEL, NSString *) = (void *)imp;
+        objectId = func(object, selector, objectIdDictKey);
+        
+        operation = removeOperation;
+    }
+    
+    NSString *urlString = [NSString stringWithFormat:@"%@%@/%@", classesUrl, entityName, objectId];
+    
+    NSDictionary *parameters = @{ relation: @{ opDictKey: operation, objectsDictKey: @[user.objectId] } };
+    
+    dispatch_group_enter(group);
+    [self makeRequestToServerForUrlString:urlString withHeaders:postHeaders(json) withFields:parameters withHTTPBody:nil withHTTPMethod:@"PUT" onSuccess:^(NSDictionary *responseBody) {
+        
+        dispatch_group_leave(group);
+        
+    } onFailure:^(NSError *error, NSInteger statusCode) {
+        
+        dispatch_group_leave(group);
+        
+    }];
+}
+
+- (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser *)user onSuccess:(void(^)(BOOL isSuccess))success {
+    
+    dispatch_group_t group = dispatch_group_create();
+    
+    NSString *urlString = [NSString stringWithFormat:@"%@/%@", usersUrl, user.objectId];
+    
+    [self makeRequestToServerForUrlString:urlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        
+        NSMutableArray *oldLikedNewsDicts = [[responseBody objectForKey:likedNewsDictKey] mutableCopy];
+        
+        NSMutableArray *newLikedNewsArray = [[user.likedNews allObjects] mutableCopy];
+        
+        if ( ([oldLikedNewsDicts count] > 0) && ([newLikedNewsArray count] > 0) ) {
             
-            NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
+            for (int i = (int)[oldLikedNewsDicts count] - 1; i >= 0; i--) {
+                
+                NSDictionary *oldLikedNewsDict = [oldLikedNewsDicts objectAtIndex:i];
+                
+                for (int j = (int)[newLikedNewsArray count] - 1; j >= 0; j--) {
+                    
+                    ITBNews *newsItem = [newLikedNewsArray objectAtIndex:j];
+                    
+                    if ([newsItem.objectId isEqualToString:[oldLikedNewsDict objectForKey:objectIdDictKey]]) {
+                        
+                        [newLikedNewsArray removeObject:newsItem];
+                        [oldLikedNewsDicts removeObject:oldLikedNewsDict];
+                        
+                    }
+                }
+            }
+        }
+        
+        if ([newLikedNewsArray count] > 0) {
             
-//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
-            
-            if (error == nil) {
+            for (ITBNews *newsItem in newLikedNewsArray) {
                 
-                NSDate *updatedAt = [responseBody objectForKey:@"updatedAt"];
-                success(updatedAt);
-                
-            } else {
-                
-                // Failure
-                NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
+                [self changeObject:newsItem forEntityName:ITBNewsEntityName inRelation:likeAddedUsersDictKey ofCurrentUser:user forGroup:group];
             }
             
-        } else {
-            
-//            NSLog(@"There is no connection to server");
         }
+        
+        if ([oldLikedNewsDicts count] > 0) {
+            
+            for (NSDictionary *oldLikedNewsDict in oldLikedNewsDicts) {
+                
+                [self changeObject:oldLikedNewsDict forEntityName:ITBNewsEntityName inRelation:likeAddedUsersDictKey ofCurrentUser:user forGroup:group];
+            }
+        }
+        
+        NSMutableArray *oldSelectedCategoriesDicts = [[responseBody objectForKey:selectedCategoriesDictKey] mutableCopy];
+        
+        NSMutableArray *newSelectedCategoriesArray = [[user.selectedCategories allObjects] mutableCopy];
+        
+        if ( ([oldSelectedCategoriesDicts count] > 0) && ([newSelectedCategoriesArray count] > 0) ) {
+            
+            for (int i = (int)[oldSelectedCategoriesDicts count] - 1; i>=0; i--) {
+                
+                NSDictionary *oldSelectedCategoryDict = [oldSelectedCategoriesDicts objectAtIndex:i];
+                
+                for (int j = (int)[newSelectedCategoriesArray count] - 1; j>=0; j--) {
+                    
+                    ITBCategory *category = [newSelectedCategoriesArray objectAtIndex:j];
+                    
+                    if ([category.objectId isEqualToString:[oldSelectedCategoryDict objectForKey:objectIdDictKey]]) {
+                        
+                        [newSelectedCategoriesArray removeObject:category];
+                        [oldSelectedCategoriesDicts removeObject:oldSelectedCategoryDict];
+                    }
+                }
+            }
+            
+        }
+        
+        if ([newSelectedCategoriesArray count] > 0) {
+            
+            for (ITBCategory *category in newSelectedCategoriesArray) {
+                
+                [self changeObject:category forEntityName:ITBCategoryEntityName inRelation:signedUsersDictKey ofCurrentUser:user forGroup:group];
+            }
+            
+        }
+        
+        if ([oldSelectedCategoriesDicts count] > 0) {
+            
+            for (NSDictionary *oldSelectedCategoryDict in oldSelectedCategoriesDicts) {
+                
+                [self changeObject:oldSelectedCategoryDict forEntityName:ITBCategoryEntityName inRelation:signedUsersDictKey ofCurrentUser:user forGroup:group];
+                
+            }
+            
+        }
+        
+    } onFailure:^(NSError *error, NSInteger statusCode) {
         
     }];
     
-    [task resume];
-}
-
-- (void)uploadToServerUserRelationsForCurrentUser:(ITBUser *)user onSuccess:(void(^)(NSDate *updatedAt))success onFailure:(void(^)(NSError *error, NSInteger statusCode))failure {
-    
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/users/%@", user.objectId];
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey,
-                               @"x-parse-session-token": user.sessionToken,
-                               @"content-type": json };
+    NSDictionary *userRelationsHeadersDict = userRelationsHeaders(user.sessionToken, json);
     
     NSMutableArray *likedNewsArray = [NSMutableArray array];
     
     for (ITBNews *newsItem in user.likedNews) {
         
-        NSDictionary *dict = @{ @"__type": @"Pointer",
-                                @"className": @"ITBNews",
-                                @"objectId": newsItem.objectId };
+        NSDictionary *dict = classDict(ITBNewsEntityName, newsItem.objectId);
         
         [likedNewsArray addObject:dict];
     }
@@ -184,277 +268,16 @@
     
     for (ITBCategory *category in user.selectedCategories) {
         
-        NSDictionary *dict = @{ @"__type": @"Pointer",
-                                @"className": @"ITBCategory",
-                                @"objectId": category.objectId };
+        NSDictionary *dict = classDict(ITBCategoryEntityName, category.objectId);
         
         [selectedCategoriesArray addObject:dict];
     }
     
-    NSDictionary *parameters = @{ @"likedNews": likedNewsArray,
-                                  @"selectedCategories": selectedCategoriesArray};
-    
-    [self updateObject:user.objectId withHeaders:headers withFields:parameters forUrlString:urlString onSuccess:^(NSDate *updatedAt) {
-        
-        success(updatedAt);
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-    }];
-    
-}
-
-// эти методы осталось переделать
-- (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser *)user onSuccess:(void(^)(BOOL isSuccess))success {
-    
-    dispatch_group_t group = dispatch_group_create();
-    
-    [self getCurrentUser:user.objectId onSuccess:^(NSDictionary *dict) {
-        
-        NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                                   @"x-parse-rest-api-key": restApiKey,
-                                   @"content-type": json };
-        
-        NSMutableArray *oldLikedNewsDicts = [[dict objectForKey:@"likedNews"] mutableCopy];
-        
-        NSMutableArray *newLikedNewsArray = [[user.likedNews allObjects] mutableCopy];
-        
-        if ([newLikedNewsArray count] == 0) {
-            
-            if ([oldLikedNewsDicts count] == 0) {
-                
-            } else {
-                
-                for (NSDictionary *oldLikedNewsDict in oldLikedNewsDicts) {
-                    
-                    NSString *objectId = [oldLikedNewsDict objectForKey:@"objectId"];
-                    
-                    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews/%@", objectId];
-                    
-                    NSDictionary *parameters = @{ @"likeAddedUsers": @{ @"__op": @"Remove", @"objects": @[user.objectId] } };
-                    
-                    dispatch_group_enter(group);
-                    [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                        
-                        dispatch_group_leave(group);
-                        
-                    } onFailure:^(NSError *error, NSInteger statusCode) {
-                        
-                        dispatch_group_leave(group);
-                    }];
-                    
-                }
-            }
-            
-        } else {
-            
-            if ([oldLikedNewsDicts count] == 0) {
-                
-                for (ITBNews *newsItem in newLikedNewsArray) {
-                    
-                    NSString *objectId = newsItem.objectId;
-                    
-                    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews/%@", objectId];
-                    
-                    NSDictionary *parameters = @{ @"likeAddedUsers": @{ @"__op": @"AddUnique", @"objects": @[user.objectId] } };
-                    
-                    dispatch_group_enter(group);
-                    [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                        
-                        dispatch_group_leave(group);
-                        
-                    } onFailure:^(NSError *error, NSInteger statusCode) {
-                        
-                        dispatch_group_leave(group);
-                    }];
-                    
-                }
-                
-            } else {
-                
-                for (int i = (int)[oldLikedNewsDicts count] - 1; i >= 0; i--) {
-                    
-                    NSDictionary *oldLikedNewsDict = [oldLikedNewsDicts objectAtIndex:i];
-                    
-                    for (int j = (int)[newLikedNewsArray count] - 1; j >= 0; j--) {
-                        
-                        ITBNews *newsItem = [newLikedNewsArray objectAtIndex:j];
-                        
-                        if ([newsItem.objectId isEqualToString:[oldLikedNewsDict objectForKey:@"objectId"]]) {
-                            
-                            [newLikedNewsArray removeObject:newsItem];
-                            [oldLikedNewsDicts removeObject:oldLikedNewsDict];
-                            
-                        }
-                    }
-                }
-                
-                if ([oldLikedNewsDicts count] > 0) {
-                    
-                    for (NSDictionary *oldLikedNewsDict in oldLikedNewsDicts) {
-                        
-                        NSString *objectId = [oldLikedNewsDict objectForKey:@"objectId"];
-                        
-                        NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews/%@", objectId];
-                        
-                        NSDictionary *parameters = @{ @"likeAddedUsers": @{ @"__op": @"Remove", @"objects": @[user.objectId] } };
-                        
-                        dispatch_group_enter(group);
-                        [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                            
-                            dispatch_group_leave(group);
-                            
-                        } onFailure:^(NSError *error, NSInteger statusCode) {
-                            
-                            dispatch_group_leave(group);
-                        }];
-                    }
-                } else if ([newLikedNewsArray count] > 0) {
-                    
-                    for (ITBNews *newsItem in newLikedNewsArray) {
-                        
-                        NSString *objectId = newsItem.objectId;
-                        
-                        NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBNews/%@", objectId];
-                        
-                        NSDictionary *parameters = @{ @"likeAddedUsers": @{ @"__op": @"AddUnique", @"objects": @[user.objectId] } };
-                        
-                        dispatch_group_enter(group);
-                        [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                            
-                            dispatch_group_leave(group);
-                            
-                        } onFailure:^(NSError *error, NSInteger statusCode) {
-                            
-                            dispatch_group_leave(group);
-                        }];
-                    }
-                }
-            }
-        }
-        
-        NSMutableArray *oldSelectedCategoriesDicts = [[dict objectForKey:@"selectedCategories"] mutableCopy];
-        
-        NSMutableArray *newSelectedCategoriesArray = [[user.selectedCategories allObjects] mutableCopy];
-        
-        if ([newSelectedCategoriesArray count] == 0) {
-            
-            if ([oldSelectedCategoriesDicts count] != 0) {
-                
-                for (NSDictionary *oldSelectedCategoryDict in oldLikedNewsDicts) {
-                    
-                    NSString *objectId = [oldSelectedCategoryDict objectForKey:@"objectId"];
-                    
-                    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBCategory/%@", objectId];
-                    
-                    NSDictionary *parameters = @{ @"signedUsers": @{ @"__op": @"Remove", @"objects": @[user.objectId] } };
-                    
-                    dispatch_group_enter(group);
-                    [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                        
-                        dispatch_group_leave(group);
-                        
-                    } onFailure:^(NSError *error, NSInteger statusCode) {
-                        
-                        dispatch_group_leave(group);
-                    }];
-                }
-            }
-            
-        } else {
-            
-            if ([oldSelectedCategoriesDicts count] == 0) {
-                
-                for (ITBCategory *category in newSelectedCategoriesArray) {
-                    
-                    NSString *objectId = category.objectId;
-                    
-                    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBCategory/%@", objectId];
-                    
-                    NSDictionary *parameters = @{ @"signedUsers": @{ @"__op": @"AddUnique", @"objects": @[user.objectId] } };
-                    
-                    dispatch_group_enter(group);
-                    [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                        
-                        dispatch_group_leave(group);
-                        
-                    } onFailure:^(NSError *error, NSInteger statusCode) {
-                        
-                        dispatch_group_leave(group);
-                    }];
-                }
-                
-            } else {
-                
-                for (int i = (int)[oldSelectedCategoriesDicts count] - 1; i>=0; i--) {
-                    
-                    NSDictionary *oldSelectedCategoryDict = [oldSelectedCategoriesDicts objectAtIndex:i];
-                    
-                    for (int j = (int)[newSelectedCategoriesArray count] - 1; j>=0; j--) {
-                        
-                        ITBCategory *category = [newSelectedCategoriesArray objectAtIndex:j];
-                        
-                        if ([category.objectId isEqualToString:[oldSelectedCategoryDict objectForKey:@"objectId"]]) {
-                            
-                            [newSelectedCategoriesArray removeObject:category];
-                            [oldSelectedCategoriesDicts removeObject:oldSelectedCategoryDict];
-                        }
-                    }
-                }
-                
-                if ([oldSelectedCategoriesDicts count] > 0) {
-                    
-                    for (NSDictionary *oldSelectedCategoryDict in oldSelectedCategoriesDicts) {
-                        
-                        NSString *objectId = [oldSelectedCategoryDict objectForKey:@"objectId"];
-                        
-                        NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBCategory/%@", objectId];
-                        
-                        NSDictionary *parameters = @{ @"signedUsers": @{ @"__op": @"Remove", @"objects": @[user.objectId] } };
-                        
-                        dispatch_group_enter(group);
-                        [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                            
-                            dispatch_group_leave(group);
-                            
-                        } onFailure:^(NSError *error, NSInteger statusCode) {
-                            
-                            dispatch_group_leave(group);
-                            
-                        }];
-                    }
-                    
-                } else if ([newSelectedCategoriesArray count] > 0) {
-                    
-                    for (ITBCategory *category in newSelectedCategoriesArray) {
-                        
-                        NSString *objectId = category.objectId;
-                        
-                        NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/classes/ITBCategory/%@", objectId];
-                        
-                        NSDictionary *parameters = @{ @"signedUsers": @{ @"__op": @"AddUnique", @"objects": @[user.objectId] } };
-                        
-                        dispatch_group_enter(group);
-                        [self uploadToServerRelationsForObjectId:objectId forUrlString:urlString withHeaders:headers withParameters:parameters onSuccess:^(NSDate *updatedAt) {
-                            
-                            dispatch_group_leave(group);
-                            
-                        } onFailure:^(NSError *error, NSInteger statusCode) {
-                            
-                            dispatch_group_leave(group);
-                            
-                        }];
-                    }
-                }
-            }
-        }
-        
-    } onFailure:^(NSError *error, NSInteger statusCode) {
-        
-    }];
+    NSDictionary *parameters = @{ likedNewsDictKey: likedNewsArray,
+                                  selectedCategoriesDictKey: selectedCategoriesArray};
     
     dispatch_group_enter(group);
-    [self uploadToServerUserRelationsForCurrentUser:user onSuccess:^(NSDate *updatedAt) {
+    [self makeRequestToServerForUrlString:urlString withHeaders:userRelationsHeadersDict withFields:parameters withHTTPBody:nil withHTTPMethod:@"PUT" onSuccess:^(NSDictionary *responseBody) {
         
         dispatch_group_leave(group);
         
@@ -471,87 +294,6 @@
         success(YES);
         
     });
-}
-
-- (void)getCurrentUser:(NSString *)objectId onSuccess:(void(^)(NSDictionary *dict))success onFailure:(void(^)(NSError *error, NSInteger statusCode))failure {
-    
-    NSString *urlString = [NSString stringWithFormat:@"https://api.parse.com/1/users/%@", objectId];
-    NSURL *url = [NSURL URLWithString: urlString];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:10.0];
-    
-    request.HTTPMethod = @"GET";
-    
-    NSDictionary *headers = @{ @"x-parse-application-id": appId,
-                               @"x-parse-rest-api-key": restApiKey };
-    [request setAllHTTPHeaderFields:headers];
-    
-    NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        
-        if (data != nil) {
-            
-            NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
-            
-            if (error == nil) {
-                
-                success(responseBody);
-                
-            } else {
-                
-                // Failure
-                NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
-            }
-            
-        } else {
-            
-//            NSLog(@"There is no connection to server");
-        }
-        
-    }];
-    
-    [task resume];
-}
-
-- (void)updateObject:(NSString *)objectId withHeaders:(NSDictionary *)headers withFields:(NSDictionary *)parameters forUrlString:(NSString *)urlString onSuccess:(void(^)(NSDate *updatedAt))success onFailure:(void(^)(NSError *error, NSInteger statusCode))failure {
-    
-    NSURL *url = [NSURL URLWithString: urlString];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:10.0];
-    
-    request.HTTPMethod = @"PUT";
-    
-    NSData *postData = [NSJSONSerialization dataWithJSONObject:parameters options:0 error:nil];
-    
-    [request setAllHTTPHeaderFields:headers];
-    
-    [request setHTTPBody:postData];
-    
-    NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        
-        if (data != nil) {
-            
-            NSDictionary *responseBody = [NSJSONSerialization JSONObjectWithData: data options: 0 error: nil];
-            
-//        NSLog(@"JSON during getting NewsOnSuccess : %@", responseBody);
-            
-            if (error == nil) {
-                
-                NSDate *updatedAt = [responseBody objectForKey:@"updatedAt"];
-                
-                success(updatedAt);
-                
-            } else {
-                
-                // Failure
-                NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
-            }
-            
-        } else {
-            
-//            NSLog(@"There is no connection to server");
-        }
-        
-    }];
-    
-    [task resume];
 }
 
 @end

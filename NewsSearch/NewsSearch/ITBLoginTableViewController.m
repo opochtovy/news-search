@@ -8,6 +8,8 @@
 
 #import "ITBLoginTableViewController.h"
 
+#import "ITBUtils.h"
+
 #import "ITBUser.h"
 #import "ITBNews.h"
 
@@ -48,7 +50,6 @@ NSString * const signInSegueId = @"signIn";
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
 #pragma mark - UIViewController methods
@@ -98,14 +99,36 @@ NSString * const signInSegueId = @"signIn";
 
 - (void)authorizeWithUsername:(NSString *)username password:(NSString *)password {
     
-    [[ITBNewsAPI sharedInstance] authorizeWithUsername:username password:password onSuccess:^(ITBUser *user)
+    [[ITBNewsAPI sharedInstance] authorizeWithUsername:username password:password onSuccess:^(ITBUser *user, BOOL isConnected)
      {
-         
-         if (user != nil) {
+         if (!isConnected) {
+             
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 [self.activityIndicator stopAnimating];
+                 
+                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                 
+                 UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                     
+                     [alert dismissViewControllerAnimated:YES completion:nil];
+                 }];
+                 
+                 [alert addAction:ok];
+                 
+                 [self presentViewController:alert animated:YES completion:nil];
+                 
+             });
+             
+         } else if (user != nil) {
              
              [self.delegate loginDidPassSuccessfully:self];
              
-             [self dismissViewControllerAnimated:YES completion:nil];
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 [self.navigationController popViewControllerAnimated:YES];
+                 
+             });
              
          } else {
              
@@ -141,7 +164,7 @@ NSString * const signInSegueId = @"signIn";
 
 - (IBAction)actionCancel:(UIBarButtonItem *)sender {
     
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [self.navigationController popViewControllerAnimated:YES];
 }
 
 @end

@@ -10,8 +10,12 @@
     </entity>
     <entity name="ITBNews" representedClassName="ITBNews" syncable="YES">
         <attribute name="createdAt" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="frcRating" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
         <attribute name="isLikedByCurrentUser" optional="YES" attributeType="Boolean" syncable="YES"/>
         <attribute name="isTitlePressed" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="isValidByGeolocation" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="latitude" optional="YES" attributeType="Double" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="longitude" optional="YES" attributeType="Double" defaultValueString="0.0" syncable="YES"/>
         <attribute name="message" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="newsURL" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="objectId" optional="YES" attributeType="String" syncable="YES"/>
@@ -21,14 +25,17 @@
         <relationship name="author" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ITBUser" inverseName="createdNews" inverseEntity="ITBUser" syncable="YES"/>
         <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ITBCategory" inverseName="news" inverseEntity="ITBCategory" syncable="YES"/>
         <relationship name="likeAddedUsers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBUser" inverseName="likedNews" inverseEntity="ITBUser" syncable="YES"/>
-        <relationship name="photos" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBPhoto" syncable="YES"/>
-        <relationship name="thumbnailPhotos" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBPhoto" syncable="YES"/>
+        <relationship name="photos" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBPhoto" inverseName="newsWithPhoto" inverseEntity="ITBPhoto" syncable="YES"/>
+        <relationship name="thumbnailPhotos" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBPhoto" inverseName="newsWithThumbnailPhoto" inverseEntity="ITBPhoto" syncable="YES"/>
         <relationship name="toFavouritesAddedUsers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBUser" inverseName="favouriteNews" inverseEntity="ITBUser" syncable="YES"/>
     </entity>
     <entity name="ITBPhoto" representedClassName="ITBPhoto" syncable="YES">
+        <attribute name="imageData" optional="YES" attributeType="Binary" syncable="YES"/>
         <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="objectId" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="url" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="newsWithPhoto" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBNews" inverseName="photos" inverseEntity="ITBNews" syncable="YES"/>
+        <relationship name="newsWithThumbnailPhoto" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ITBNews" inverseName="thumbnailPhotos" inverseEntity="ITBNews" syncable="YES"/>
     </entity>
     <entity name="ITBUser" representedClassName="ITBUser" syncable="YES">
         <attribute name="code" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
@@ -45,8 +52,8 @@
     </entity>
     <elements>
         <element name="ITBCategory" positionX="-2745" positionY="209" width="128" height="133"/>
-        <element name="ITBNews" positionX="-2963" positionY="236" width="128" height="268"/>
-        <element name="ITBPhoto" positionX="-3179" positionY="371" width="128" height="88"/>
+        <element name="ITBNews" positionX="-2963" positionY="236" width="128" height="328"/>
+        <element name="ITBPhoto" positionX="-3179" positionY="351" width="128" height="133"/>
         <element name="ITBUser" positionX="-2322" positionY="251" width="128" height="208"/>
     </elements>
 </model>

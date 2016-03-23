@@ -8,26 +8,29 @@
 
 typedef enum {
     
-    ITBPickerTypeLargePhoto, // 0
-    ITBPickerTypeThumbnailPhoto // 1
+    ITBPickerTypeLargePhoto,
+    ITBPickerTypeThumbnailPhoto
     
 } ITBPickerType;
 
 #import "ITBCustomNewsDetailViewController.h"
 
 #import "ITBNewsAPI.h"
+#import "ITBUtils.h"
 
 #import "ITBNews.h"
 #import "ITBPhoto.h"
 
 #import "ITBThumbnailPhotoCell.h"
 
+static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPhotoCell";
+
 @interface ITBCustomNewsDetailViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout>
 
 @property (strong, nonatomic) IBOutlet UICollectionView *thumbnailPhotosCollectionView;
 
 @property (weak, nonatomic) IBOutlet UILabel *titleLabel;
-@property (weak, nonatomic) IBOutlet UILabel *messageLabel;
+@property (weak, nonatomic) IBOutlet UITextView *messageTextView;
 
 @property (weak, nonatomic) IBOutlet UIView *photoView;
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
@@ -39,8 +42,8 @@ typedef enum {
 
 @property (strong, nonatomic) ITBNews *newsItem;
 
-@property (strong, nonatomic) UIButton *closePhotoViewButton;
-@property (strong, nonatomic) UIImageView *photoImageView;
+@property (weak, nonatomic) IBOutlet UIImageView *photoImageView;
+@property (weak, nonatomic) IBOutlet UIButton *closePhotoViewButton;
 
 @end
 
@@ -54,20 +57,30 @@ typedef enum {
     self.newsItem = [self.delegate sendNewsItemTo:self];
     
     self.titleLabel.text = self.newsItem.title;
-    self.messageLabel.text = self.newsItem.message;
+    self.messageTextView.text = self.newsItem.message;
     
     self.photosArray = [self.newsItem.photos allObjects];
     self.thumbnailPhotosArray = [self.newsItem.thumbnailPhotos allObjects];
     
     self.thumbnailPhotosCollectionView.dataSource = self;
     self.thumbnailPhotosCollectionView.delegate = self;
-    
-    self.thumbnailPhotosCollectionView.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:@"bg_cork.png"]];
+    self.thumbnailPhotosCollectionView.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:bgImage]];
     
     self.photoView.backgroundColor = [UIColor lightTextColor];
-    
     [self.photoView setHidden:YES];
     self.photoView.alpha = 0.f;
+    
+    self.closePhotoViewButton.enabled = NO;
+    
+    self.messageTextView.scrollEnabled = NO;
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    
+    [super viewDidAppear:animated];
+    
+    self.messageTextView.scrollEnabled = YES;
+    
 }
 
 - (void)didReceiveMemoryWarning {
@@ -83,7 +96,7 @@ typedef enum {
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     
-    ITBThumbnailPhotoCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"ITBThumbnailPhotoCell" forIndexPath:indexPath];
+    ITBThumbnailPhotoCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:ITBThumbnailPhotoCellReuseIdentifier forIndexPath:indexPath];
     
     if (!cell) {
         
@@ -92,9 +105,11 @@ typedef enum {
     }
     
     cell.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.5f];
-
-    cell.thumbnailPhoto = [self.thumbnailPhotosArray objectAtIndex:indexPath.row];
     
+    [cell.imageView setContentMode:UIViewContentModeScaleAspectFit];
+    
+    cell.thumbnailPhoto = [self.thumbnailPhotosArray objectAtIndex:indexPath.row];
+
     return cell;
 }
 
@@ -112,68 +127,108 @@ typedef enum {
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     
-    [self.activityIndicator startAnimating];
-    
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    [button addTarget:self action:@selector(closePhotoView:) forControlEvents:UIControlEventTouchUpInside];
-    
-    [button setTitle:@"Close" forState:UIControlStateNormal];
-    button.frame = CGRectMake(self.photoView.frame.size.width - 100.0, 10.0, 90.0, 40.0);
-    button.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.3];
-    [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    
-    self.closePhotoViewButton = button;
-    
-    CGRect rect = CGRectMake(0, 0, self.photoView.frame.size.width, self.photoView.frame.size.height);
-    self.photoImageView = [[UIImageView alloc] initWithFrame:rect];
-    self.photoImageView.image = nil;
-    [self.photoView addSubview:self.photoImageView];
-    
-    [self.photoView addSubview:self.closePhotoViewButton];
-    
-    [self.photoView setHidden:NO];
-    [UIView animateWithDuration:0.25 animations:^{
+    if (!self.closePhotoViewButton.enabled) {
         
-        self.photoView.alpha = 1.0f;
+        self.closePhotoViewButton.enabled = YES;
         
-    } completion:^(BOOL finished) {
-    }];
-    
-    __weak ITBCustomNewsDetailViewController *weakSelf = self;
-    
-    ITBPhoto *photo = [self.photosArray objectAtIndex:indexPath.row];
-    
-    [photo setImageWithURL:photo.url onSuccess:^(UIImage * _Nonnull image) {
+        [self.activityIndicator startAnimating];
         
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        [self.photoImageView setContentMode:UIViewContentModeScaleAspectFit];
+        self.photoImageView.image = nil;
+        
+        [UIView animateWithDuration:0.25 animations:^{
             
-            weakSelf.photoImageView.image = image;
+            [self.photoView setHidden:NO];
+            self.photoView.alpha = 1.0f;
+            
+        } completion:^(BOOL finished) {
+        }];
+        
+        __weak ITBCustomNewsDetailViewController *weakSelf = self;
+        
+        ITBPhoto *photo = [self.photosArray objectAtIndex:indexPath.row];
+
+        if (photo.imageData == nil) {
+            
+            [self.activityIndicator startAnimating];
+            
+            [[ITBNewsAPI sharedInstance] loadImageForUrlString:photo.url onSuccess:^(NSData *data) {
+                
+                if (data != nil) {
+                    
+                    UIImage *image = [[UIImage alloc] initWithData:data];
+                    photo.imageData = data;
+                    
+                    NSError *error = nil;
+                    BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
+                    
+                    if (!saved) {
+                        
+                        NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
+                    }
+                    
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        
+                        weakSelf.photoImageView.image = image;
+                        [weakSelf.activityIndicator stopAnimating];
+                    });
+                    
+                }
+                
+            }];
+            
+        } else {
+            
             [weakSelf.activityIndicator stopAnimating];
-        });
-    }];
+            weakSelf.photoImageView.image = [UIImage imageWithData:photo.imageData];
+        }
+        
+    }
 }
 
 #pragma mark - UICollectionViewDelegateFlowLayout
 
-- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     
-    return UIEdgeInsetsMake(0, 10, 50, 10);
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
+        
+        return CGSizeMake(80, 80);
+        
+    } else {
+        
+        return CGSizeMake(120, 120);
+        
+    }
 }
 
-- (void)closePhotoView:(UIButton *)sender {
+- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
+    
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
+        
+        return UIEdgeInsetsMake(5, 10, 5, 10);
+        
+    } else {
+        
+        return UIEdgeInsetsMake(10, 10, 10, 10);
+    }
+}
+
+#pragma mark - IBActions
+
+- (IBAction)actionClosePhotoView:(UIButton *)sender {
+    
+    self.closePhotoViewButton.enabled = NO;
     
     [self.activityIndicator stopAnimating];
     
-    [self.closePhotoViewButton removeFromSuperview];
-    [self.photoImageView removeFromSuperview];
-    
-    [self.photoView setHidden:YES];
     [UIView animateWithDuration:0.25 animations:^{
         
+        [self.photoView setHidden:YES];
         self.photoView.alpha = 0.0f;
         
     } completion:^(BOOL finished) {
     }];
+    
 }
 
 @end

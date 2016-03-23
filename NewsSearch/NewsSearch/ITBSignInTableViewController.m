@@ -9,6 +9,7 @@
 #import "ITBSignInTableViewController.h"
 
 #import "ITBNewsAPI.h"
+#import "ITBUtils.h"
 
 NSString *const signinTitle = @"Sign In";
 NSString *const waitUnique = @"Please wait...";
@@ -25,6 +26,8 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 @property (weak, nonatomic) IBOutlet UILabel *uniqueUsernameLabel;
 @property (weak, nonatomic) IBOutlet UILabel *passwordConfirmationLabel;
+
+@property (weak, nonatomic) IBOutlet UIButton *signInButton;
 
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
 
@@ -47,55 +50,111 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     
     self.navigationItem.title = NSLocalizedString(signinTitle, nil);
     
+    self.usernameField.enabled = NO;
+    self.passwordField.enabled = NO;
+    self.passwordConfirmationField.enabled = NO;
+    self.signInButton.enabled = NO;
+    
     [self getUsersFromServer];
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
 #pragma mark - Private
 
 - (void)registerUser {
     
-    [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text password:self.passwordField.text onSuccess:^(BOOL isSuccess) {
+    [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text password:self.passwordField.text onSuccess:^(BOOL isConnected) {
         
-        [self.activityIndicator stopAnimating];
-        
-        [self.delegate signingDidPassSuccessfully:self forUsername:self.usernameField.text password:self.passwordField.text];
-        
-        [self dismissViewControllerAnimated:YES completion:nil];
+        if (!isConnected) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [self.activityIndicator stopAnimating];
+                
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                
+                UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                }];
+                
+                [alert addAction:ok];
+                
+                [self presentViewController:alert animated:YES completion:nil];
+                
+            });
+            
+        } else {
+            
+            [self.delegate signingDidPassSuccessfully:self forUsername:self.usernameField.text password:self.passwordField.text];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [self.navigationController popViewControllerAnimated:YES];
+                
+            });
+            
+        }
     }];
     
 }
 
 - (void)getUsersFromServer {
     
-    self.usernameField.enabled = NO;
-    self.passwordField.enabled = NO;
-    self.passwordConfirmationField.enabled = NO;
-    
     [self.activityIndicator startAnimating];
     
     self.uniqueUsernameLabel.text = NSLocalizedString(waitUnique, nil);
     
-    [[ITBNewsAPI sharedInstance] getUsersOnSuccess:^(NSSet *usernames) {
+    [[ITBNewsAPI sharedInstance] getUsersOnSuccess:^(NSSet *usernames, BOOL isConnected) {
         
-        self.usernamesSet = usernames;
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
+        if (!isConnected) {
             
-            self.usernameField.enabled = YES;
-            self.passwordField.enabled = YES;
-            self.passwordConfirmationField.enabled = YES;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [self.activityIndicator stopAnimating];
+                self.uniqueUsernameLabel.text = noConnectionTitle;
+                
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                
+                UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                }];
+                
+                [alert addAction:ok];
+                
+                [self presentViewController:alert animated:YES completion:nil];
+                
+            });
             
-            self.uniqueUsernameLabel.text = nil;
+        } else {
             
-            [self.activityIndicator stopAnimating];
+            self.usernamesSet = usernames;
             
-        });
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                self.usernameField.enabled = YES;
+                self.passwordField.enabled = YES;
+                self.passwordConfirmationField.enabled = YES;
+                self.signInButton.enabled = YES;
+                
+                self.uniqueUsernameLabel.text = nil;
+                
+                [self.activityIndicator stopAnimating];
+                
+            }); 
+        }
     }];
+}
+
+#pragma mark - UITableViewDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
 #pragma mark - UITextFieldDelegate
@@ -159,7 +218,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 - (IBAction)actionSignIn:(UIButton *)sender {
     
-    if ( (![self.usernamesSet containsObject:self.usernameField.text]) && ([self.passwordField.text isEqual:self.passwordConfirmationField.text]) ) {
+    if ( (self.usernameField.text.length > 0) && (self.passwordField.text.length > 0) && (![self.usernamesSet containsObject:self.usernameField.text]) && ([self.passwordField.text isEqual:self.passwordConfirmationField.text]) ) {
         
         [self.activityIndicator startAnimating];
         

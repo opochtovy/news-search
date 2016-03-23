@@ -2,7 +2,7 @@
 //  ITBNews+CoreDataProperties.h
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 10.03.16.
+//  Created by Oleg Pochtovy on 22.03.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 //  Choose "Create NSManagedObject Subclass…" from the Core Data editor menu
@@ -18,12 +18,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nullable, nonatomic, retain) NSDate *createdAt;
 @property (nullable, nonatomic, retain) NSNumber *isLikedByCurrentUser;
 @property (nullable, nonatomic, retain) NSNumber *isTitlePressed;
+@property (nullable, nonatomic, retain) NSNumber *isValidByGeolocation;
+@property (nullable, nonatomic, retain) NSNumber *latitude;
+@property (nullable, nonatomic, retain) NSNumber *longitude;
+@property (nullable, nonatomic, retain) NSString *message;
 @property (nullable, nonatomic, retain) NSString *newsURL;
 @property (nullable, nonatomic, retain) NSString *objectId;
 @property (nullable, nonatomic, retain) NSNumber *rating;
 @property (nullable, nonatomic, retain) NSString *title;
 @property (nullable, nonatomic, retain) NSDate *updatedAt;
-@property (nullable, nonatomic, retain) NSString *message;
+@property (nullable, nonatomic, retain) NSNumber *frcRating;
 @property (nullable, nonatomic, retain) ITBUser *author;
 @property (nullable, nonatomic, retain) ITBCategory *category;
 @property (nullable, nonatomic, retain) NSSet<ITBUser *> *likeAddedUsers;

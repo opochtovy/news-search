@@ -8,21 +8,27 @@
 
 #import "ITBCoreDataManager.h"
 
+#import "ITBUtils.h"
+
 #import "ITBNews.h"
 #import "ITBCategory.h"
 #import "ITBUser.h"
 #import "ITBPhoto.h"
+
+static NSString * const modelName = @"NewsSearch";
+static NSString * const modelExt = @"momd";
+static NSString * const databaseName = @"NewsSearch.sqlite";
 
 @interface ITBCoreDataManager ()
 
 @property (readonly, strong, nonatomic) NSManagedObjectModel *managedObjectModel;
 @property (readonly, strong, nonatomic) NSPersistentStoreCoordinator *persistentStoreCoordinator;
 
-@property (strong, nonatomic) NSManagedObjectContext *saveManagedObjectContext;
 @property (strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
-@property (strong, nonatomic) NSManagedObjectContext *syncManagedObjectContext;
+@property (strong, nonatomic) NSManagedObjectContext *bgManagedObjectContext;
 
-@property (strong, nonatomic) NSMutableArray *photos;
+@property (strong, nonatomic) NSManagedObjectContext *saveManagedObjectContext;
+@property (strong, nonatomic) NSManagedObjectContext *syncManagedObjectContext;
 
 @end
 
@@ -31,50 +37,31 @@
 @synthesize managedObjectModel = _managedObjectModel;
 @synthesize persistentStoreCoordinator = _persistentStoreCoordinator;
 
-@synthesize saveManagedObjectContext = _saveManagedObjectContext;
 @synthesize mainManagedObjectContext = _mainManagedObjectContext;
-@synthesize syncManagedObjectContext = _syncManagedObjectContext;
-
-#pragma mark - Lifecycle
-
-- (id)init {
-    
-    self = [super init];
-    
-    if (self != nil)
-    {
-        _photos = [NSMutableArray array];
-    }
-    
-    return self;
-}
+@synthesize bgManagedObjectContext = _bgManagedObjectContext;
 
 #pragma mark - Core Data stack
 
 - (NSManagedObjectModel *)managedObjectModel {
     
-    // The managed object model for the application. It is a fatal error for the application not to be able to find and load its model.
-    
     if (_managedObjectModel != nil) {
         return _managedObjectModel;
     }
     
-    NSURL *modelURL = [[NSBundle mainBundle] URLForResource:@"NewsSearch" withExtension:@"momd"];
+    NSURL *modelURL = [[NSBundle mainBundle] URLForResource:modelName withExtension:modelExt];
     
     _managedObjectModel = [[NSManagedObjectModel alloc] initWithContentsOfURL:modelURL];
     
     return _managedObjectModel;
 }
 
-// Returns the persistent store coordinator for the application.
-// If the coordinator doesn't already exist, it is created and the application's store added to it.
 - (NSPersistentStoreCoordinator *)persistentStoreCoordinator {
     
     if (_persistentStoreCoordinator != nil) {
         return _persistentStoreCoordinator;
     }
     
-    NSURL *storeURL = [[self applicationDocumentsDirectory] URLByAppendingPathComponent:@"NewsSearch.sqlite"];
+    NSURL *storeURL = [[self applicationDocumentsDirectory] URLByAppendingPathComponent:databaseName];
     
     NSError *error = nil;
     
@@ -89,146 +76,67 @@
     return _persistentStoreCoordinator;
 }
 
-// saveContext - used to propegate saves to the persistent store (disk) without blocking the UI
-- (NSManagedObjectContext *)saveManagedObjectContext {
-    
-    if (_saveManagedObjectContext != nil) {
-        return _saveManagedObjectContext;
-    }
-    
-    NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
-    
-    if (coordinator != nil) {
-        
-        _saveManagedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-        [_saveManagedObjectContext performBlockAndWait:^{
-            
-            [_saveManagedObjectContext setPersistentStoreCoordinator:coordinator];
-        }];
-    }
-    
-    return _saveManagedObjectContext;
-}
-
-// mainContext - context for using for the UI
 - (NSManagedObjectContext *)mainManagedObjectContext {
     
     if (_mainManagedObjectContext != nil) {
         return _mainManagedObjectContext;
     }
     
-    NSManagedObjectContext *saveContext = [self saveManagedObjectContext];
+    NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
     
-    if (saveContext != nil) {
+    if (coordinator != nil) {
         
         _mainManagedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
-        [_mainManagedObjectContext performBlockAndWait:^{
-            
-            [_mainManagedObjectContext setParentContext:saveContext];
-        }];
+        [_mainManagedObjectContext setPersistentStoreCoordinator:coordinator];
     }
     
     return _mainManagedObjectContext;
 }
 
-// syncContext - used to do user edits of the data and synchronization tasks
-- (NSManagedObjectContext *)syncManagedObjectContext {
+- (NSManagedObjectContext *)bgManagedObjectContext {
     
-    if (_syncManagedObjectContext != nil) {
-        return _syncManagedObjectContext;
+    if (_bgManagedObjectContext != nil) {
+        return _bgManagedObjectContext;
     }
     
-    NSManagedObjectContext *saveContext = [self saveManagedObjectContext];
+    NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
     
-    if (saveContext != nil) {
+    if (coordinator != nil) {
         
-        _syncManagedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-        [_syncManagedObjectContext performBlockAndWait:^{
-            
-            [_syncManagedObjectContext setParentContext:saveContext];
-        }];
+        _bgManagedObjectContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+        [_bgManagedObjectContext setPersistentStoreCoordinator:coordinator];
     }
     
-    return _syncManagedObjectContext;
+    return _bgManagedObjectContext;
 }
 
 #pragma mark - Core Data Saving support
 
-- (void)saveSaveContext {
-    
-    if (self.saveManagedObjectContext.hasChanges) {
-        
-        [self.saveManagedObjectContext performBlockAndWait:^{
-            
-            NSError *error = nil;
-            BOOL saved = [self.saveManagedObjectContext save:&error];
-            
-            if (!saved) {
-                // do some real error handling
-                NSLog(@"Could not save saveContext due to %@", error);
-            }
-        }];
-        
-    }
-}
-
 - (void)saveMainContext {
     
-    if (self.mainManagedObjectContext.hasChanges) {
+    NSError *error = nil;
+    BOOL saved = [self.mainManagedObjectContext save:&error];
+    
+    if (!saved) {
         
-        [self.mainManagedObjectContext performBlockAndWait:^{
-            
-            NSError *error = nil;
-            BOOL saved = [self.mainManagedObjectContext save:&error];
-            
-            if (!saved) {
-                // do some real error handling
-                NSLog(@"Could not save mainContext due to %@", error);
-            }
-        }];
-        
+        NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
     }
 }
 
-- (void)saveSyncContext {
+- (void)saveBgContext {
     
-    if (self.syncManagedObjectContext.hasChanges) {
+    NSError *error = nil;
+    BOOL saved = [self.bgManagedObjectContext save:&error];
+    
+    if (!saved) {
         
-        [self.syncManagedObjectContext performBlockAndWait:^{
-            
-            NSError *error = nil;
-            BOOL saved = [self.syncManagedObjectContext save:&error];
-            
-            if (!saved) {
-                // do some real error handling
-                NSLog(@"Could not save syncContext due to %@", error);
-            }
-        }];
-        
+        NSLog(@"%@ %@\n%@", bgContextSavingError, [error localizedDescription], [error userInfo]);
     }
-}
-
-- (void) saveCurrentContext:(NSManagedObjectContext *) context {
-    
-    if (context == self.mainManagedObjectContext) {
-        
-        [self saveMainContext];
-        
-    } else if (context == self.syncManagedObjectContext) {
-        
-        [self saveSyncContext];
-        
-    }
-    
-    [self saveSaveContext];
 }
 
 #pragma mark - Public
 
 - (NSArray *)fetchObjectsForName:(NSString *)entityName withSortDescriptor:(NSArray *)descriptors predicate:(NSPredicate *)predicate inContext:(NSManagedObjectContext *)context {
-    
-    __block NSArray *result = nil;
-    __block NSError *error = nil;
     
     NSFetchRequest *request = [[NSFetchRequest alloc] init];
     
@@ -248,11 +156,9 @@
         [request setPredicate:predicate];
     }
     
-    [context performBlockAndWait:^{
-        
-        result = [context executeFetchRequest:request error:&error];
-       
-    }];
+    NSError *error = nil;
+    
+    NSArray *result = [context executeFetchRequest:request error:&error];
     
     if (error != nil) {
         
@@ -262,140 +168,104 @@
     return result;
 }
 
-- (void)deleteAllObjects {
-    
-    [self.saveManagedObjectContext reset];
-    
-    [self deleteAllObjectsForName:@"ITBNews"];
-    [self deleteAllObjectsForName:@"ITBCategory"];
-    [self deleteAllObjectsForName:@"ITBPhoto"];
-}
-
-- (void)deleteAllObjectsForName:(NSString *)entityName {
-    
-    NSManagedObjectContext *context = self.saveManagedObjectContext;
-    
-    NSArray *allObjects = [self allObjectsForName:entityName usingContext:context];
-    
-    for (id object in allObjects) {
-        
-        [context deleteObject:object];
-    }
-    
-    [self saveCurrentContext:context];
-}
-
 - (NSArray *)allObjectsForName:(NSString *)entityName usingContext:(NSManagedObjectContext *)context {
     
     return [self fetchObjectsForName:entityName withSortDescriptor:nil predicate:nil inContext:context];
 }
 
-- (void)deleteAllUsers {
+- (void)addRelationsToLocalDBFromNewsDictsArray:(NSArray *)newsDicts forNewsArray:(NSArray *)newsArray fromCategoryDictsArray:(NSArray *)categoryDicts forCategoriesArray:(NSArray *)categoriesArray fromPhotoDictsArray:(NSArray *)allPhotoDicts forPhotosArray:(NSArray *)allPhotosArray forUser:(ITBUser *)currentUser usingContext:(NSManagedObjectContext *)context onSuccess:(void(^)(BOOL isSuccess))success {
     
-    [self deleteAllObjectsForName:@"ITBUser"];
-}
-
-- (void)addRelationsToLocalDBFromNewsDictsArray:(NSArray *)newsDicts forNewsArray:(NSArray *)newsArray fromCategoryDictsArray:(NSArray *)categoryDicts forCategoriesArray:(NSArray *)categoriesArray fromPhotoDictsArray:(NSArray *)allPhotoDicts forPhotosArray:(NSArray *)allPhotosArray forUser: (ITBUser *)currentUser usingContext:(NSManagedObjectContext *)context onSuccess:(void(^)(BOOL isSuccess))success {
-    
-    [context performBlockAndWait:^{
+    for (NSDictionary *newsDict in newsDicts) {
         
-        for (NSDictionary *newsDict in newsDicts) {
+        ITBNews *newsItem = [newsArray objectAtIndex:[newsDicts indexOfObject:newsDict]];
+        
+        NSDictionary *authorDict = [newsDict objectForKey:authorDictKey];
+        NSArray *likeAddedUsersDictsArray = [newsDict objectForKey:likeAddedUsersDictKey];
+        NSDictionary *categoryOfNewsItemDict = [newsDict objectForKey:categoryDictKey];
+        NSArray *photoOfNewsItemDictsArray = [newsDict objectForKey:photosDictKey];
+        NSArray *thumbnailPhotoOfNewsItemDictsArray = [newsDict objectForKey:thumbnailPhotosDictKey];
+        
+        if ([currentUser.objectId isEqualToString:[authorDict objectForKey:objectIdDictKey]]) {
             
-            ITBNews *newsItem = [newsArray objectAtIndex:[newsDicts indexOfObject:newsDict]];
+            newsItem.author = currentUser;
+        }
+        
+        for (NSString *likeAddedUserObjectId in likeAddedUsersDictsArray) {
             
-            NSDictionary *authorDict = [newsDict objectForKey:@"author"];
-            NSArray *likeAddedUsersDictsArray = [newsDict objectForKey:@"likeAddedUsers"];
-            NSDictionary *categoryOfNewsItemDict = [newsDict objectForKey:@"category"];
-            NSArray *photoOfNewsItemDictsArray = [newsDict objectForKey:@"photos"];
-            NSArray *thumbnailPhotoOfNewsItemDictsArray = [newsDict objectForKey:@"thumbnailPhotos"];
-            
-            if ([currentUser.objectId isEqualToString:[authorDict objectForKey:@"objectId"]]) {
+            if ([currentUser.objectId isEqualToString:likeAddedUserObjectId]) {
                 
-                newsItem.author = currentUser;
+                [currentUser addLikedNewsObject:newsItem];
+                newsItem.isLikedByCurrentUser = @1;
             }
+        }
+        
+        for (NSDictionary *photoOfNewsItemDict in photoOfNewsItemDictsArray) {
             
-            for (NSString *likeAddedUserObjectId in likeAddedUsersDictsArray) {
-                
-                if ([currentUser.objectId isEqualToString:likeAddedUserObjectId]) {
-                    
-                    [currentUser addLikedNewsObject:newsItem];
-                    newsItem.isLikedByCurrentUser = @1;
-                }
-            }
+            NSString *photoOfNewsItemObjectId = [photoOfNewsItemDict objectForKey:objectIdDictKey];
             
-            // photos
-            for (NSDictionary *photoOfNewsItemDict in photoOfNewsItemDictsArray) {
+            for (NSDictionary *photoDict in allPhotoDicts) {
                 
-                NSString *photoOfNewsIteObjectId = [photoOfNewsItemDict objectForKey:@"objectId"];
+                NSInteger index = [allPhotoDicts indexOfObject:photoDict];
                 
-                for (NSDictionary *photoDict in allPhotoDicts) {
+                if ([photoOfNewsItemObjectId isEqualToString:[photoDict objectForKey:objectIdDictKey]]) {
                     
-                    NSInteger index = [allPhotoDicts indexOfObject:photoDict];
+                    ITBPhoto *photo = [allPhotosArray objectAtIndex:index];
                     
-                    if ([photoOfNewsIteObjectId isEqualToString:[photoDict objectForKey:@"objectId"]]) {
-                        
-                        ITBPhoto *photo = [allPhotosArray objectAtIndex:index];
-                        
-                        [newsItem addPhotosObject:photo];
-                        
-                    }
-                }
-            }
-            
-            // thumbnailPhotos
-            for (NSDictionary *thumbnailPhotoOfNewsItemDict in thumbnailPhotoOfNewsItemDictsArray) {
-                
-                NSString *thumbnailPhotoOfNewsIteObjectId = [thumbnailPhotoOfNewsItemDict objectForKey:@"objectId"];
-                
-                for (NSDictionary *photoDict in allPhotoDicts) {
+                    [newsItem addPhotosObject:photo];
                     
-                    NSInteger index = [allPhotoDicts indexOfObject:photoDict];
-                    
-                    if ([thumbnailPhotoOfNewsIteObjectId isEqualToString:[photoDict objectForKey:@"objectId"]]) {
-                        
-                        ITBPhoto *thumbnailPhoto = [allPhotosArray objectAtIndex:index];
-                        
-                        [newsItem addThumbnailPhotosObject:thumbnailPhoto];
-                        
-                    }
-                }
-            }
-            
-            for (NSDictionary *categoryDict in categoryDicts) {
-                
-                ITBCategory *category = [categoriesArray objectAtIndex:[categoryDicts indexOfObject:categoryDict]];
-                
-                NSArray *signedUsersDictsArray = [categoryDict objectForKey:@"signedUsers"]; // for category
-                
-                if ([category.objectId isEqualToString:[categoryOfNewsItemDict objectForKey:@"objectId"]]) {
-                    
-                    newsItem.category = category;
-                }
-                
-                for (NSString *signedUserObjectId in signedUsersDictsArray) {
-                    
-                    if ([currentUser.objectId isEqualToString:signedUserObjectId]) {
-                        
-                        [currentUser addSelectedCategoriesObject:category];
-                        
-                    }
                 }
             }
         }
         
-        // first saving to current context
-        NSError *error = nil;
-        BOOL saved = [context save:&error];
-        if (!saved) {
-            NSLog(@"Error saving context: %@", error);
+        for (NSDictionary *thumbnailPhotoOfNewsItemDict in thumbnailPhotoOfNewsItemDictsArray) {
+            
+            NSString *thumbnailPhotoOfNewsItemObjectId = [thumbnailPhotoOfNewsItemDict objectForKey:objectIdDictKey];
+            
+            for (NSDictionary *photoDict in allPhotoDicts) {
+                
+                NSInteger index = [allPhotoDicts indexOfObject:photoDict];
+                
+                if ([thumbnailPhotoOfNewsItemObjectId isEqualToString:[photoDict objectForKey:objectIdDictKey]]) {
+                    
+                    ITBPhoto *thumbnailPhoto = [allPhotosArray objectAtIndex:index];
+                    
+                    [newsItem addThumbnailPhotosObject:thumbnailPhoto];
+                    
+                }
+            }
         }
-        // and finally saving to saveContext
-        [self saveSaveContext];
         
-        success(YES);
-        
-    }];
+        for (NSDictionary *categoryDict in categoryDicts) {
+            
+            ITBCategory *category = [categoriesArray objectAtIndex:[categoryDicts indexOfObject:categoryDict]];
+            
+            NSArray *signedUsersDictsArray = [categoryDict objectForKey:signedUsersDictKey];
+            
+            if ([category.objectId isEqualToString:[categoryOfNewsItemDict objectForKey:objectIdDictKey]]) {
+                
+                newsItem.category = category;
+            }
+            
+            for (NSString *signedUserObjectId in signedUsersDictsArray) {
+                
+                if ([currentUser.objectId isEqualToString:signedUserObjectId]) {
+                    
+                    [currentUser addSelectedCategoriesObject:category];
+                    
+                }
+            }
+        }
+    }
     
+    NSError *error = nil;
+    BOOL saved = [context save:&error];
+    
+    if (!saved) {
+        
+        NSLog(@"%@ %@\n%@", bgContextSavingError, [error localizedDescription], [error userInfo]);
+    }
+    
+    success(YES);
     
 }
 

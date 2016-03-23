@@ -14,16 +14,12 @@
 
 @implementation ITBCategory
 
-// Insert code here to add functionality to your managed object subclass
-
 + (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
     
     ITBCategory *category = [NSEntityDescription insertNewObjectForEntityForName:@"ITBCategory" inManagedObjectContext:context];
     
     category.title = [userDict objectForKey:@"title"];
     category.objectId = [userDict objectForKey:@"objectId"];
-    
-    // convertToNSDateFromUTC()
     
     category.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
     category.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);

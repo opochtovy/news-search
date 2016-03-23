@@ -2,7 +2,7 @@
 //  ITBNews.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 10.03.16.
+//  Created by Oleg Pochtovy on 22.03.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
@@ -15,8 +15,6 @@
 
 @implementation ITBNews
 
-// Insert code here to add functionality to your managed object subclass
-
 + (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
     
     ITBNews *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNews" inManagedObjectContext:context];
@@ -26,12 +24,17 @@
     newsItem.newsURL = [userDict objectForKey:@"newsURL"];
     newsItem.objectId = [userDict objectForKey:@"objectId"];
     
+    newsItem.latitude = [userDict objectForKey:@"latitude"];
+    newsItem.longitude = [userDict objectForKey:@"longitude"];
+    
     newsItem.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
     newsItem.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
     
     NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
     
     newsItem.rating = [NSNumber numberWithInteger:ratingInt];
+    
+    newsItem.frcRating = newsItem.rating;
     
     return newsItem;
 }
@@ -43,11 +46,16 @@
     self.newsURL = [userDict objectForKey:@"newsURL"];
     self.objectId = [userDict objectForKey:@"objectId"];
     
+    self.latitude = [userDict objectForKey:@"latitude"];
+    self.longitude = [userDict objectForKey:@"longitude"];
+    
     self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
     self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
     
     NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
     self.rating = [NSNumber numberWithInteger:ratingInt];
+    
+    self.frcRating = self.rating;
 }
 
 @end
