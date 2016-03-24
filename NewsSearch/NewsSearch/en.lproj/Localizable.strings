@@ -1,0 +1,27 @@
+"NEWS" = "NEWS";
+
+"You need to login for using our news network!" = "You need to login for using our news network!";
+
+"Login" = "Login";
+
+"Login:" = "Login";
+
+"Logout" = "Logout";
+
+"invalid login parameters" = "invalid login parameters";
+
+"Sign In" = "Sign In";
+
+"Please wait..." = "Please wait...";
+
+"Such username already exists..." = "Such username already exists...";
+
+"Such username is available !" = "Such username is available !";
+
+"Password confirmation is not successful..." = "Password confirmation is not successful...";
+
+"Password confirmation is successful !" = "Password confirmation is successful !";
+
+"Categories" = "Categories";
+
+"All categories" = "All categories";
