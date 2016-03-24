@@ -1,7 +1,27 @@
-/* 
-  Localizable.strings
-  NewsSearch
+"NEWS" = "Новости";
 
-  Created by Oleg Pochtovy on 12.02.16.
-  Copyright © 2016 Oleg Pochtovy. All rights reserved.
-*/
+"You need to login for using our news network!" = "Вам надо авторизоваться, чтобы подключиться к нашей информационной сети!";
+
+"Login" = "Войти";
+
+"Login:" = "Авторизация";
+
+"Logout" = "Выйти";
+
+"invalid login parameters" = "логин и пароль не совпадают";
+
+"Sign In" = "Регистрация";
+
+"Please wait..." = "Пожалуйста, подождите ...";
+
+"Such username already exists..." = "Такой username уже есть ...";
+
+"Such username is available !" = "Такой username свободен !";
+
+"Password confirmation is not successful..." = "Пароли не совпадают ...";
+
+"Password confirmation is successful !" = "Пароли совпадают !";
+
+"Categories" = "Категории";
+
+"All categories" = "Все категории";

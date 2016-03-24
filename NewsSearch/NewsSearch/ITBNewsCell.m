@@ -7,21 +7,19 @@
 //
 
 #import "ITBNewsCell.h"
-
-#import "ITBNews.h"
+#import "ITBNewsCellDelegate.h"
 
 @implementation ITBNewsCell
 
 - (void)awakeFromNib {
-    // Initialization code
-    
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
+    
     [super setSelected:selected animated:animated];
-
-    // Configure the view for the selected state
 }
+
+#pragma mark - IBActions
 
 - (IBAction)actionAddLike:(UIButton *)sender {
     
@@ -37,4 +35,11 @@
     
     [self.delegate newsCellDidTapDetail:self];
 }
+
+
+- (IBAction)actionSelectTitle:(UIButton *)sender {
+    
+    [self.delegate newsCellDidSelectTitle:self];
+}
+
 @end

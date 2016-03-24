@@ -8,17 +8,36 @@
 
 #import "ITBLoginTableViewController.h"
 
-#import "ITBServerManager.h"
+#import "ITBUtils.h"
 
 #import "ITBUser.h"
+#import "ITBNews.h"
 
-NSString *const invalidLogin = @"invalid login parameters";
+#import "ITBNewsAPI.h"
 
-@interface ITBLoginTableViewController () <UITextFieldDelegate>
+#import "ITBSignInTableViewController.h"
+
+NSString * const loginTitle = @"Login:";
+NSString * const invalidLogin = @"invalid login parameters";
+NSString * const signInSegueId = @"signIn";
+
+@interface ITBLoginTableViewController () <UITextFieldDelegate, ITBSignInTableViewControllerDelegate>
+
+@property (weak, nonatomic) IBOutlet UITextField *usernameField;
+@property (weak, nonatomic) IBOutlet UITextField *passwordField;
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+@property (weak, nonatomic) IBOutlet UISwitch *rememberSwitch;
 
 @end
 
 @implementation ITBLoginTableViewController
+
+#pragma mark - Lifecycle
+
+- (void)dealloc {
+    
+    [_activityIndicator stopAnimating];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -26,59 +45,24 @@ NSString *const invalidLogin = @"invalid login parameters";
     self.usernameField.delegate = self;
     self.passwordField.delegate = self;
     
-    self.navigationItem.title = @"Login";
+    self.navigationItem.title = NSLocalizedString(loginTitle, nil);
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
-- (void)dealloc {
+#pragma mark - UIViewController methods
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
     
-    [self.activityIndicator stopAnimating];
-}
-
-#pragma mark - API
-
-- (void)authorizeUser {
-    
-    [[ITBServerManager sharedManager]
-     authorizeWithUsername:self.usernameField.text
-     withPassword:self.passwordField.text
-     onSuccess:^(ITBUser *user)
-     {
-
-         NSInteger code = [user.code integerValue];
-
-         if (code == 0) {
-             
-//             NSLog(@"Login was successful!!!");
-             
-             [self.delegate changeTitleForLoginButton:self];
-             
-             [self dismissViewControllerAnimated:YES completion:nil];
-             
-         } else {
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-                 self.usernameField.placeholder = invalidLogin;
-                 
-                 self.passwordField.placeholder = invalidLogin;
-                 
-                 [self.activityIndicator stopAnimating];
-                 
-             });
-             
-         }
-         
-     }
-     onFailure:^(NSError *error, NSInteger statusCode)
-     {
-         
-     }];
-    
+    if ([[segue identifier] isEqualToString:signInSegueId]) {
+        
+        ITBSignInTableViewController *signInVC = [segue destinationViewController];
+        
+        signInVC.delegate = self;
+        
+    }
 }
 
 #pragma mark - UITextFieldDelegate
@@ -90,6 +74,7 @@ NSString *const invalidLogin = @"invalid login parameters";
         [self.passwordField becomeFirstResponder];
         
     } else {
+        
         [textField resignFirstResponder];
     }
     
@@ -103,17 +88,83 @@ NSString *const invalidLogin = @"invalid login parameters";
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
-#pragma mark - Actions
+#pragma mark - ITBSignInTableViewControllerDelegate
+
+- (void)signingDidPassSuccessfully:(ITBSignInTableViewController *)vc forUsername:(NSString *)username password:(NSString *)password {
+    
+    [self authorizeWithUsername:username password:password];
+}
+
+#pragma mark - ITBNewsAPI
+
+- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password {
+    
+    [[ITBNewsAPI sharedInstance] authorizeWithUsername:username password:password onSuccess:^(ITBUser *user, BOOL isConnected)
+     {
+         if (!isConnected) {
+             
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 [self.activityIndicator stopAnimating];
+                 
+                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                 
+                 UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                     
+                     [alert dismissViewControllerAnimated:YES completion:nil];
+                 }];
+                 
+                 [alert addAction:ok];
+                 
+                 [self presentViewController:alert animated:YES completion:nil];
+                 
+             });
+             
+         } else if (user != nil) {
+             
+             [self.delegate loginDidPassSuccessfully:self];
+             
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 [self.navigationController popViewControllerAnimated:YES];
+                 
+             });
+             
+         } else {
+             
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 
+                 self.usernameField.text = @"";
+                 self.passwordField.text = @"";
+                 
+                 self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
+                 self.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
+                 
+                 [self.activityIndicator stopAnimating];
+                 
+             });
+             
+         }
+        
+    }];
+    
+}
+
+#pragma mark - IBActions
 
 - (IBAction)actionLogin:(UIButton *)sender {
     
-    [self.activityIndicator startAnimating];
-    
-    [self authorizeUser];
+    if ((self.usernameField.text.length > 0) && (self.passwordField.text.length > 0) ) {
+        
+        [self.activityIndicator startAnimating];
+        
+        [self authorizeWithUsername:self.usernameField.text password:self.passwordField.text];
+    }
 }
 
 - (IBAction)actionCancel:(UIBarButtonItem *)sender {
     
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [self.navigationController popViewControllerAnimated:YES];
 }
+
 @end

@@ -8,17 +8,17 @@
 
 #import <UIKit/UIKit.h>
 
+@protocol ITBSignInTableViewControllerDelegate;
+
 @interface ITBSignInTableViewController : UITableViewController
 
-@property (weak, nonatomic) IBOutlet UITextField *usernameField;
-@property (weak, nonatomic) IBOutlet UITextField *passwordField;
-@property (weak, nonatomic) IBOutlet UITextField *passwordConfirmationField;
+@property (weak, nonatomic) id <ITBSignInTableViewControllerDelegate> delegate;
 
-@property (weak, nonatomic) IBOutlet UILabel *uniqueUsernameLabel;
-@property (weak, nonatomic) IBOutlet UILabel *passwordConfirmationLabel;
+@end
 
-@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
 
-- (IBAction)actionSignIn:(UIButton *)sender;
+@protocol ITBSignInTableViewControllerDelegate <NSObject>
+
+- (void)signingDidPassSuccessfully:(ITBSignInTableViewController *)vc forUsername:(NSString *)username password:(NSString *)password;
 
 @end

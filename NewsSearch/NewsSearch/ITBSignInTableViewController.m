@@ -8,9 +8,8 @@
 
 #import "ITBSignInTableViewController.h"
 
-#import "ITBServerManager.h"
-
-#import "ITBUser.h"
+#import "ITBNewsAPI.h"
+#import "ITBUtils.h"
 
 NSString *const signinTitle = @"Sign In";
 NSString *const waitUnique = @"Please wait...";
@@ -21,98 +20,141 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 @interface ITBSignInTableViewController () <UITextFieldDelegate>
 
-@property (strong, nonatomic) NSMutableSet* usernamesSet;
+@property (weak, nonatomic) IBOutlet UITextField *usernameField;
+@property (weak, nonatomic) IBOutlet UITextField *passwordField;
+@property (weak, nonatomic) IBOutlet UITextField *passwordConfirmationField;
+
+@property (weak, nonatomic) IBOutlet UILabel *uniqueUsernameLabel;
+@property (weak, nonatomic) IBOutlet UILabel *passwordConfirmationLabel;
+
+@property (weak, nonatomic) IBOutlet UIButton *signInButton;
+
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+
+@property (copy, nonatomic) NSSet *usernamesSet;
 
 @end
 
 @implementation ITBSignInTableViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.usernamesSet = [NSMutableSet set];
+    self.usernamesSet = [NSSet set];
     
     self.usernameField.delegate = self;
     self.passwordField.delegate = self;
     self.passwordConfirmationField.delegate = self;
     
-    self.navigationItem.title = signinTitle;
+    self.navigationItem.title = NSLocalizedString(signinTitle, nil);
+    
+    self.usernameField.enabled = NO;
+    self.passwordField.enabled = NO;
+    self.passwordConfirmationField.enabled = NO;
+    self.signInButton.enabled = NO;
     
     [self getUsersFromServer];
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
-- (void)dealloc {
-    
-//    [self.activityIndicator stopAnimating];
-}
-
-#pragma mark - API
+#pragma mark - Private
 
 - (void)registerUser {
     
-    [[ITBServerManager sharedManager]
-     registerWithUsername:self.usernameField.text
-     withPassword:self.passwordField.text
-     onSuccess:^(ITBUser *user)
-     {
-         
-         dispatch_async(dispatch_get_main_queue(), ^{
-             
-             [self.activityIndicator stopAnimating];
-             
-             [self dismissViewControllerAnimated:YES completion:nil];
-             
-         });
-         
-     }
-     onFailure:^(NSError *error, NSInteger statusCode)
-     {
-         
-     }];
+    [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text password:self.passwordField.text onSuccess:^(BOOL isConnected) {
+        
+        if (!isConnected) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [self.activityIndicator stopAnimating];
+                
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                
+                UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                }];
+                
+                [alert addAction:ok];
+                
+                [self presentViewController:alert animated:YES completion:nil];
+                
+            });
+            
+        } else {
+            
+            [self.delegate signingDidPassSuccessfully:self forUsername:self.usernameField.text password:self.passwordField.text];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [self.navigationController popViewControllerAnimated:YES];
+                
+            });
+            
+        }
+    }];
     
 }
 
 - (void)getUsersFromServer {
     
-    self.usernameField.enabled = NO;
-    self.passwordField.enabled = NO;
-    self.passwordConfirmationField.enabled = NO;
-    
     [self.activityIndicator startAnimating];
     
-    self.uniqueUsernameLabel.text = waitUnique;
+    self.uniqueUsernameLabel.text = NSLocalizedString(waitUnique, nil);
     
-    [[ITBServerManager sharedManager]
-     getUsersOnSuccess:^(NSArray *users) {
-         
-         for (ITBUser* userItem in users) {
-             
-             [self.usernamesSet addObject:userItem.username];
-         }
-         
-         dispatch_async(dispatch_get_main_queue(), ^{
-             
-             self.usernameField.enabled = YES;
-             self.passwordField.enabled = YES;
-             self.passwordConfirmationField.enabled = YES;
-             
-             self.uniqueUsernameLabel.text = nil;
-             
-             [self.activityIndicator stopAnimating];
-             
-//             NSLog(@"%@", self.usernamesSet);
-             
-         });
-         
-     }
-     onFailure:^(NSError *error, NSInteger statusCode) {
-         
-     }];
+    [[ITBNewsAPI sharedInstance] getUsersOnSuccess:^(NSSet *usernames, BOOL isConnected) {
+        
+        if (!isConnected) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [self.activityIndicator stopAnimating];
+                self.uniqueUsernameLabel.text = noConnectionTitle;
+                
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                
+                UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                }];
+                
+                [alert addAction:ok];
+                
+                [self presentViewController:alert animated:YES completion:nil];
+                
+            });
+            
+        } else {
+            
+            self.usernamesSet = usernames;
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                self.usernameField.enabled = YES;
+                self.passwordField.enabled = YES;
+                self.passwordConfirmationField.enabled = YES;
+                self.signInButton.enabled = YES;
+                
+                self.uniqueUsernameLabel.text = nil;
+                
+                [self.activityIndicator stopAnimating];
+                
+            }); 
+        }
+    }];
+}
+
+#pragma mark - UITableViewDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
 #pragma mark - UITextFieldDelegate
@@ -137,7 +179,7 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
     
-    NSMutableString* result = [textField.text mutableCopy];
+    NSMutableString *result = [textField.text mutableCopy];
                                
     [result replaceCharactersInRange:range withString:string];
     
@@ -145,13 +187,13 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
         
         if ([self.usernamesSet containsObject:result]) {
             
-            self.uniqueUsernameLabel.text = noUnique;
+            self.uniqueUsernameLabel.text = NSLocalizedString(noUnique, nil);
             self.uniqueUsernameLabel.textColor = [UIColor redColor];
             
         } else {
             
-            self.uniqueUsernameLabel.text = okUnique;
-            self.uniqueUsernameLabel.textColor = [UIColor greenColor];
+            self.uniqueUsernameLabel.text = NSLocalizedString(okUnique, nil);
+            self.uniqueUsernameLabel.textColor = [UIColor blueColor];
             
         }
         
@@ -159,12 +201,12 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
         
         if ([result isEqual:self.passwordField.text]) {
             
-            self.passwordConfirmationLabel.text = okPassConfirm;
-            self.passwordConfirmationLabel.textColor = [UIColor greenColor];
+            self.passwordConfirmationLabel.text = NSLocalizedString(okPassConfirm, nil);
+            self.passwordConfirmationLabel.textColor = [UIColor blueColor];
             
         } else {
             
-            self.passwordConfirmationLabel.text = noPassConfirm;
+            self.passwordConfirmationLabel.text = NSLocalizedString(noPassConfirm, nil);
             self.passwordConfirmationLabel.textColor = [UIColor redColor];
         }
     }
@@ -172,9 +214,11 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
     return YES;
 }
 
+#pragma mark - IBActions
+
 - (IBAction)actionSignIn:(UIButton *)sender {
     
-    if ( (![self.usernamesSet containsObject:self.usernameField.text]) && ([self.passwordField.text isEqual:self.passwordConfirmationField.text]) ) {
+    if ( (self.usernameField.text.length > 0) && (self.passwordField.text.length > 0) && (![self.usernamesSet containsObject:self.usernameField.text]) && ([self.passwordField.text isEqual:self.passwordConfirmationField.text]) ) {
         
         [self.activityIndicator startAnimating];
         

@@ -8,11 +8,8 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ITBNewsDetailViewController : UIViewController <UIWebViewDelegate>
+@interface ITBNewsDetailViewController : UIViewController
 
-//@property (strong, nonatomic) NSString *urlString;
 @property (strong, nonatomic) NSURL *url;
-
-@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *indicator;
 
 @end

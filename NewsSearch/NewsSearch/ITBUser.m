@@ -2,35 +2,48 @@
 //  ITBUser.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 02.02.16.
+//  Created by Oleg Pochtovy on 09.03.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
 #import "ITBUser.h"
+#import "ITBCategory.h"
+#import "ITBNews.h"
+
+#import "ITBUtils.h"
 
 @implementation ITBUser
 
-- (id)initWithServerResponse:(NSDictionary *) responseObject {
++ (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
     
-    self = [super init];
+    NSLog(@"user was created");
     
-    if (self != nil) {
-        
-        self.username = [responseObject objectForKey:@"username"];
-        self.objectId = [responseObject objectForKey:@"objectId"];
-        self.sessionToken = [responseObject objectForKey:@"sessionToken"];
-        self.createdAt = [responseObject objectForKey:@"createdAt"];
-        self.updatedAt = [responseObject objectForKey:@"updatedAt"];
-        
-        self.code = [responseObject objectForKey:@"code"];
-        self.error = [responseObject objectForKey:@"error"];
-        
-        self.categories = [responseObject objectForKey:@"categories"];
-        
-    }
+    ITBUser *user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUser" inManagedObjectContext:context];
     
-    return self;
+    user.username = [userDict objectForKey:@"username"];
+    user.objectId = [userDict objectForKey:@"objectId"];
+    user.sessionToken = [userDict objectForKey:@"sessionToken"];
     
+    user.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
+    user.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    
+    user.code = [userDict objectForKey:@"code"];
+    user.error = [userDict objectForKey:@"error"];
+    
+    return user;
+}
+
+- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+    
+    self.username = [userDict objectForKey:@"username"];
+    self.objectId = [userDict objectForKey:@"objectId"];
+    self.sessionToken = [userDict objectForKey:@"sessionToken"];
+    
+    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
+    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    
+    self.code = [userDict objectForKey:@"code"];
+    self.error = [userDict objectForKey:@"error"];
 }
 
 @end

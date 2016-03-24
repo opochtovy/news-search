@@ -10,14 +10,7 @@
 
 @protocol ITBCategoriesPickerDelegate;
 
-@interface ITBCategoriesViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
-
-@property (weak, nonatomic) IBOutlet UITableView *categoriesTableView;
-
-@property (strong, nonatomic) NSArray *allCategoriesArray;
-@property (strong, nonatomic) NSArray *categoriesOfCurrentUserArray;
-
-@property (strong, nonatomic) NSIndexPath *checkmarkIndexPath;
+@interface ITBCategoriesViewController : UIViewController
 
 @property (weak, nonatomic) id <ITBCategoriesPickerDelegate> delegate;
 
@@ -25,7 +18,6 @@
 
 @protocol ITBCategoriesPickerDelegate
 
-@required
-- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC;
+- (void)reloadCategoriesFrom:(ITBCategoriesViewController *)categoriesVC withSortingType:(NSInteger)sortingType sortingName:(NSString *)sortingName;
 
 @end

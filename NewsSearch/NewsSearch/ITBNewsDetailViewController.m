@@ -8,9 +8,13 @@
 
 #import "ITBNewsDetailViewController.h"
 
-@interface ITBNewsDetailViewController ()
+#import "ITBNewsAPI.h"
+#import "ITBNews.h"
+
+@interface ITBNewsDetailViewController () <UIWebViewDelegate>
 
 @property (weak, nonatomic) IBOutlet UIWebView *webView;
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *indicator;
 
 @property (strong, nonatomic) UIBarButtonItem *backButtonItem;
 @property (strong, nonatomic) UIBarButtonItem *forwardButtonItem;
@@ -19,40 +23,29 @@
 
 @implementation ITBNewsDetailViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
     
     NSURLRequest *request = [NSURLRequest requestWithURL:self.url];
     
     [self.webView loadRequest:request];
     
-    self.backButtonItem = [[UIBarButtonItem alloc]
-                           initWithBarButtonSystemItem:UIBarButtonSystemItemRewind
-                           target:self
-                           action:@selector(actionBack:)];
+    self.backButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRewind target:self action:@selector(actionBack:)];
     
-    self.forwardButtonItem = [[UIBarButtonItem alloc]
-                              initWithBarButtonSystemItem:UIBarButtonSystemItemFastForward
-                              target:self
-                              action:@selector(actionForward:)];
+    self.forwardButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFastForward target:self action:@selector(actionForward:)];
     
-    UIBarButtonItem *refreshButtonItem = [[UIBarButtonItem alloc]
-                                          initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh
-                                          target:self
-                                          action:@selector(actionRefresh:)];
+    UIBarButtonItem *refreshButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(actionRefresh:)];
     
     self.navigationItem.rightBarButtonItems = @[self.forwardButtonItem, refreshButtonItem, self.backButtonItem];
-    
-    
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
-#pragma mark - Private Methods
+#pragma mark - Private
 
 - (void)refreshButtons {
     

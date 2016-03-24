@@ -8,49 +8,104 @@
 
 #import "ITBCategoriesViewController.h"
 
-NSString *const categoriesTitle = @"Categories";
-NSString *const allCell = @"All categories";
+#import "ITBNewsAPI.h"
 
-@interface ITBCategoriesViewController ()
+#import "ITBUtils.h"
 
-@property (strong, nonatomic) NSMutableArray *checkBoxes; // количество элементов этого нового массива такое же как в self.allCategoriesArray + 1 (из-за поля All)
+#import "ITBUser.h"
+#import "ITBCategory.h"
+#import "ITBNews.h"
+
+#import <CoreLocation/CoreLocation.h>
+
+//static NSString * const categoriesTitle = @"Categories";
+static NSString * const categoriesTitle = @"Choose sorting & categories";
+static NSString * const categoriesiPhoneTitle = @"Sorting & categories";
+static NSString * const allCatsCell = @"All categories";
+
+@interface ITBCategoriesViewController () <UITableViewDataSource, UITableViewDelegate>
+
+@property (copy, nonatomic) NSArray *allCategoriesArray;
+@property (copy, nonatomic) NSArray *categoriesOfCurrentUserArray;
+
+@property (strong, nonatomic) NSArray *allSortingsArray;
+
+@property (weak, nonatomic) IBOutlet UINavigationItem *navBarItem;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *cancelButton;
+@property (weak, nonatomic) IBOutlet UIBarButtonItem *doneButton;
+
+@property (weak, nonatomic) IBOutlet UITableView *categoriesTableView;
+
+@property (strong, nonatomic) NSMutableArray *checkBoxes;
 @property (assign, nonatomic) BOOL isAllChecked;
+
+@property (assign, nonatomic) NSInteger sortingCheckmarkIndex;
+
+@property (strong, nonatomic) ITBUser *currentUser;
+
+@property (assign, nonatomic) CLLocationCoordinate2D currentUserCoordinates;
 
 @end
 
 @implementation ITBCategoriesViewController
 
+#pragma mark - Lifecycle
+
 - (void)viewDidLoad {
+    
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
     
-    self.title = categoriesTitle;
+    NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:@"title" ascending:YES];
+    self.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:@"ITBCategory" withSortDescriptors:@[titleDescriptor] predicate:nil];
     
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
+    NSLog(@"ITBCategoriesViewController : [self.allCategoriesArray count] = %li", (long)[self.allCategoriesArray count]);
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    NSString *objectId = [userDefaults objectForKey:kSettingsObjectId];
+    
+    NSLog(@"ITBCategoriesViewController : objectId = %@", objectId);
+    
+    self.currentUserCoordinates = CLLocationCoordinate2DMake([[userDefaults objectForKey:kSettingsLatitude] doubleValue], [[userDefaults objectForKey:kSettingsLongitude] doubleValue]);
+    
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:@"ITBUser" withSortDescriptors:nil predicate:predicate];
+    self.currentUser = [users firstObject];
+    self.categoriesOfCurrentUserArray = [self.currentUser.selectedCategories allObjects];
+    
+    NSNumber *number = [userDefaults objectForKey:kSettingsChosenSortingType];
+    self.sortingCheckmarkIndex = [number intValue];
+    
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         
-        UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(actionDone:)];
+        self.navBarItem.rightBarButtonItems = nil;
+        self.navBarItem.leftBarButtonItems = nil;
         
-        [self.navigationItem setRightBarButtonItem:doneButton animated:YES];
+        self.navBarItem.title = NSLocalizedString(categoriesTitle, nil);
         
+    } else {
+        
+        self.navBarItem.title = NSLocalizedString(categoriesiPhoneTitle, nil);
     }
-    
-    UIBarButtonItem *cancelButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(actionCancel:)];
-    
-    [self.navigationItem setLeftBarButtonItem:cancelButton animated:YES];
-    
-    [self.categoriesTableView selectRowAtIndexPath:self.checkmarkIndexPath animated:YES scrollPosition:UITableViewScrollPositionMiddle];
     
     self.checkBoxes = [[NSMutableArray alloc] init];
     
-    for (NSString* category in self.allCategoriesArray) {
+    for (ITBCategory *category in self.allCategoriesArray) {
         
         BOOL checkBox = NO;
         
         if ([self.categoriesOfCurrentUserArray containsObject:category]) {
+            
             checkBox = YES;
         }
         
         [self.checkBoxes addObject:[NSNumber numberWithBool:checkBox]];
+    }
+    
+    self.allSortingsArray = @[@"Hot news", @"New news", @"Created news", @"Favourites", @"News by geolocation"];
+    
+    if ((self.sortingCheckmarkIndex == ITBSortingTypeGeolocation) && (self.currentUserCoordinates.latitude == 0) && (self.currentUserCoordinates.longitude == 0)) {
+        
+        [self showAlertWithTitle:@"Help" message:@"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!"];
     }
 }
 
@@ -59,36 +114,110 @@ NSString *const allCell = @"All categories";
     // Dispose of any resources that can be recreated.
 }
 
+#pragma mark - Private
+
+- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *ok = [UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        
+        [alert dismissViewControllerAnimated:YES completion:nil];
+    }];
+    
+    [alert addAction:ok];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     
-    return 2;
+    return 3;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
-    if (section != 0) {
+    if (section == 0) {
         
-        return [self.allCategoriesArray count];
+        return [self.allSortingsArray count];
+        
+    } else if (section == 1) {
+        
+        return 1;
         
     } else {
         
-        return 1;
+        return [self.allCategoriesArray count];
     }
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
     static NSString *identifier = @"Cell";
-    static NSString* allIdentifier = @"All";
+    static NSString *allIdentifier = @"All";
+    static NSString *sortingIdentifier = @"Sorting";
     
     UITableViewCell *cell;
     
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.backgroundColor = [UIColor whiteColor];
     
-    if (indexPath.section != 0) {
+    if (indexPath.section == 0) {
+        
+        cell = [tableView dequeueReusableCellWithIdentifier:sortingIdentifier];
+        
+        if (cell == nil) {
+            
+            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:sortingIdentifier];
+        }
+        
+        NSString *sortingType = [self.allSortingsArray objectAtIndex:indexPath.row];
+        
+        cell.textLabel.text = sortingType;
+        
+        if (indexPath.row == self.sortingCheckmarkIndex) {
+            
+            cell.backgroundColor = [[UIColor blueColor] colorWithAlphaComponent:0.2];
+            
+        } else {
+            
+            cell.backgroundColor = [UIColor whiteColor];
+        }
+    
+    } else if (indexPath.section == 1) {
+        
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:allIdentifier];
+        
+        cell.textLabel.text = NSLocalizedString(allCatsCell, nil);
+        
+        BOOL areAllCellsChosen = YES;
+        for (int i=0; i < [self.checkBoxes count]; i++) {
+            
+            NSNumber *number = [self.checkBoxes objectAtIndex:i];
+            BOOL isCellChosen = [number boolValue];
+            
+            areAllCellsChosen = areAllCellsChosen * isCellChosen;
+        }
+        
+        if (areAllCellsChosen) {
+            
+            self.isAllChecked = YES;
+        }
+        
+        if ( (self.isAllChecked) || (areAllCellsChosen) ) {
+            
+            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+            cell.backgroundColor = [[UIColor blueColor] colorWithAlphaComponent:0.5];
+            
+        } else {
+            
+            cell.accessoryType = UITableViewCellAccessoryNone;
+            cell.backgroundColor = [[UIColor blueColor] colorWithAlphaComponent:0.1];
+        }
+        
+    } else {
         
         cell = [tableView dequeueReusableCellWithIdentifier:identifier];
         
@@ -96,11 +225,12 @@ NSString *const allCell = @"All categories";
         
         if (cell == nil) {
             
-            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
-                                          reuseIdentifier:identifier];
+            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
         }
         
-        cell.textLabel.text = [self.allCategoriesArray objectAtIndex:indexPath.row];
+        ITBCategory *category = [self.allCategoriesArray objectAtIndex:indexPath.row];
+        
+        cell.textLabel.text = category.title;
         
         NSNumber *number = [self.checkBoxes objectAtIndex:indexPath.row];
         BOOL hasCheckBox = [number boolValue];
@@ -115,24 +245,6 @@ NSString *const allCell = @"All categories";
             
         }
         
-    } else {
-        
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault
-                                      reuseIdentifier:allIdentifier];
-        
-        cell.textLabel.text = allCell;
-        
-        if (self.isAllChecked) {
-            
-            cell.accessoryType = UITableViewCellAccessoryCheckmark;
-//            cell.highlighted = YES;
-//            cell.selected = YES;
-            cell.backgroundColor = [UIColor lightGrayColor];
-            
-        } else {
-            
-            cell.backgroundColor = [UIColor whiteColor];
-        }
     }
     
     return cell;
@@ -142,24 +254,22 @@ NSString *const allCell = @"All categories";
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    if (indexPath.section != 0) {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    
+    if (indexPath.section == 0) {
         
-        NSNumber *number = [self.checkBoxes objectAtIndex:indexPath.row];
-        BOOL hasCheckBox = [number boolValue];
+        self.sortingCheckmarkIndex = indexPath.row;
         
-        hasCheckBox = !hasCheckBox;
+        if ((self.sortingCheckmarkIndex == ITBSortingTypeGeolocation) && (self.currentUserCoordinates.latitude == 0) && (self.currentUserCoordinates.longitude == 0)) {
+            
+            [self showAlertWithTitle:@"Help" message:@"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!"];
+        }
         
-        [self.checkBoxes replaceObjectAtIndex:indexPath.row withObject:[NSNumber numberWithBool:hasCheckBox]];
+        [self.categoriesTableView reloadData];
         
-//    [self.categoriesTableView reloadData];
+    } else if (indexPath.section == 1) {
         
-        [self.categoriesTableView beginUpdates];
-        [self.categoriesTableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-        [self.categoriesTableView endUpdates];
-        
-    } else {
-        
-        for (int i = 0; i < [self.checkBoxes count]; i++) {
+        for (int i=0; i < [self.checkBoxes count]; i++) {
             
             [self.checkBoxes replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:!self.isAllChecked]];
         }
@@ -168,15 +278,54 @@ NSString *const allCell = @"All categories";
         
         [self.categoriesTableView reloadData];
         
+    } else {
+        
+        if (self.isAllChecked) {
+            
+            self.isAllChecked = !self.isAllChecked;
+            
+            NSIndexPath *allIndexPath = [NSIndexPath indexPathForRow:0 inSection:0];
+            
+            [self.categoriesTableView beginUpdates];
+            [self.categoriesTableView reloadRowsAtIndexPaths:@[allIndexPath] withRowAnimation:UITableViewRowAnimationFade];
+            [self.categoriesTableView endUpdates];
+        }
+        
+        NSNumber *number = [self.checkBoxes objectAtIndex:indexPath.row];
+        BOOL hasCheckBox = [number boolValue];
+        
+        hasCheckBox = !hasCheckBox;
+        
+        [self.checkBoxes replaceObjectAtIndex:indexPath.row withObject:[NSNumber numberWithBool:hasCheckBox]];
+        
+//        [self.categoriesTableView reloadData];
+        
+        [self.categoriesTableView beginUpdates];
+        [self.categoriesTableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+        [self.categoriesTableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:0 inSection:1]] withRowAnimation:UITableViewRowAnimationFade];
+        [self.categoriesTableView endUpdates];
+        
     }
     
-    // Нюанс popover - поскольку я убрал из popover кнопки в navigationBar то надо обновлять данные при каждом select
+    NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
+    
+    for (ITBCategory *category in self.allCategoriesArray) {
+        
+        NSInteger i = [self.allCategoriesArray indexOfObject:category];
+        NSNumber *numberWithBool = [self.checkBoxes objectAtIndex:i];
+        BOOL hasCheckBox = [numberWithBool boolValue];
+        
+        if (hasCheckBox) {
+            
+            [categoriesOfCurrentUser addObject:category];
+        }
+    }
+    
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         
-        // сначала НАДО ОБЯЗАТЕЛЬНО обновить массив categoriesOfCurrentUser
         NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
         
-        for (NSString* category in self.allCategoriesArray) {
+        for (ITBCategory *category in self.allCategoriesArray) {
             
             NSInteger i = [self.allCategoriesArray indexOfObject:category];
             NSNumber *numberWithBool = [self.checkBoxes objectAtIndex:i];
@@ -190,19 +339,32 @@ NSString *const allCell = @"All categories";
         
         self.categoriesOfCurrentUserArray = [categoriesOfCurrentUser copy];
         
-        [self.delegate reloadCategoriesFrom:self];
+        NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+        [userDefaults setObject:[NSNumber numberWithInteger:self.sortingCheckmarkIndex] forKey:kSettingsChosenSortingType];
+        NSString *sortingName = [self.allSortingsArray objectAtIndex:self.sortingCheckmarkIndex];
+        [userDefaults setObject:sortingName forKey:kSettingsChosenSortingName];
+        
+        self.currentUser.selectedCategories = [NSSet setWithArray:self.categoriesOfCurrentUserArray];
+        
+        [[ITBNewsAPI sharedInstance] saveBgContext];
+        
+        [self.delegate reloadCategoriesFrom:self withSortingType:self.sortingCheckmarkIndex sortingName:sortingName];
         
     }
-    
 }
 
 #pragma mark - Actions
-- (void)actionDone:(UIBarButtonItem *)sender {
+
+- (IBAction)actionCancel:(UIBarButtonItem *)sender {
     
-    // сначала НАДО ОБЯЗАТЕЛЬНО обновить массив categoriesOfCurrentUser
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (IBAction)actionDone:(UIBarButtonItem *)sender {
+    
     NSMutableArray *categoriesOfCurrentUser = [[NSMutableArray alloc] init];
     
-    for (NSString* category in self.allCategoriesArray) {
+    for (ITBCategory *category in self.allCategoriesArray) {
         
         NSInteger i = [self.allCategoriesArray indexOfObject:category];
         NSNumber *numberWithBool = [self.checkBoxes objectAtIndex:i];
@@ -216,16 +378,18 @@ NSString *const allCell = @"All categories";
     
     self.categoriesOfCurrentUserArray = [categoriesOfCurrentUser copy];
     
-    [self.delegate reloadCategoriesFrom:self];
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    [userDefaults setObject:[NSNumber numberWithInteger:self.sortingCheckmarkIndex] forKey:kSettingsChosenSortingType];
+    NSString *sortingName = [self.allSortingsArray objectAtIndex:self.sortingCheckmarkIndex];
+    [userDefaults setObject:sortingName forKey:kSettingsChosenSortingName];
+    
+    self.currentUser.selectedCategories = [NSSet setWithArray:self.categoriesOfCurrentUserArray];
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
+    
+    [self.delegate reloadCategoriesFrom:self withSortingType:self.sortingCheckmarkIndex sortingName:sortingName];
     
     [self dismissViewControllerAnimated:YES completion:nil];
-    
-}
-
-- (void)actionCancel:(UIBarButtonItem *)sender {
-    
-    [self dismissViewControllerAnimated:YES completion:nil];
-    
 }
 
 @end

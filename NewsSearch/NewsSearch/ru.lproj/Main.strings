@@ -1,39 +1,39 @@
 
 /* Class = "UITextField"; placeholder = "Type your username"; ObjectID = "0Jh-4Q-1WZ"; */
-"0Jh-4Q-1WZ.placeholder" = "Type your username";
+"0Jh-4Q-1WZ.placeholder" = "Введите ваше имя";
 
 /* Class = "UITextField"; placeholder = "Type your password"; ObjectID = "0wA-t2-baC"; */
-"0wA-t2-baC.placeholder" = "Type your password";
+"0wA-t2-baC.placeholder" = "Введите ваш пароль";
 
 /* Class = "UIButton"; normalTitle = "Login"; ObjectID = "43W-D6-D4f"; */
-"43W-D6-D4f.normalTitle" = "Login";
+"43W-D6-D4f.normalTitle" = "Войти";
 
 /* Class = "UITextField"; placeholder = "Type your username"; ObjectID = "66y-5a-yA9"; */
-"66y-5a-yA9.placeholder" = "Type your username";
+"66y-5a-yA9.placeholder" = "Введите ваше имя";
 
 /* Class = "UILabel"; text = "Password"; ObjectID = "7vj-dd-Ydu"; */
-"7vj-dd-Ydu.text" = "Password";
+"7vj-dd-Ydu.text" = "Пароль";
 
 /* Class = "UITextField"; placeholder = "Confirm your password"; ObjectID = "8Hm-9E-H86"; */
-"8Hm-9E-H86.placeholder" = "Confirm your password";
+"8Hm-9E-H86.placeholder" = "Подтвердите ваш пароль";
 
 /* Class = "UIButton"; normalTitle = "Sign in"; ObjectID = "LkT-Yv-Fqf"; */
-"LkT-Yv-Fqf.normalTitle" = "Sign in";
+"LkT-Yv-Fqf.normalTitle" = "Зарегистрироваться";
 
 /* Class = "UIBarButtonItem"; title = "Login"; ObjectID = "Nz9-ro-3du"; */
-"Nz9-ro-3du.title" = "Login";
+"Nz9-ro-3du.title" = "Войти";
 
 /* Class = "UILabel"; text = "Title"; ObjectID = "Rr2-MU-mh9"; */
 "Rr2-MU-mh9.text" = "Title";
 
 /* Class = "UITextField"; placeholder = "Type your password"; ObjectID = "UYi-Qp-dRa"; */
-"UYi-Qp-dRa.placeholder" = "Type your password";
+"UYi-Qp-dRa.placeholder" = "Введите ваш пароль";
 
 /* Class = "UIBarButtonItem"; title = "Sign in"; ObjectID = "WP5-sf-tXG"; */
-"WP5-sf-tXG.title" = "Sign in";
+"WP5-sf-tXG.title" = "Зарегистрироваться";
 
 /* Class = "UILabel"; text = "Confirm password"; ObjectID = "Z8o-cN-9gv"; */
-"Z8o-cN-9gv.text" = "Confirm password";
+"Z8o-cN-9gv.text" = "Подтвердите пароль";
 
 /* Class = "UILabel"; text = "Category"; ObjectID = "a90-8C-x3t"; */
 "a90-8C-x3t.text" = "Category";
@@ -48,13 +48,13 @@
 "koy-ib-837.normalTitle" = "+";
 
 /* Class = "UILabel"; text = "Username"; ObjectID = "tYt-kB-jjM"; */
-"tYt-kB-jjM.text" = "Username";
+"tYt-kB-jjM.text" = "Имя";
 
 /* Class = "UILabel"; text = "Password"; ObjectID = "utg-nY-EUm"; */
-"utg-nY-EUm.text" = "Password";
+"utg-nY-EUm.text" = "Пароль";
 
 /* Class = "UILabel"; text = "0"; ObjectID = "vsj-3p-wIc"; */
 "vsj-3p-wIc.text" = "0";
 
 /* Class = "UILabel"; text = "Username"; ObjectID = "wGm-Lq-rFt"; */
-"wGm-Lq-rFt.text" = "Username";
+"wGm-Lq-rFt.text" = "Имя";

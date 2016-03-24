@@ -2,38 +2,60 @@
 //  ITBNews.m
 //  NewsSearch
 //
-//  Created by Oleg Pochtovy on 02.02.16.
+//  Created by Oleg Pochtovy on 22.03.16.
 //  Copyright © 2016 Oleg Pochtovy. All rights reserved.
 //
 
 #import "ITBNews.h"
+#import "ITBCategory.h"
+#import "ITBPhoto.h"
+#import "ITBUser.h"
+
+#import "ITBUtils.h"
 
 @implementation ITBNews
 
-- (id)initWithServerResponse:(NSDictionary *) responseObject {
++ (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
     
-    self = [super init];
+    ITBNews *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNews" inManagedObjectContext:context];
     
-    if (self != nil) {
-        
-        self.objectId = [responseObject objectForKey:@"objectId"];
-        self.newsURL = [responseObject objectForKey:@"newsURL"];
-        self.title = [responseObject objectForKey:@"title"];
-        self.message = [responseObject objectForKey:@"message"];
-        self.category = [responseObject objectForKey:@"category"];
-        
-//        self.rating = [responseObject objectForKey:@"rating"];
-        
-        self.createdAt = [responseObject objectForKey:@"createdAt"];
-        self.updatedAt = [responseObject objectForKey:@"updatedAt"];
-        
-        self.likedUsers = [responseObject objectForKey:@"likedUsers"];
-//        self.rating = [self.likedUsers count]; // отпадает необходимость в этой проперти т.к. у меня есть [likedUsers count]
-        
-    }
+    newsItem.title = [userDict objectForKey:@"title"];
+    newsItem.message = [userDict objectForKey:@"message"];
+    newsItem.newsURL = [userDict objectForKey:@"newsURL"];
+    newsItem.objectId = [userDict objectForKey:@"objectId"];
     
-    return self;
+    newsItem.latitude = [userDict objectForKey:@"latitude"];
+    newsItem.longitude = [userDict objectForKey:@"longitude"];
     
+    newsItem.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
+    newsItem.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    
+    NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
+    
+    newsItem.rating = [NSNumber numberWithInteger:ratingInt];
+    
+    newsItem.frcRating = newsItem.rating;
+    
+    return newsItem;
+}
+
+- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+    
+    self.title = [userDict objectForKey:@"title"];
+    self.message = [userDict objectForKey:@"message"];
+    self.newsURL = [userDict objectForKey:@"newsURL"];
+    self.objectId = [userDict objectForKey:@"objectId"];
+    
+    self.latitude = [userDict objectForKey:@"latitude"];
+    self.longitude = [userDict objectForKey:@"longitude"];
+    
+    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
+    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    
+    NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
+    self.rating = [NSNumber numberWithInteger:ratingInt];
+    
+    self.frcRating = self.rating;
 }
 
 @end
