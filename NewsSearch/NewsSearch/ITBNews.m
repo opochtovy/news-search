@@ -11,6 +11,8 @@
 #import "ITBPhoto.h"
 #import "ITBUser.h"
 
+#import "NSManagedObject+updateObjectWithDict.h"
+
 #import "ITBUtils.h"
 
 @implementation ITBNews
@@ -39,20 +41,22 @@
     return newsItem;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.title = [userDict objectForKey:@"title"];
-    self.message = [userDict objectForKey:@"message"];
-    self.newsURL = [userDict objectForKey:@"newsURL"];
-    self.objectId = [userDict objectForKey:@"objectId"];
+    [super updateObjectWithDictionary:dict inContext:context];
     
-    self.latitude = [userDict objectForKey:@"latitude"];
-    self.longitude = [userDict objectForKey:@"longitude"];
+    self.title = [dict objectForKey:@"title"];
+    self.message = [dict objectForKey:@"message"];
+    self.newsURL = [dict objectForKey:@"newsURL"];
+    self.objectId = [dict objectForKey:@"objectId"];
     
-    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    self.latitude = [dict objectForKey:@"latitude"];
+    self.longitude = [dict objectForKey:@"longitude"];
     
-    NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
+    self.createdAt = convertToNSDateFromUTC([dict objectForKey:@"createdAt"]);
+    self.updatedAt = convertToNSDateFromUTC([dict objectForKey:@"updatedAt"]);
+    
+    NSInteger ratingInt = [[dict objectForKey:@"likeAddedUsers"] count];
     self.rating = [NSNumber numberWithInteger:ratingInt];
     
     self.frcRating = self.rating;

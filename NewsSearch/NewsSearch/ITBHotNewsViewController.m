@@ -73,11 +73,6 @@ static NSString * const errorMessage = @"Unresolved error:";
 
 #pragma mark - Lifecycle
 
-- (void)dealloc {
-    
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSManagedObjectContextDidSaveNotification object:[ITBNewsAPI sharedInstance].bgManagedObjectContext];
-}
-
 - (void)viewDidLoad {
     
     [super viewDidLoad];
@@ -103,8 +98,6 @@ static NSString * const errorMessage = @"Unresolved error:";
     NSNumber *number = [userDefaults objectForKey:kSettingsChosenSortingType];
     self.chosenSortingType = [number intValue];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshDataForMainContext:) name:NSManagedObjectContextDidSaveNotification object:[ITBNewsAPI sharedInstance].bgManagedObjectContext];
-    
     self.tableView.contentOffset = CGPointMake(0, 0 - self.tableView.contentInset.top);
     
     [self hideSharingButtons];
@@ -112,20 +105,6 @@ static NSString * const errorMessage = @"Unresolved error:";
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
-}
-
-- (void)refreshDataForMainContext:(NSNotification *)notification {
-    
-    NSManagedObjectContext *mainContext = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
-    
-    [mainContext mergeChangesFromContextDidSaveNotification:notification];
-    
-    NSError *error = nil;
-    BOOL saved = [mainContext save:&error];
-    if (!saved) {
-        NSLog(@"%@ %@", contextSavingError, error);
-    }
-
 }
 
 #pragma mark - Custom Accessors
@@ -137,7 +116,8 @@ static NSString * const errorMessage = @"Unresolved error:";
         return _fetchedResultsController;
     }
     
-    NSManagedObjectContext *context = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
+//    NSManagedObjectContext *context = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
+    NSManagedObjectContext *context = [[ITBNewsAPI sharedInstance] getContextForFRC];
     
     NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:ITBUserEntityName usingContext:context];
     ITBUser *currentUser = [users firstObject];
@@ -297,7 +277,7 @@ static NSString * const errorMessage = @"Unresolved error:";
         
         __weak ITBHotNewsViewController *weakSelf = self;
         
-        NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] fetchObjectsForEntity:ITBNewsEntityName usingContext:[ITBNewsAPI sharedInstance].mainManagedObjectContext];
+        NSArray *allLocalNews = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
         
         [[ITBNewsAPI sharedInstance] checkNetworkConnectionOnSuccess:^(BOOL isConnected) {
             
@@ -592,17 +572,8 @@ static NSString * const errorMessage = @"Unresolved error:";
     
     if (editingStyle == UITableViewCellEditingStyleDelete) {
         
-        NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
+        [[ITBNewsAPI sharedInstance] deleteNewsItem:[self.fetchedResultsController objectAtIndexPath:indexPath]];
         
-        [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
-        
-        NSError *error = nil;
-        BOOL saved = [context save:&error];
-        
-        if (!saved) {
-            
-            NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
-        }
     }
 }
 

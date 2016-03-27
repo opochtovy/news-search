@@ -112,17 +112,6 @@ static NSString * const databaseName = @"NewsSearch.sqlite";
 
 #pragma mark - Core Data Saving support
 
-- (void)saveMainContext {
-    
-    NSError *error = nil;
-    BOOL saved = [self.mainManagedObjectContext save:&error];
-    
-    if (!saved) {
-        
-        NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
-    }
-}
-
 - (void)saveBgContext {
     
     NSError *error = nil;
@@ -135,6 +124,85 @@ static NSString * const databaseName = @"NewsSearch.sqlite";
 }
 
 #pragma mark - Public
+
+// new method in bgContext
+- (void)fetchObjectsForName:(NSString *)entityName withSortDescriptor:(NSArray *)descriptors predicate:(NSPredicate *)predicate inContext:(NSManagedObjectContext *)context withFetchCompletionHandler:(void(^)(NSArray *result))completionHandler {
+    
+    __block NSArray *result;
+    
+    [self.bgManagedObjectContext performBlockAndWait:^{
+        
+        NSFetchRequest *request = [[NSFetchRequest alloc] init];
+        
+        [request setReturnsObjectsAsFaults:NO];
+        
+        NSEntityDescription *description = [NSEntityDescription entityForName:entityName inManagedObjectContext:self.bgManagedObjectContext];
+        
+        [request setEntity:description];
+        
+        if (descriptors != nil) {
+            
+            [request setSortDescriptors:descriptors];
+        }
+        
+        if (predicate != nil) {
+            
+            [request setPredicate:predicate];
+        }
+        
+        if ([context isEqual:self.mainManagedObjectContext]) {
+            
+            request.resultType = NSManagedObjectIDResultType;
+        }
+        
+        NSError *error = nil;
+        
+        result = [context executeFetchRequest:request error:&error];
+        
+        if (error != nil) {
+            
+            result = nil;
+        }
+        
+    }];
+    
+    if ([context isEqual:self.mainManagedObjectContext]) {
+        
+        NSFetchRequest *request = [[NSFetchRequest alloc] init];
+        
+        [request setReturnsObjectsAsFaults:NO];
+        
+        NSEntityDescription *description = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
+        
+        [request setEntity:description];
+        
+        NSPredicate *predicate = nil;
+        
+        if (result != nil) {
+            
+            predicate = [NSPredicate predicateWithFormat:@"self in %@", result];
+            
+        }
+        
+        if (predicate != nil) {
+            
+            [request setPredicate:predicate];
+        }
+        
+        NSError *error = nil;
+        
+        result = [context executeFetchRequest:request error:&error];
+        
+        if (error != nil) {
+            
+            result = nil;
+        }
+        
+        
+    }
+    
+    completionHandler(result);
+}
 
 - (NSArray *)fetchObjectsForName:(NSString *)entityName withSortDescriptor:(NSArray *)descriptors predicate:(NSPredicate *)predicate inContext:(NSManagedObjectContext *)context {
     

@@ -16,12 +16,9 @@
 
 @property (strong, nonatomic) ITBUser *currentUser;
 
-@property (strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
-@property (strong, nonatomic) NSManagedObjectContext *bgManagedObjectContext;
-
 + (ITBNewsAPI *)sharedInstance;
 
-- (void)saveMainContext;
+- (NSManagedObjectContext *)getContextForFRC;
 - (void)saveBgContext;
 
 - (void)saveCurrentUser;
@@ -49,5 +46,7 @@
 - (NSArray *)fetchObjectsInBackgroundForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate;
 
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess))success;
+
+- (void)deleteNewsItem:(ITBNews *)newsItem;
 
 @end

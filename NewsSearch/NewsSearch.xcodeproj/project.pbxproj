@@ -24,6 +24,7 @@
 		A280FCD91C8709B500E78073 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A280FCD81C8709B500E78073 /* Social.framework */; };
 		A280FCDB1C87219300E78073 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A280FCDA1C87219300E78073 /* MapKit.framework */; };
 		A280FCE11C8732F600E78073 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A280FCE01C8732F600E78073 /* CoreLocation.framework */; };
+		A29CA03F1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.m in Sources */ = {isa = PBXBuildFile; fileRef = A29CA03E1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.m */; };
 		A2CD8ABC1C929A2F00B2A974 /* ITBThumbnailPhotoCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A2CD8ABB1C929A2F00B2A974 /* ITBThumbnailPhotoCell.m */; };
 		A2D00EB31C97C70900D988B2 /* ITBAddPhotoCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A2D00EB21C97C70900D988B2 /* ITBAddPhotoCell.m */; };
 		A2D00EBE1C98758D00D988B2 /* ITBPhoto+CoreDataProperties.m in Sources */ = {isa = PBXBuildFile; fileRef = A2D00EB91C98758D00D988B2 /* ITBPhoto+CoreDataProperties.m */; };
@@ -88,6 +89,8 @@
 		A280FCD81C8709B500E78073 /* Social.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Social.framework; path = System/Library/Frameworks/Social.framework; sourceTree = SDKROOT; };
 		A280FCDA1C87219300E78073 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
 		A280FCE01C8732F600E78073 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		A29CA03D1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSManagedObject+updateObjectWithDict.h"; sourceTree = "<group>"; };
+		A29CA03E1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSManagedObject+updateObjectWithDict.m"; sourceTree = "<group>"; };
 		A2CD8ABA1C929A2F00B2A974 /* ITBThumbnailPhotoCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBThumbnailPhotoCell.h; sourceTree = "<group>"; };
 		A2CD8ABB1C929A2F00B2A974 /* ITBThumbnailPhotoCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBThumbnailPhotoCell.m; sourceTree = "<group>"; };
 		A2D00EB11C97C70900D988B2 /* ITBAddPhotoCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBAddPhotoCell.h; sourceTree = "<group>"; };
@@ -287,6 +290,8 @@
 				A2D00EDF1CA11DC100D988B2 /* ITBNews+CoreDataProperties.m */,
 				A2D00EE01CA11DC100D988B2 /* ITBNews.h */,
 				A2D00EE11CA11DC100D988B2 /* ITBNews.m */,
+				A29CA03D1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.h */,
+				A29CA03E1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.m */,
 			);
 			name = NSManagedObjects;
 			sourceTree = "<group>";
@@ -451,6 +456,7 @@
 				A2295E881C6C97500019892A /* ITBCategoriesViewController.m in Sources */,
 				A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */,
 				A2D00EC21C9EAE3900D988B2 /* ITBMapViewController.m in Sources */,
+				A29CA03F1CA58A4200E16C8B /* NSManagedObject+updateObjectWithDict.m in Sources */,
 				A2D00EB31C97C70900D988B2 /* ITBAddPhotoCell.m in Sources */,
 				A2CD8ABC1C929A2F00B2A974 /* ITBThumbnailPhotoCell.m in Sources */,
 				A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */,

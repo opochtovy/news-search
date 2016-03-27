@@ -12,6 +12,8 @@
 #import "ITBUtils.h"
 #import "ITBNewsAPI.h"
 
+#import "NSManagedObject+updateObjectWithDict.h"
+
 @implementation ITBPhoto
 
 + (id)initObjectWithDictionary:(NSDictionary *)photoDict inContext:(NSManagedObjectContext *)context {
@@ -25,11 +27,13 @@
     return photo;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)photoDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.name = [photoDict objectForKey:@"name"];
-    self.url = [photoDict objectForKey:@"url"];
-    self.objectId = [photoDict objectForKey:@"objectId"];
+    [super updateObjectWithDictionary:dict inContext:context];
+    
+    self.name = [dict objectForKey:@"name"];
+    self.url = [dict objectForKey:@"url"];
+    self.objectId = [dict objectForKey:@"objectId"];
 }
 
 @end

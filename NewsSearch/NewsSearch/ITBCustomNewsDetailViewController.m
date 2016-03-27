@@ -59,9 +59,6 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
     self.titleLabel.text = self.newsItem.title;
     self.messageTextView.text = self.newsItem.message;
     
-    self.photosArray = [self.newsItem.photos allObjects];
-    self.thumbnailPhotosArray = [self.newsItem.thumbnailPhotos allObjects];
-    
     self.thumbnailPhotosCollectionView.dataSource = self;
     self.thumbnailPhotosCollectionView.delegate = self;
     self.thumbnailPhotosCollectionView.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:bgImage]];
@@ -73,6 +70,20 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
     self.closePhotoViewButton.enabled = NO;
     
     self.messageTextView.scrollEnabled = NO;
+    
+    NSPredicate *predicate = nil;
+    
+    if (self.newsItem != nil) {
+        
+        predicate = [NSPredicate predicateWithFormat:@"self == %@", self.newsItem.objectID];
+        
+    }
+    
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:predicate];
+    self.newsItem = [news firstObject];
+    
+    self.photosArray = [self.newsItem.photos allObjects];
+    self.thumbnailPhotosArray = [self.newsItem.thumbnailPhotos allObjects];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -160,12 +171,9 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
                     photo.imageData = data;
                     
                     NSError *error = nil;
-                    BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
-                    
-                    if (!saved) {
-                        
-                        NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
-                    }
+//                    BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
+//                    BOOL saved = [[[ITBNewsAPI sharedInstance] getContextForFRC] save:&error];
+                    [[ITBNewsAPI sharedInstance] saveBgContext];
                     
                     dispatch_async(dispatch_get_main_queue(), ^{
                         
