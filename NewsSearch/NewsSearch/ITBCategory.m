@@ -10,6 +10,8 @@
 #import "ITBNews.h"
 #import "ITBUser.h"
 
+#import "NSManagedObject+updateObjectWithDict.h"
+
 #import "ITBUtils.h"
 
 @implementation ITBCategory
@@ -27,13 +29,15 @@
     return category;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.title = [userDict objectForKey:@"title"];
-    self.objectId = [userDict objectForKey:@"objectId"];
+    [super updateObjectWithDictionary:dict inContext:context];
     
-    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    self.title = [dict objectForKey:@"title"];
+    self.objectId = [dict objectForKey:@"objectId"];
+    
+    self.createdAt = convertToNSDateFromUTC([dict objectForKey:@"createdAt"]);
+    self.updatedAt = convertToNSDateFromUTC([dict objectForKey:@"updatedAt"]);
 }
 
 @end

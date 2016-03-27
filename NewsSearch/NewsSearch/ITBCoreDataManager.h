@@ -22,8 +22,10 @@
 - (NSManagedObjectContext *)mainManagedObjectContext;
 - (NSManagedObjectContext *)bgManagedObjectContext;
 
-- (void)saveMainContext;
 - (void)saveBgContext;
+
+// new method in bgContext NSManagedObject
+- (void)fetchObjectsForName:(NSString *)entityName withSortDescriptor:(NSArray *)descriptors predicate:(NSPredicate *)predicate inContext:(NSManagedObjectContext *)context withFetchCompletionHandler:(void(^)(NSArray *result))completionHandler;
 
 - (NSArray *)fetchObjectsForName:(NSString *)entityName withSortDescriptor:(NSArray *)descriptors predicate:(NSPredicate *)predicate inContext:(NSManagedObjectContext *)context;
 - (NSArray *)allObjectsForName:(NSString *)entityName usingContext:(NSManagedObjectContext *)context;

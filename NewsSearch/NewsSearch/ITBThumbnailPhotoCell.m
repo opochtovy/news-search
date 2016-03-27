@@ -39,13 +39,15 @@
                 UIImage *image = [[UIImage alloc] initWithData:data];
                 _thumbnailPhoto.imageData = data;
                 
-                NSError *error = nil;
-                BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
+//                NSError *error = nil;
+//                BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
+//                BOOL saved = [[[ITBNewsAPI sharedInstance] getContextForFRC] save:&error];
+//                if (!saved) {
+//                    
+//                    NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
+//                }
                 
-                if (!saved) {
-                    
-                    NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
-                }
+                [[ITBNewsAPI sharedInstance] saveBgContext];
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
                     

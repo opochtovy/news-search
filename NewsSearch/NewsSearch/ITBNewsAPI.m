@@ -18,6 +18,8 @@
 #import "ITBUser.h"
 #import "ITBPhoto.h"
 
+#import "NSManagedObject+updateObjectWithDict.h"
+
 static NSString * const defaultTitle = @"News";
 
 static NSString * const checkNetworkUrl = @"https://api.parse.com/1/users/me";
@@ -38,6 +40,9 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
 
 @property (strong, nonatomic) ITBRestClient *restClient;
 @property (strong, nonatomic) ITBCoreDataManager *coreDataManager;
+
+@property (strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
+@property (strong, nonatomic) NSManagedObjectContext *bgManagedObjectContext;
 
 @end
 
@@ -72,8 +77,15 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         [self loadCurrentUser];
         
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshDataForMainContext:) name:NSManagedObjectContextDidSaveNotification object:_bgManagedObjectContext];
+        
     }
     return self;
+}
+
+- (void)dealloc {
+    
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSManagedObjectContextDidSaveNotification object:self.bgManagedObjectContext];
 }
 
 #pragma mark - Custom Accessors
@@ -101,11 +113,6 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
 
 #pragma mark - Core Data Saving support
 
-- (void)saveMainContext {
-    
-    [self.coreDataManager saveMainContext];
-}
-
 - (void)saveBgContext {
     
     [[self.coreDataManager bgManagedObjectContext] performBlockAndWait:^{
@@ -113,6 +120,27 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         [self.coreDataManager saveBgContext];
         
     }];
+    
+}
+
+- (NSManagedObjectContext *)getContextForFRC {
+    
+    return self.mainManagedObjectContext;
+}
+
+- (void)refreshDataForMainContext:(NSNotification *)notification {
+    
+    NSManagedObjectContext *mainContext = [ITBNewsAPI sharedInstance].mainManagedObjectContext;
+    
+    [mainContext mergeChangesFromContextDidSaveNotification:notification];
+    
+    NSLog(@"Merging from bgContext to mainContext");
+    
+    //    NSError *error = nil;
+    //    BOOL saved = [mainContext save:&error];
+    //    if (!saved) {
+    //        NSLog(@"%@ %@", contextSavingError, error);
+    //    }
     
 }
 
@@ -191,7 +219,13 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
 
             NSManagedObjectContext *context = self.mainManagedObjectContext;
             
-            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
+            __block NSArray *users;
+            
+            // NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
+            [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context withFetchCompletionHandler:^(NSArray *result) {
+                
+                users = result;
+            }];
             
             ITBUser *user = [users firstObject];
             
@@ -205,7 +239,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             self.currentUser = user;
             [self saveCurrentUser];
 
-            [self saveMainContext];
+            [self saveBgContext];
             
             success(user, YES);
             
@@ -700,7 +734,9 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     }];
 }
 
-- (void)getFromServerUpdatedDictsArray:(NSMutableArray *)updatedDictsArray withUpdatedLocalObjectsArray:(NSMutableArray *)updatedArray usingFromServerDictsArray:(NSMutableArray *)dictsArray withLocalObjectsArray:(NSMutableArray *)array forClass:(id)EntityClass inContext:(NSManagedObjectContext *)context {
+//- (void)getFromServerUpdatedDictsArray:(NSMutableArray *)updatedDictsArray withUpdatedLocalObjectsArray:(NSMutableArray *)updatedArray usingFromServerDictsArray:(NSMutableArray *)dictsArray withLocalObjectsArray:(NSMutableArray *)array forClass:(id)EntityClass inContext:(NSManagedObjectContext *)context {
+
+- (void)getFromServerUpdatedDictsArray:(NSMutableArray *)updatedDictsArray withUpdatedLocalObjectsArray:(NSMutableArray *)updatedArray usingFromServerDictsArray:(NSMutableArray *)dictsArray withLocalObjectsArray:(NSMutableArray *)array forEntityName:(NSString *)entityName inContext:(NSManagedObjectContext *)context {
     
     for (int i = (int)[dictsArray count] - 1; i>=0; i--) {
         
@@ -708,17 +744,20 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         for (int j = (int)[array count] - 1; j>=0; j--) {
             
-            id object = [array objectAtIndex:j];
+            NSManagedObject *object = [array objectAtIndex:j];
+            NSString *objectId = [object valueForKey:@"objectId"];
             
-            NSString *objectId = nil;
-            if (object != nil) {
-                
-                SEL selector = NSSelectorFromString(objectIdDictKey);
-                IMP imp = [object methodForSelector:selector];
-                NSString *(*func)(id, SEL) = (void *)imp;
-                objectId = func(object, selector);
-                
-            }
+//            id object = [array objectAtIndex:j];
+            
+//            NSString *objectId = nil;
+//            if (object != nil) {
+//                
+//                SEL selector = NSSelectorFromString(objectIdDictKey);
+//                IMP imp = [object methodForSelector:selector];
+//                NSString *(*func)(id, SEL) = (void *)imp;
+//                objectId = func(object, selector);
+//                
+//            }
             
             if ([objectId isEqualToString:[dict objectForKey:objectIdDictKey]]) {
                 
@@ -734,16 +773,18 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     
     for (NSDictionary *dict in updatedDictsArray) {
         
-        id object = [updatedArray objectAtIndex:[updatedDictsArray indexOfObject:dict]];
+//        id object = [updatedArray objectAtIndex:[updatedDictsArray indexOfObject:dict]];
+        NSManagedObject *object = [updatedArray objectAtIndex:[updatedDictsArray indexOfObject:dict]];
+        [object updateObjectWithDictionary:dict inContext:context];
         
-        if (object != nil) {
-            
-            SEL selector = NSSelectorFromString(updateObjectMethodSelector);
-            IMP imp = [object methodForSelector:selector];
-            void (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
-            func(object, selector, dict, context);
-            
-        }
+//        if (object != nil) {
+//            
+//            SEL selector = NSSelectorFromString(updateObjectMethodSelector);
+//            IMP imp = [object methodForSelector:selector];
+//            void (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
+//            func(object, selector, dict, context);
+//            
+//        }
     }
     
     if ([array count] > 0) {
@@ -757,17 +798,25 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         for (NSDictionary *dict in dictsArray) {
             
-            if (EntityClass != nil) {
-                
-                SEL selector = NSSelectorFromString(initObjectMethodSelector);
-                IMP imp = [EntityClass methodForSelector:selector];
-                id (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
-                id object = EntityClass ? func(EntityClass, selector, dict, context) : nil;
-                
-                [updatedArray addObject:object];
-                [updatedDictsArray addObject:dict];
-                
-            }
+//            if (EntityClass != nil) {
+//                
+//                SEL selector = NSSelectorFromString(initObjectMethodSelector);
+//                IMP imp = [EntityClass methodForSelector:selector];
+//                id (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
+//                id object = EntityClass ? func(EntityClass, selector, dict, context) : nil;
+//                
+//                [updatedArray addObject:object];
+//                [updatedDictsArray addObject:dict];
+//                
+//            }
+            
+//            ITBCategory *category = [NSEntityDescription insertNewObjectForEntityForName:@"ITBCategory" inManagedObjectContext:context];
+            
+            NSManagedObject *object = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:context];
+            [object updateObjectWithDictionary:dict inContext:context];
+            
+            [updatedArray addObject:object];
+            [updatedDictsArray addObject:dict];
         }
     }
 }
@@ -818,7 +867,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             NSMutableArray *newsDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
             NSMutableArray *newsArray = [ [self.coreDataManager allObjectsForName:ITBNewsEntityName usingContext:context] mutableCopy];
             
-            [self getFromServerUpdatedDictsArray:updatedNewsDicts withUpdatedLocalObjectsArray:updatedNews usingFromServerDictsArray:newsDicts withLocalObjectsArray:newsArray forClass:[ITBNews class] inContext:context];
+            [self getFromServerUpdatedDictsArray:updatedNewsDicts withUpdatedLocalObjectsArray:updatedNews usingFromServerDictsArray:newsDicts withLocalObjectsArray:newsArray forEntityName:ITBNewsEntityName inContext:context];
             
             dispatch_group_leave(group);
             
@@ -835,7 +884,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             NSMutableArray *categoryDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
             NSMutableArray *categoriesArray = [ [self.coreDataManager allObjectsForName:ITBCategoryEntityName usingContext:context] mutableCopy];
             
-            [self getFromServerUpdatedDictsArray:updatedCategoryDicts withUpdatedLocalObjectsArray:updatedCategories usingFromServerDictsArray:categoryDicts withLocalObjectsArray:categoriesArray forClass:[ITBCategory class] inContext:context];
+            [self getFromServerUpdatedDictsArray:updatedCategoryDicts withUpdatedLocalObjectsArray:updatedCategories usingFromServerDictsArray:categoryDicts withLocalObjectsArray:categoriesArray forEntityName:ITBCategoryEntityName inContext:context];
             
             dispatch_group_leave(group);
             
@@ -852,7 +901,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             NSMutableArray *photoDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
             NSMutableArray *photosArray = [ [self.coreDataManager allObjectsForName:ITBPhotoEntityName usingContext:context] mutableCopy];
             
-            [self getFromServerUpdatedDictsArray:updatedPhotoDicts withUpdatedLocalObjectsArray:updatedPhotos usingFromServerDictsArray:photoDicts withLocalObjectsArray:photosArray forClass:[ITBPhoto class] inContext:context];
+            [self getFromServerUpdatedDictsArray:updatedPhotoDicts withUpdatedLocalObjectsArray:updatedPhotos usingFromServerDictsArray:photoDicts withLocalObjectsArray:photosArray forEntityName:ITBPhotoEntityName inContext:context];
             
             dispatch_group_leave(group);
             
@@ -936,6 +985,27 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             
         }];
     }
+}
+
+- (void)deleteNewsItem:(ITBNews *)newsItem {
+    
+    NSPredicate *predicate = nil;
+    
+    if (newsItem != nil) {
+        
+        predicate = [NSPredicate predicateWithFormat:@"self == %@", newsItem.objectID];
+        
+    }
+    
+    [[self.coreDataManager bgManagedObjectContext] performBlockAndWait:^{
+        
+        NSArray *news = [self.coreDataManager fetchObjectsForName:ITBNewsEntityName withSortDescriptor:nil predicate:predicate inContext:self.bgManagedObjectContext];
+        
+        [self.bgManagedObjectContext deleteObject:[news firstObject]];
+        
+        [self.coreDataManager saveBgContext];
+        
+    }];
 }
 
 @end

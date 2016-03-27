@@ -10,6 +10,8 @@
 #import "ITBCategory.h"
 #import "ITBNews.h"
 
+#import "NSManagedObject+updateObjectWithDict.h"
+
 #import "ITBUtils.h"
 
 @implementation ITBUser
@@ -33,17 +35,19 @@
     return user;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.username = [userDict objectForKey:@"username"];
-    self.objectId = [userDict objectForKey:@"objectId"];
-    self.sessionToken = [userDict objectForKey:@"sessionToken"];
+    [super updateObjectWithDictionary:dict inContext:context];
     
-    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    self.username = [dict objectForKey:@"username"];
+    self.objectId = [dict objectForKey:@"objectId"];
+    self.sessionToken = [dict objectForKey:@"sessionToken"];
     
-    self.code = [userDict objectForKey:@"code"];
-    self.error = [userDict objectForKey:@"error"];
+    self.createdAt = convertToNSDateFromUTC([dict objectForKey:@"createdAt"]);
+    self.updatedAt = convertToNSDateFromUTC([dict objectForKey:@"updatedAt"]);
+    
+    self.code = [dict objectForKey:@"code"];
+    self.error = [dict objectForKey:@"error"];
 }
 
 @end
