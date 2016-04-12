@@ -304,46 +304,48 @@ static NSString * const chooseCategoryTitle = @"Choose a category";
     
     if ( (self.titleField.text.length == 0) || (self.messageTextView.text.length == 0) ) {
         
-        [self showAlertWithTitle:textErrorTitle message:textErrorMessage];
+        UIAlertController *alert = showAlertWithTitle(textErrorTitle, textErrorMessage);
+        [self presentViewController:alert animated:YES completion:nil];
         
     } else if (self.categoryField.text.length == 0) {
         
-        [self showAlertWithTitle:categoryErrorTitle message:categoryErrorMessage];
+        UIAlertController *alert = showAlertWithTitle(categoryErrorTitle, categoryErrorMessage);
+        [self presentViewController:alert animated:YES completion:nil];
         
     } else if ([self.photosArray count] != [self.thumbnailPhotosArray count]) {
         
-        [self showAlertWithTitle:photosErrorTitle message:photosErrorMessage];
+        UIAlertController *alert = showAlertWithTitle(photosErrorTitle, photosErrorMessage);
+        [self presentViewController:alert animated:YES completion:nil];
         
     } else {
         
         [self.activityIndicator startAnimating];
         [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
+        
+        __weak ITBAddCustomNewsViewController *weakSelf = self;
 
         [[ITBNewsAPI sharedInstance] checkNetworkConnectionOnSuccess:^(BOOL isConnected) {
             
             if (isConnected) {
                 
-                [[ITBNewsAPI sharedInstance] createNewObjectsForPhotoDataArray:self.photoDataArray thumbnailPhotoDataArray:self.thumbnailPhotoDataArray onSuccess:^(NSDictionary *responseBody) {
+                [[ITBNewsAPI sharedInstance] createNewObjectsForPhotoDataArray:weakSelf.photoDataArray thumbnailPhotoDataArray:weakSelf.thumbnailPhotoDataArray onSuccess:^(NSDictionary *responseBody) {
                     
                     NSArray *photos = [responseBody objectForKey:photosDictKey];
                     NSArray *thumbnailPhotos = [responseBody objectForKey:thumbnailPhotosDictKey];
                     
-                    [[ITBNewsAPI sharedInstance] createCustomNewsForTitle:self.titleField.text message:self.messageTextView.text categoryTitle:self.categoryField.text photosArray:photos thumbnailPhotos:thumbnailPhotos onSuccess:^(BOOL isSuccess) {
-
-                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    [[ITBNewsAPI sharedInstance] createCustomNewsForTitle:weakSelf.titleField.text message:self.messageTextView.text categoryTitle:weakSelf.categoryField.text photosArray:photos thumbnailPhotos:thumbnailPhotos onSuccess:^(BOOL isSuccess) {
+                        
+                        [[ITBNewsAPI sharedInstance] uploadPhotosForCreatingNewsToServerForPhotoDataArray:weakSelf.photoDataArray thumbnailPhotoDataArray:weakSelf.thumbnailPhotoDataArray photoObjectsArray:photos thumbnailPhotoObjectsArray:thumbnailPhotos onSuccess:^(NSDictionary *responseBody) {
                             
-                            [[ITBNewsAPI sharedInstance] uploadPhotosForCreatingNewsToServerForPhotoDataArray:self.photoDataArray thumbnailPhotoDataArray:self.thumbnailPhotoDataArray photoObjectsArray:photos thumbnailPhotoObjectsArray:thumbnailPhotos onSuccess:^(NSDictionary *responseBody) {
-                                
-                                [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-                                
-                            }];
+                            [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
                             
-                            dispatch_async(dispatch_get_main_queue(), ^{
-                                
-                                [self.activityIndicator stopAnimating];
-                                [self dismissViewControllerAnimated:YES completion:nil];
-                                
-                            });
+                        }];
+                        
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            
+                            [weakSelf.activityIndicator stopAnimating];
+                            [weakSelf dismissViewControllerAnimated:YES completion:nil];
+                            
                         });
 
                     }];
@@ -357,25 +359,11 @@ static NSString * const chooseCategoryTitle = @"Choose a category";
     
 }
 
-#pragma mark - Actions
-
-- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        
-        [alert dismissViewControllerAnimated:YES completion:nil];
-    }];
-    
-    [alert addAction:ok];
-    
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
 #pragma mark - IBActions
 
 - (IBAction)actionPickCategory:(UIButton *)sender {
+    
+    __weak ITBAddCustomNewsViewController *weakSelf = self;
     
     UIAlertController *actionSheet = [UIAlertController alertControllerWithTitle:chooseCategoryTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     
@@ -383,9 +371,9 @@ static NSString * const chooseCategoryTitle = @"Choose a category";
         
         UIAlertAction *pickCategory = [UIAlertAction actionWithTitle:category.title style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
             
-            self.categoryField.text = category.title;
+            weakSelf.categoryField.text = category.title;
             
-            self.chosenCategoryIndex = [self.allCategoriesArray indexOfObject:category];
+            weakSelf.chosenCategoryIndex = [weakSelf.allCategoriesArray indexOfObject:category];
             
         }];
         [actionSheet addAction:pickCategory];

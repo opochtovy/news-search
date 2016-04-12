@@ -99,52 +99,46 @@ NSString * const signInSegueId = @"signIn";
 
 - (void)authorizeWithUsername:(NSString *)username password:(NSString *)password {
     
-    [[ITBNewsAPI sharedInstance] authorizeWithUsername:username password:password onSuccess:^(ITBUser *user, BOOL isConnected)
-     {
-         if (!isConnected) {
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-                 [self.activityIndicator stopAnimating];
-                 
-                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
-                 
-                 UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-                     
-                     [alert dismissViewControllerAnimated:YES completion:nil];
-                 }];
-                 
-                 [alert addAction:ok];
-                 
-                 [self presentViewController:alert animated:YES completion:nil];
-                 
-             });
-             
-         } else if (user != nil) {
-             
-             [self.delegate loginDidPassSuccessfully:self];
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-                 [self.navigationController popViewControllerAnimated:YES];
-                 
-             });
-             
-         } else {
-             
-             dispatch_async(dispatch_get_main_queue(), ^{
-                 
-                 self.usernameField.text = @"";
-                 self.passwordField.text = @"";
-                 
-                 self.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
-                 self.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
-                 
-                 [self.activityIndicator stopAnimating];
-                 
-             });
-             
-         }
+    __weak ITBLoginTableViewController *weakSelf = self;
+    
+    [[ITBNewsAPI sharedInstance] authorizeWithUsername:username password:password rememberSwitchValue:self.rememberSwitch.isOn onSuccess:^(ITBUser *user, BOOL isConnected) {
+        
+        if (!isConnected) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [weakSelf.activityIndicator stopAnimating];
+                
+                UIAlertController *alert = showAlertWithTitle(noConnectionTitle, noConnectionMessage);
+                [weakSelf presentViewController:alert animated:YES completion:nil];
+                
+            });
+            
+        } else if (user != nil) {
+            
+            [weakSelf.delegate loginDidPassSuccessfully:weakSelf];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [weakSelf.navigationController popViewControllerAnimated:YES];
+                
+            });
+            
+        } else {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                weakSelf.usernameField.text = @"";
+                weakSelf.passwordField.text = @"";
+                
+                weakSelf.usernameField.placeholder = NSLocalizedString(invalidLogin, nil);
+                weakSelf.passwordField.placeholder = NSLocalizedString(invalidLogin, nil);
+                
+                [weakSelf.activityIndicator stopAnimating];
+                
+            });
+            
+        }
         
     }];
     

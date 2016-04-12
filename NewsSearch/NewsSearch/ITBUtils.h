@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
+#import <UIKit/UIKit.h>
 
 typedef enum {
     
@@ -65,14 +66,20 @@ extern NSString * const titleDescriptorKey;
 extern NSString * const bgImage;
 
 extern NSString * const resultsDictKey;
+
 extern NSString * const codeDictKey;
+extern NSString * const errorDictKey;
 extern NSString * const objectIdDictKey;
+extern NSString * const sessionTokenDictKey;
 extern NSString * const usernameDictKey;
 extern NSString * const passwordDictKey;
 extern NSString * const likedNewsDictKey;
 extern NSString * const selectedCategoriesDictKey;
 extern NSString * const titleDictKey;
 extern NSString * const messageDictKey;
+extern NSString * const newsURLDictKey;
+extern NSString * const createdAtDictKey;
+extern NSString * const updatedAtDictKey;
 extern NSString * const latitudeDictKey;
 extern NSString * const longitudeDictKey;
 extern NSString * const authorDictKey;
@@ -96,5 +103,7 @@ NSDictionary* postHeaders(NSString *contentType);
 NSDictionary* userRelationsHeaders(NSString *sessionToken, NSString *contentType);
 
 NSDictionary* classDict(NSString *classNameType, NSString *objectId);
+
+UIAlertController* showAlertWithTitle(NSString *title, NSString *message);
 
 

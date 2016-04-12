@@ -16,9 +16,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ITBPhoto : NSManagedObject
 
-+ (id)initObjectWithDictionary:(NSDictionary *)photoDict inContext:(NSManagedObjectContext *)context;
++ (id)initObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context;
 
-- (void)updateObjectWithDictionary:(NSDictionary *)photoDict inContext:(NSManagedObjectContext *)context;
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context;
 
 @end
 

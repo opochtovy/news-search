@@ -13,24 +13,26 @@
 
 #import "ITBUtils.h"
 
+#import "NSManagedObject+ITBUpdateObjectWithDict.h"
+
 @implementation ITBNews
 
-+ (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
++ (id)initObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    ITBNews *newsItem = [NSEntityDescription insertNewObjectForEntityForName:@"ITBNews" inManagedObjectContext:context];
+    ITBNews *newsItem = [NSEntityDescription insertNewObjectForEntityForName:ITBNewsEntityName inManagedObjectContext:context];
     
-    newsItem.title = [userDict objectForKey:@"title"];
-    newsItem.message = [userDict objectForKey:@"message"];
-    newsItem.newsURL = [userDict objectForKey:@"newsURL"];
-    newsItem.objectId = [userDict objectForKey:@"objectId"];
+    newsItem.title = [dict objectForKey:titleDictKey];
+    newsItem.message = [dict objectForKey:messageDictKey];
+    newsItem.newsURL = [dict objectForKey:newsURLDictKey];
+    newsItem.objectId = [dict objectForKey:objectIdDictKey];
     
-    newsItem.latitude = [userDict objectForKey:@"latitude"];
-    newsItem.longitude = [userDict objectForKey:@"longitude"];
+    newsItem.latitude = [dict objectForKey:latitudeDictKey];
+    newsItem.longitude = [dict objectForKey:longitudeDictKey];
     
-    newsItem.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    newsItem.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    newsItem.createdAt = convertToNSDateFromUTC([dict objectForKey:createdAtDictKey]);
+    newsItem.updatedAt = convertToNSDateFromUTC([dict objectForKey:updatedAtDictKey]);
     
-    NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
+    NSInteger ratingInt = [[dict objectForKey:likeAddedUsersDictKey] count];
     
     newsItem.rating = [NSNumber numberWithInteger:ratingInt];
     
@@ -39,20 +41,20 @@
     return newsItem;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.title = [userDict objectForKey:@"title"];
-    self.message = [userDict objectForKey:@"message"];
-    self.newsURL = [userDict objectForKey:@"newsURL"];
-    self.objectId = [userDict objectForKey:@"objectId"];
+    self.title = [dict objectForKey:titleDictKey];
+    self.message = [dict objectForKey:messageDictKey];
+    self.newsURL = [dict objectForKey:newsURLDictKey];
+    self.objectId = [dict objectForKey:objectIdDictKey];
     
-    self.latitude = [userDict objectForKey:@"latitude"];
-    self.longitude = [userDict objectForKey:@"longitude"];
+    self.latitude = [dict objectForKey:latitudeDictKey];
+    self.longitude = [dict objectForKey:longitudeDictKey];
     
-    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    self.createdAt = convertToNSDateFromUTC([dict objectForKey:createdAtDictKey]);
+    self.updatedAt = convertToNSDateFromUTC([dict objectForKey:updatedAtDictKey]);
     
-    NSInteger ratingInt = [[userDict objectForKey:@"likeAddedUsers"] count];
+    NSInteger ratingInt = [[dict objectForKey:likeAddedUsersDictKey] count];
     self.rating = [NSNumber numberWithInteger:ratingInt];
     
     self.frcRating = self.rating;

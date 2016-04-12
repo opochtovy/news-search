@@ -95,20 +95,6 @@ static NSString * const invalidCoordsMessage = @"Please type the correct values 
     
 }
 
-- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        
-        [alert dismissViewControllerAnimated:YES completion:nil];
-    }];
-    
-    [alert addAction:ok];
-    
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
 #pragma mark - CLLocationManagerDelegate
 
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
@@ -120,7 +106,8 @@ static NSString * const invalidCoordsMessage = @"Please type the correct values 
         [self.locationManager startUpdatingLocation];
     }
     
-    [self showAlertWithTitle:errorTitle message:errorMessage];
+    UIAlertController *alert = showAlertWithTitle(errorTitle, errorMessage);
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
@@ -192,7 +179,8 @@ static NSString * const invalidCoordsMessage = @"Please type the correct values 
         
     } else {
         
-        [self showAlertWithTitle:errorTitle message:invalidCoordsMessage];
+        UIAlertController *alert = showAlertWithTitle(errorTitle, errorMessage);
+        [self presentViewController:alert animated:YES completion:nil];
     }
     
 }

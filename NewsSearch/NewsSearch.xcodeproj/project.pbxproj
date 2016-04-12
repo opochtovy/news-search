@@ -18,6 +18,7 @@
 		A22F79031C60B0CD00340FC0 /* NewsSearchTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A22F79021C60B0CD00340FC0 /* NewsSearchTests.m */; };
 		A236F1801C6E2861001D0902 /* ITBNewsDetailViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A236F17F1C6E2861001D0902 /* ITBNewsDetailViewController.m */; };
 		A236F1831C6E3B12001D0902 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A236F1851C6E3B12001D0902 /* Localizable.strings */; };
+		A24340B91CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.m in Sources */ = {isa = PBXBuildFile; fileRef = A24340B81CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.m */; };
 		A2689EE11C68BFFB0081E8BE /* ITBNewsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */; };
 		A2778AE31C8858D800FF3E65 /* ITBUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = A2778AE21C8858D800FF3E65 /* ITBUtils.m */; };
 		A27F8F621C737352007111CB /* ITBHotNewsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A27F8F611C737352007111CB /* ITBHotNewsViewController.m */; };
@@ -78,6 +79,8 @@
 		A236F1821C6E39EC001D0902 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		A236F1841C6E3B12001D0902 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A236F1861C6E3B6A001D0902 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A24340B71CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSManagedObject+ITBUpdateObjectWithDict.h"; sourceTree = "<group>"; };
+		A24340B81CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSManagedObject+ITBUpdateObjectWithDict.m"; sourceTree = "<group>"; };
 		A2689EDF1C68BFFB0081E8BE /* ITBNewsCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBNewsCell.h; sourceTree = "<group>"; };
 		A2689EE01C68BFFB0081E8BE /* ITBNewsCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ITBNewsCell.m; sourceTree = "<group>"; };
 		A2778AE11C8858D800FF3E65 /* ITBUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITBUtils.h; sourceTree = "<group>"; };
@@ -287,6 +290,8 @@
 				A2D00EDF1CA11DC100D988B2 /* ITBNews+CoreDataProperties.m */,
 				A2D00EE01CA11DC100D988B2 /* ITBNews.h */,
 				A2D00EE11CA11DC100D988B2 /* ITBNews.m */,
+				A24340B71CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.h */,
+				A24340B81CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.m */,
 			);
 			name = NSManagedObjects;
 			sourceTree = "<group>";
@@ -454,6 +459,7 @@
 				A2D00EB31C97C70900D988B2 /* ITBAddPhotoCell.m in Sources */,
 				A2CD8ABC1C929A2F00B2A974 /* ITBThumbnailPhotoCell.m in Sources */,
 				A2F08EB11C6B1FC10008B932 /* ITBSignInTableViewController.m in Sources */,
+				A24340B91CAD3A960064CDDA /* NSManagedObject+ITBUpdateObjectWithDict.m in Sources */,
 				A22F78EA1C60B0CD00340FC0 /* main.m in Sources */,
 				A2D5D2F31C907A4600136AD3 /* ITBCategory.m in Sources */,
 				A2F5E86D1C7C7F7500677907 /* ITBRestClient.m in Sources */,

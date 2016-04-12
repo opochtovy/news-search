@@ -8,8 +8,8 @@
 
 typedef enum {
     
-    ITBCollectionTypeLargePhotos, // 0
-    ITBCollectionTypeThumbnailPhotos // 1
+    ITBCollectionTypeLargePhotos,
+    ITBCollectionTypeThumbnailPhotos
     
 } ITBCollectionType;
 

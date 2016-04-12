@@ -21,4 +21,8 @@
 
 - (void)loginDidPassSuccessfully:(ITBLoginTableViewController *)vc;
 
+@optional
+
+- (NSArray *)sendObjectIDsArrayTo:(ITBLoginTableViewController *)vc;
+
 @end

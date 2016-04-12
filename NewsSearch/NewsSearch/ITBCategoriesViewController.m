@@ -18,10 +18,23 @@
 
 #import <CoreLocation/CoreLocation.h>
 
-//static NSString * const categoriesTitle = @"Categories";
 static NSString * const categoriesTitle = @"Choose sorting & categories";
 static NSString * const categoriesiPhoneTitle = @"Sorting & categories";
-static NSString * const allCatsCell = @"All categories";
+
+static NSString * const nilCoordsTitle = @"Tip";
+static NSString * const nilCoordsMessage = @"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!";
+
+static NSString * const allCatsTitle = @"All categories";
+
+static NSString * const sortingCellReuseIdentifier = @"Sorting";
+static NSString * const categoryCellReuseIdentifier = @"Category";
+static NSString * const allCategoriesCellReuseIdentifier = @"AllCategories";
+
+static NSString * const categoryTitleHotNews = @"Hot news";
+static NSString * const categoryTitleNewNews = @"New news";
+static NSString * const categoryTitleCreatedNews = @"Created news";
+static NSString * const categoryTitleFavourites = @"Favourites";
+static NSString * const categoryTitleNewsByGeolocation = @"News by geolocation";
 
 @interface ITBCategoriesViewController () <UITableViewDataSource, UITableViewDelegate>
 
@@ -55,20 +68,16 @@ static NSString * const allCatsCell = @"All categories";
     
     [super viewDidLoad];
     
-    NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:@"title" ascending:YES];
-    self.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:@"ITBCategory" withSortDescriptors:@[titleDescriptor] predicate:nil];
-    
-    NSLog(@"ITBCategoriesViewController : [self.allCategoriesArray count] = %li", (long)[self.allCategoriesArray count]);
+    NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:titleDictKey ascending:YES];
+    self.allCategoriesArray = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBCategoryEntityName withSortDescriptors:@[titleDescriptor] predicate:nil];
     
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
     NSString *objectId = [userDefaults objectForKey:kSettingsObjectId];
     
-    NSLog(@"ITBCategoriesViewController : objectId = %@", objectId);
-    
     self.currentUserCoordinates = CLLocationCoordinate2DMake([[userDefaults objectForKey:kSettingsLatitude] doubleValue], [[userDefaults objectForKey:kSettingsLongitude] doubleValue]);
     
     NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
-    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:@"ITBUser" withSortDescriptors:nil predicate:predicate];
+    NSArray *users = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBUserEntityName withSortDescriptors:nil predicate:predicate];
     self.currentUser = [users firstObject];
     self.categoriesOfCurrentUserArray = [self.currentUser.selectedCategories allObjects];
     
@@ -101,33 +110,13 @@ static NSString * const allCatsCell = @"All categories";
         [self.checkBoxes addObject:[NSNumber numberWithBool:checkBox]];
     }
     
-    self.allSortingsArray = @[@"Hot news", @"New news", @"Created news", @"Favourites", @"News by geolocation"];
+    self.allSortingsArray = @[categoryTitleHotNews, categoryTitleNewNews, categoryTitleCreatedNews, categoryTitleFavourites, categoryTitleNewsByGeolocation];
     
     if ((self.sortingCheckmarkIndex == ITBSortingTypeGeolocation) && (self.currentUserCoordinates.latitude == 0) && (self.currentUserCoordinates.longitude == 0)) {
         
-        [self showAlertWithTitle:@"Help" message:@"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!"];
+        UIAlertController *alert = showAlertWithTitle(nilCoordsTitle, nilCoordsMessage);
+        [self presentViewController:alert animated:YES completion:nil];
     }
-}
-
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
-}
-
-#pragma mark - Private
-
-- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *ok = [UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        
-        [alert dismissViewControllerAnimated:YES completion:nil];
-    }];
-    
-    [alert addAction:ok];
-    
-    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - UITableViewDataSource
@@ -155,10 +144,6 @@ static NSString * const allCatsCell = @"All categories";
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    static NSString *identifier = @"Cell";
-    static NSString *allIdentifier = @"All";
-    static NSString *sortingIdentifier = @"Sorting";
-    
     UITableViewCell *cell;
     
     cell.accessoryType = UITableViewCellAccessoryNone;
@@ -166,11 +151,11 @@ static NSString * const allCatsCell = @"All categories";
     
     if (indexPath.section == 0) {
         
-        cell = [tableView dequeueReusableCellWithIdentifier:sortingIdentifier];
+        cell = [tableView dequeueReusableCellWithIdentifier:sortingCellReuseIdentifier];
         
         if (cell == nil) {
             
-            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:sortingIdentifier];
+            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:sortingCellReuseIdentifier];
         }
         
         NSString *sortingType = [self.allSortingsArray objectAtIndex:indexPath.row];
@@ -188,9 +173,9 @@ static NSString * const allCatsCell = @"All categories";
     
     } else if (indexPath.section == 1) {
         
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:allIdentifier];
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:allCategoriesCellReuseIdentifier];
         
-        cell.textLabel.text = NSLocalizedString(allCatsCell, nil);
+        cell.textLabel.text = NSLocalizedString(allCatsTitle, nil);
         
         BOOL areAllCellsChosen = YES;
         for (int i=0; i < [self.checkBoxes count]; i++) {
@@ -219,13 +204,13 @@ static NSString * const allCatsCell = @"All categories";
         
     } else {
         
-        cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+        cell = [tableView dequeueReusableCellWithIdentifier:categoryCellReuseIdentifier];
         
         cell.accessoryType = UITableViewCellAccessoryNone;
         
         if (cell == nil) {
             
-            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
+            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:categoryCellReuseIdentifier];
         }
         
         ITBCategory *category = [self.allCategoriesArray objectAtIndex:indexPath.row];
@@ -262,7 +247,8 @@ static NSString * const allCatsCell = @"All categories";
         
         if ((self.sortingCheckmarkIndex == ITBSortingTypeGeolocation) && (self.currentUserCoordinates.latitude == 0) && (self.currentUserCoordinates.longitude == 0)) {
             
-            [self showAlertWithTitle:@"Help" message:@"Current latitude and longitude are null. Please choose your location by pressing button at the bottom!"];
+            UIAlertController *alert = showAlertWithTitle(nilCoordsTitle, nilCoordsMessage);
+            [self presentViewController:alert animated:YES completion:nil];
         }
         
         [self.categoriesTableView reloadData];
@@ -297,8 +283,6 @@ static NSString * const allCatsCell = @"All categories";
         hasCheckBox = !hasCheckBox;
         
         [self.checkBoxes replaceObjectAtIndex:indexPath.row withObject:[NSNumber numberWithBool:hasCheckBox]];
-        
-//        [self.categoriesTableView reloadData];
         
         [self.categoriesTableView beginUpdates];
         [self.categoriesTableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
@@ -346,9 +330,17 @@ static NSString * const allCatsCell = @"All categories";
         
         self.currentUser.selectedCategories = [NSSet setWithArray:self.categoriesOfCurrentUserArray];
         
-        [[ITBNewsAPI sharedInstance] saveBgContext];
+        __weak ITBCategoriesViewController *weakSelf = self;
         
-        [self.delegate reloadCategoriesFrom:self withSortingType:self.sortingCheckmarkIndex sortingName:sortingName];
+        [[ITBNewsAPI sharedInstance] hideSharingButtonsForNews:nil withCompletionHandler:^(BOOL isSuccess) {
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [weakSelf.delegate reloadCategoriesFrom:weakSelf withSortingType:weakSelf.sortingCheckmarkIndex sortingName:sortingName];
+                
+            });
+            
+        }];
         
     }
 }
@@ -385,11 +377,19 @@ static NSString * const allCatsCell = @"All categories";
     
     self.currentUser.selectedCategories = [NSSet setWithArray:self.categoriesOfCurrentUserArray];
     
-    [[ITBNewsAPI sharedInstance] saveBgContext];
+    __weak ITBCategoriesViewController *weakSelf = self;
     
-    [self.delegate reloadCategoriesFrom:self withSortingType:self.sortingCheckmarkIndex sortingName:sortingName];
-    
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [[ITBNewsAPI sharedInstance] hideSharingButtonsForNews:nil withCompletionHandler:^(BOOL isSuccess) {
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            [weakSelf.delegate reloadCategoriesFrom:weakSelf withSortingType:weakSelf.sortingCheckmarkIndex sortingName:sortingName];
+            
+            [weakSelf dismissViewControllerAnimated:YES completion:nil];
+            
+        });
+        
+    }];
 }
 
 @end

@@ -124,21 +124,12 @@ static NSString * const objectsDictKey = @"objects";
     NSString *objectId = nil;
     NSString *operation = addOperation;
     
-    if ((([object isKindOfClass:[ITBNews class]]) || ([object isKindOfClass:[ITBCategory class]])) && (object != nil)) {
-        
-        SEL selector = NSSelectorFromString(objectIdDictKey);
-        IMP imp = [object methodForSelector:selector];
-        NSString *(*func)(id, SEL) = (void *)imp;
-        objectId = func(object, selector);
-        
-    } else if (object != nil) {
-        
-        SEL selector = NSSelectorFromString(objectForKeyMethodSelector);
-        IMP imp = [object methodForSelector:selector];
-        NSString *(*func)(id, SEL, NSString *) = (void *)imp;
-        objectId = func(object, selector, objectIdDictKey);
+    objectId = [object valueForKey:objectIdDictKey];
+    
+    if ([object isKindOfClass:[NSDictionary class]]) {
         
         operation = removeOperation;
+    
     }
     
     NSString *urlString = [NSString stringWithFormat:@"%@%@/%@", classesUrl, entityName, objectId];
@@ -158,6 +149,8 @@ static NSString * const objectsDictKey = @"objects";
 }
 
 - (void)uploadRatingAndSelectedCategoriesFromLocalToServerForCurrentUser:(ITBUser *)user onSuccess:(void(^)(BOOL isSuccess))success {
+    
+    __weak ITBRestClient *weakSelf = self;
     
     dispatch_group_t group = dispatch_group_create();
     
@@ -193,7 +186,7 @@ static NSString * const objectsDictKey = @"objects";
             
             for (ITBNews *newsItem in newLikedNewsArray) {
                 
-                [self changeObject:newsItem forEntityName:ITBNewsEntityName inRelation:likeAddedUsersDictKey ofCurrentUser:user forGroup:group];
+                [weakSelf changeObject:newsItem forEntityName:ITBNewsEntityName inRelation:likeAddedUsersDictKey ofCurrentUser:user forGroup:group];
             }
             
         }
@@ -202,7 +195,7 @@ static NSString * const objectsDictKey = @"objects";
             
             for (NSDictionary *oldLikedNewsDict in oldLikedNewsDicts) {
                 
-                [self changeObject:oldLikedNewsDict forEntityName:ITBNewsEntityName inRelation:likeAddedUsersDictKey ofCurrentUser:user forGroup:group];
+                [weakSelf changeObject:oldLikedNewsDict forEntityName:ITBNewsEntityName inRelation:likeAddedUsersDictKey ofCurrentUser:user forGroup:group];
             }
         }
         
@@ -234,7 +227,7 @@ static NSString * const objectsDictKey = @"objects";
             
             for (ITBCategory *category in newSelectedCategoriesArray) {
                 
-                [self changeObject:category forEntityName:ITBCategoryEntityName inRelation:signedUsersDictKey ofCurrentUser:user forGroup:group];
+                [weakSelf changeObject:category forEntityName:ITBCategoryEntityName inRelation:signedUsersDictKey ofCurrentUser:user forGroup:group];
             }
             
         }
@@ -243,7 +236,7 @@ static NSString * const objectsDictKey = @"objects";
             
             for (NSDictionary *oldSelectedCategoryDict in oldSelectedCategoriesDicts) {
                 
-                [self changeObject:oldSelectedCategoryDict forEntityName:ITBCategoryEntityName inRelation:signedUsersDictKey ofCurrentUser:user forGroup:group];
+                [weakSelf changeObject:oldSelectedCategoryDict forEntityName:ITBCategoryEntityName inRelation:signedUsersDictKey ofCurrentUser:user forGroup:group];
                 
             }
             

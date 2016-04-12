@@ -66,34 +66,29 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 
 - (void)registerUser {
     
+    __weak ITBSignInTableViewController *weakSelf = self;
+    
     [[ITBNewsAPI sharedInstance] registerWithUsername:self.usernameField.text password:self.passwordField.text onSuccess:^(BOOL isConnected) {
         
         if (!isConnected) {
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 
-                [self.activityIndicator stopAnimating];
+                [weakSelf.activityIndicator stopAnimating];
                 
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertController *alert = showAlertWithTitle(noConnectionTitle, noConnectionMessage);
                 
-                UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-                    
-                    [alert dismissViewControllerAnimated:YES completion:nil];
-                }];
-                
-                [alert addAction:ok];
-                
-                [self presentViewController:alert animated:YES completion:nil];
+                [weakSelf presentViewController:alert animated:YES completion:nil];
                 
             });
             
         } else {
             
-            [self.delegate signingDidPassSuccessfully:self forUsername:self.usernameField.text password:self.passwordField.text];
+            [weakSelf.delegate signingDidPassSuccessfully:weakSelf forUsername:weakSelf.usernameField.text password:weakSelf.passwordField.text];
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 
-                [self.navigationController popViewControllerAnimated:YES];
+                [weakSelf.navigationController popViewControllerAnimated:YES];
                 
             });
             
@@ -103,6 +98,8 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
 }
 
 - (void)getUsersFromServer {
+    
+    __weak ITBSignInTableViewController *weakSelf = self;
     
     [self.activityIndicator startAnimating];
     
@@ -114,36 +111,29 @@ NSString *const okPassConfirm = @"Password confirmation is successful !";
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 
-                [self.activityIndicator stopAnimating];
-                self.uniqueUsernameLabel.text = noConnectionTitle;
+                [weakSelf.activityIndicator stopAnimating];
+                weakSelf.uniqueUsernameLabel.text = noConnectionTitle;
                 
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:noConnectionTitle message:noConnectionMessage preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertController *alert = showAlertWithTitle(noConnectionTitle, noConnectionMessage);
                 
-                UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-                    
-                    [alert dismissViewControllerAnimated:YES completion:nil];
-                }];
-                
-                [alert addAction:ok];
-                
-                [self presentViewController:alert animated:YES completion:nil];
+                [weakSelf presentViewController:alert animated:YES completion:nil];
                 
             });
             
         } else {
             
-            self.usernamesSet = usernames;
+            weakSelf.usernamesSet = usernames;
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 
-                self.usernameField.enabled = YES;
-                self.passwordField.enabled = YES;
-                self.passwordConfirmationField.enabled = YES;
-                self.signInButton.enabled = YES;
+                weakSelf.usernameField.enabled = YES;
+                weakSelf.passwordField.enabled = YES;
+                weakSelf.passwordConfirmationField.enabled = YES;
+                weakSelf.signInButton.enabled = YES;
                 
-                self.uniqueUsernameLabel.text = nil;
+                weakSelf.uniqueUsernameLabel.text = nil;
                 
-                [self.activityIndicator stopAnimating];
+                [weakSelf.activityIndicator stopAnimating];
                 
             }); 
         }

@@ -13,6 +13,7 @@
 #import "ITBRestClient.h"
 #import "ITBCoreDataManager.h"
 
+#import "NSManagedObject+ITBUpdateObjectWithDict.h"
 #import "ITBNews.h"
 #import "ITBCategory.h"
 #import "ITBUser.h"
@@ -33,6 +34,9 @@ static NSString * const thumbPhotoNamePath = @"thumbnailPhoto";
 static NSString * const jpgExtension = @".jpg";
 
 static NSString * const uploadPhotoError = @"There is no valid photo";
+
+static NSString * const updatedArrayDictKey = @"updatedArray";
+static NSString * const updatedDictsArrayDictKey = @"updatedDictsArray";
 
 @interface ITBNewsAPI ()
 
@@ -70,41 +74,38 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         _coreDataManager = [[ITBCoreDataManager alloc] init];
         
+        if (_coreDataManager.bgManagedObjectContext != nil) {
+            
+            [[_coreDataManager bgManagedObjectContext] setMergePolicy:NSOverwriteMergePolicy];
+            
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshDataForMainContext:) name:NSManagedObjectContextDidSaveNotification object:[_coreDataManager bgManagedObjectContext]];
+        }
+        
         [self loadCurrentUser];
         
     }
     return self;
 }
 
-#pragma mark - Custom Accessors
-
-- (NSManagedObjectContext *)mainManagedObjectContext {
+- (void)dealloc {
     
-    if (_mainManagedObjectContext == nil) {
-        
-        _mainManagedObjectContext = [_coreDataManager mainManagedObjectContext];
-    }
-    
-    return _mainManagedObjectContext;
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSManagedObjectContextDidSaveNotification object:[_coreDataManager bgManagedObjectContext]];
 }
 
-- (NSManagedObjectContext *)bgManagedObjectContext {
+- (void)refreshDataForMainContext:(NSNotification *)notification {
     
-    if (_bgManagedObjectContext == nil) {
-        
-        _bgManagedObjectContext = [_coreDataManager bgManagedObjectContext];
-        [_bgManagedObjectContext setMergePolicy:NSOverwriteMergePolicy];
-    }
+    [[self.coreDataManager mainManagedObjectContext] mergeChangesFromContextDidSaveNotification:notification];
     
-    return _bgManagedObjectContext;
+}
+
+#pragma mark - Custom Accessors
+
+- (NSManagedObjectContext *)getMainContext {
+    
+    return [self.coreDataManager mainManagedObjectContext];
 }
 
 #pragma mark - Core Data Saving support
-
-- (void)saveMainContext {
-    
-    [self.coreDataManager saveMainContext];
-}
 
 - (void)saveBgContext {
     
@@ -138,8 +139,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     if (objectId != nil) {
         
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
-        NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:self.mainManagedObjectContext];
         
+        NSArray *users = [self fetchObjectsForMainContextForEntity:ITBUserEntityName withSortDescriptors:nil predicate:predicate];
         self.currentUser = [users firstObject];
         
     }
@@ -171,7 +172,9 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     }
 }
 
-- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(ITBUser *user, BOOL isConnected))success {
+- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password rememberSwitchValue:(BOOL)isRemember onSuccess:(void(^)(ITBUser *user, BOOL isConnected))success {
+    
+    __weak ITBNewsAPI *weakSelf = self;
     
     NSString *urlString = [NSString stringWithFormat: @"%@%@%@%@", authorizationUrl, username, passwordSection, password];
     
@@ -184,30 +187,22 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             success(nil, NO);
             
         } else if (code == 0) {
-            
+
             NSString *objectId = [responseBody objectForKey:objectIdDictKey];
             
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
-
-            NSManagedObjectContext *context = self.mainManagedObjectContext;
-            
-            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
-            
-            ITBUser *user = [users firstObject];
-            
-            [user updateObjectWithDictionary:responseBody inContext:context];
-            
-            if (user == nil) {
+            [weakSelf.coreDataManager setAuthorizedUserForObjectId:objectId withDictionary:responseBody withCompletionHandler:^(ITBUser *user) {
                 
-                user = [ITBUser initObjectWithDictionary:responseBody inContext:context];
-            }
-            
-            self.currentUser = user;
-            [self saveCurrentUser];
-
-            [self saveMainContext];
-            
-            success(user, YES);
+                weakSelf.currentUser = user;
+                
+                if (isRemember) {
+                    
+                    [weakSelf saveCurrentUser];
+                    
+                }
+                
+                success(user, YES);
+                
+            }];
             
         } else {
             
@@ -278,6 +273,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
         
+        __weak ITBNewsAPI *weakSelf = self;
+        
         [context performBlock:^{
             
             NSMutableArray *photosArray = [NSMutableArray array];
@@ -290,7 +287,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                 NSData *photoData = [photos objectAtIndex:i];
                 
                 dispatch_group_enter(group);
-                [self createPhotoOnServerOnSuccess:^(ITBPhoto *photo) {
+                [weakSelf createPhotoOnServerOnSuccess:^(ITBPhoto *photo) {
                     
                     photo.imageData = photoData;
                     
@@ -303,7 +300,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                 NSData *thumbnailPhotoData = [thumbnailPhotos objectAtIndex:i];
                 
                 dispatch_group_enter(group);
-                [self createPhotoOnServerOnSuccess:^(ITBPhoto *photo) {
+                [weakSelf createPhotoOnServerOnSuccess:^(ITBPhoto *photo) {
                     
                     photo.imageData = thumbnailPhotoData;
                     
@@ -331,6 +328,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     
     NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
     
+    __weak ITBNewsAPI *weakSelf = self;
+    
     [context performBlock:^{
         
         NSString *urlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBNewsEntityName];
@@ -338,11 +337,11 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSDictionary *headers = postHeaders(json);
         
         NSPredicate *categoryPredicate = [NSPredicate predicateWithFormat:@"title == %@", categoryTitle];
-        NSArray *categories = [self.coreDataManager fetchObjectsForName:ITBCategoryEntityName withSortDescriptor:nil predicate:categoryPredicate inContext:context];
+        NSArray *categories = [weakSelf.coreDataManager fetchObjectsForName:ITBCategoryEntityName withSortDescriptor:nil predicate:categoryPredicate inContext:context];
         ITBCategory *category = [categories firstObject];
         
-        NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"objectId == %@", self.currentUser.objectId];
-        NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:userPredicate inContext:context];
+        NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"self == %@", self.currentUser.objectID];
+        NSArray *users = [weakSelf.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:userPredicate inContext:context];
         ITBUser *user = [users firstObject];
         
         NSMutableArray *photosArray = [NSMutableArray array];
@@ -370,7 +369,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                                      message, messageDictKey,
                                      (latNumber != nil) ? latNumber : [NSNumber numberWithDouble:grodnoLatitude], latitudeDictKey,
                                      (longNumber != nil) ? longNumber : [NSNumber numberWithDouble:grodnoLongitude], longitudeDictKey,
-                                     classDict(userClass, self.currentUser.objectId), authorDictKey,
+                                     classDict(userClass, weakSelf.currentUser.objectId), authorDictKey,
                                      classDict(ITBCategoryEntityName, category.objectId), categoryDictKey, nil];
         
         if ([photos count] > 0) {
@@ -381,7 +380,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         NSDictionary *parameters = [dict copy];
         
-        [self.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:parameters withHTTPBody:nil withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:urlString withHeaders:headers withFields:parameters withHTTPBody:nil withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
             
             ITBNews *newsItem = [ITBNews initObjectWithDictionary:responseBody inContext:context];
             newsItem.title = title;
@@ -398,7 +397,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                 [newsItem addThumbnailPhotosObject:thumbnailPhoto];
             }
             
-            [self.coreDataManager saveBgContext];
+            [weakSelf.coreDataManager saveBgContext];
             
             success(YES);
             
@@ -413,6 +412,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     
     NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
     
+    __weak ITBNewsAPI *weakSelf = self;
+    
     [context performBlock:^{
     
         dispatch_group_t group = dispatch_group_create();
@@ -426,7 +427,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             if (photoData != nil) {
                 
                 dispatch_group_enter(group);
-                [self uploadPhotoToServerForName:photoName withData:photoData onSuccess:^(NSDictionary *responseBody) {
+                [weakSelf uploadPhotoToServerForName:photoName withData:photoData onSuccess:^(NSDictionary *responseBody) {
                     
                     if (responseBody != nil) {
                         
@@ -440,7 +441,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                         NSDictionary *parameters = @{ nameDictKey: name,
                                                       urlDictKey: url };
                         
-                        [self udpatePhotoOnServerForObjectId:photo.objectId withFields:parameters onSuccess:^(BOOL isSuccess) {
+                        [weakSelf udpatePhotoOnServerForObjectId:photo.objectId withFields:parameters onSuccess:^(BOOL isSuccess) {
                             
                             dispatch_group_leave(group);
                             
@@ -458,7 +459,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                     if (thumbnailPhotoData != nil) {
                         
                         dispatch_group_enter(group);
-                        [self uploadPhotoToServerForName:thumbnailPhotoName withData:thumbnailPhotoData onSuccess:^(NSDictionary *responseBody) {
+                        [weakSelf uploadPhotoToServerForName:thumbnailPhotoName withData:thumbnailPhotoData onSuccess:^(NSDictionary *responseBody) {
                             
                             if (responseBody != nil) {
                                 
@@ -472,7 +473,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
                                 NSDictionary *parameters = @{ nameDictKey: name,
                                                               urlDictKey: url };
                                 
-                                [self udpatePhotoOnServerForObjectId:thumbnailPhoto.objectId withFields:parameters onSuccess:^(BOOL isSuccess) {
+                                [weakSelf udpatePhotoOnServerForObjectId:thumbnailPhoto.objectId withFields:parameters onSuccess:^(BOOL isSuccess) {
                                     
                                     dispatch_group_leave(group);
                                     
@@ -493,7 +494,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
             
-            [self.coreDataManager saveBgContext];
+            [weakSelf.coreDataManager saveBgContext];
             
             NSDictionary *allPhotos = nil;
             
@@ -516,13 +517,15 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     NSDictionary *parameters = @{ nameDictKey: testValue,
                                   urlDictKey: testValue };
     
+    __weak ITBNewsAPI *weakSelf = self;
+    
     [self.restClient makeRequestToServerForUrlString:urlString withHeaders:postHeaders(json) withFields:parameters withHTTPBody:nil withHTTPMethod:@"POST" onSuccess:^(NSDictionary *responseBody) {
         
         NSString *objectId = [responseBody objectForKey:objectIdDictKey];
         
         if (objectId != nil) {
             
-            ITBPhoto *photo = [NSEntityDescription insertNewObjectForEntityForName:ITBPhotoEntityName inManagedObjectContext:[self.coreDataManager bgManagedObjectContext]];
+            ITBPhoto *photo = [NSEntityDescription insertNewObjectForEntityForName:ITBPhotoEntityName inManagedObjectContext:[weakSelf.coreDataManager bgManagedObjectContext]];
             
             photo.objectId = objectId;
             
@@ -576,6 +579,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     
     NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
     
+    __weak ITBNewsAPI *weakSelf = self;
+    
     [context performBlock:^{
         
         dispatch_group_t group = dispatch_group_create();
@@ -589,11 +594,11 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSString *userUrlString = [NSString stringWithFormat:@"%@/%@", usersUrl, objectId];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:userUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:userUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
             
-            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
+            NSArray *users = [weakSelf.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
             
             user = [users firstObject];
             
@@ -619,7 +624,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         __block NSArray *photoDicts = [NSArray array];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             newsDicts = [responseBody objectForKey:resultsDictKey];
             
@@ -642,7 +647,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSString *categoryUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBCategoryEntityName];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             categoryDicts = [responseBody objectForKey:resultsDictKey];
             
@@ -665,7 +670,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSString *photoUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBPhotoEntityName];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             photoDicts = [responseBody objectForKey:resultsDictKey];
             
@@ -687,20 +692,20 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
-            [self.coreDataManager addRelationsToLocalDBFromNewsDictsArray:newsDicts forNewsArray:news fromCategoryDictsArray:categoryDicts forCategoriesArray:categories fromPhotoDictsArray:photoDicts forPhotosArray:photos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
+            [weakSelf.coreDataManager addRelationsToLocalDBFromNewsDictsArray:newsDicts forNewsArray:news fromCategoryDictsArray:categoryDicts forCategoriesArray:categories fromPhotoDictsArray:photoDicts forPhotosArray:photos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
                 
                 [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
                 
                 success(isSuccess);
                 
             }];
- 
+            
         });
         
     }];
 }
 
-- (void)getFromServerUpdatedDictsArray:(NSMutableArray *)updatedDictsArray withUpdatedLocalObjectsArray:(NSMutableArray *)updatedArray usingFromServerDictsArray:(NSMutableArray *)dictsArray withLocalObjectsArray:(NSMutableArray *)array forClass:(id)EntityClass inContext:(NSManagedObjectContext *)context {
+- (NSDictionary *)getFromServerUpdatedDictsArray:(NSMutableArray *)updatedDictsArray withUpdatedLocalObjectsArray:(NSMutableArray *)updatedArray usingFromServerDictsArray:(NSMutableArray *)dictsArray withLocalObjectsArray:(NSMutableArray *)array forEntity:(NSString *)entityName inContext:(NSManagedObjectContext *)context {
     
     for (int i = (int)[dictsArray count] - 1; i>=0; i--) {
         
@@ -709,16 +714,7 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         for (int j = (int)[array count] - 1; j>=0; j--) {
             
             id object = [array objectAtIndex:j];
-            
-            NSString *objectId = nil;
-            if (object != nil) {
-                
-                SEL selector = NSSelectorFromString(objectIdDictKey);
-                IMP imp = [object methodForSelector:selector];
-                NSString *(*func)(id, SEL) = (void *)imp;
-                objectId = func(object, selector);
-                
-            }
+            NSString *objectId = [object valueForKey:objectIdDictKey];
             
             if ([objectId isEqualToString:[dict objectForKey:objectIdDictKey]]) {
                 
@@ -734,16 +730,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     
     for (NSDictionary *dict in updatedDictsArray) {
         
-        id object = [updatedArray objectAtIndex:[updatedDictsArray indexOfObject:dict]];
-        
-        if (object != nil) {
-            
-            SEL selector = NSSelectorFromString(updateObjectMethodSelector);
-            IMP imp = [object methodForSelector:selector];
-            void (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
-            func(object, selector, dict, context);
-            
-        }
+        NSManagedObject *object = [updatedArray objectAtIndex:[updatedDictsArray indexOfObject:dict]];
+        [object updateObjectWithDictionary:dict inContext:context];
     }
     
     if ([array count] > 0) {
@@ -757,19 +745,19 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         
         for (NSDictionary *dict in dictsArray) {
             
-            if (EntityClass != nil) {
-                
-                SEL selector = NSSelectorFromString(initObjectMethodSelector);
-                IMP imp = [EntityClass methodForSelector:selector];
-                id (*func)(id, SEL, NSDictionary *, NSManagedObjectContext *) = (void *)imp;
-                id object = EntityClass ? func(EntityClass, selector, dict, context) : nil;
-                
-                [updatedArray addObject:object];
-                [updatedDictsArray addObject:dict];
-                
-            }
+            id object = [NSEntityDescription insertNewObjectForEntityForName:entityName inManagedObjectContext:context];
+            [object updateObjectWithDictionary:dict inContext:context];
+            [updatedArray addObject:object];
+            [updatedDictsArray addObject:dict];
+            
         }
     }
+    
+    NSDictionary *resultDict = @{ updatedArrayDictKey: updatedArray,
+                                  updatedDictsArrayDictKey: updatedDictsArray };
+    
+    return resultDict;
+    
 }
 
 - (void)updateLocalDataSourceOnSuccess:(void(^)(BOOL isSuccess))success {
@@ -777,6 +765,8 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
     
     NSManagedObjectContext *context = [self.coreDataManager bgManagedObjectContext];
+    
+    __weak ITBNewsAPI *weakSelf = self;
     
     [context performBlock:^{
         
@@ -790,17 +780,17 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         __block NSMutableArray *updatedPhotos = [NSMutableArray array];
         __block ITBUser *user;
         
-        NSString *userUrlString = [NSString stringWithFormat:@"%@/%@", usersUrl, self.currentUser.objectId];
+        NSString *userUrlString = [NSString stringWithFormat:@"%@/%@", usersUrl, weakSelf.currentUser.objectId];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:userUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:userUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", self.currentUser.objectId];
-            NSArray *users = [self.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"self == %@", weakSelf.currentUser.objectID];
+            NSArray *users = [weakSelf.coreDataManager fetchObjectsForName:ITBUserEntityName withSortDescriptor:nil predicate:predicate inContext:context];
             
             user = [users firstObject];
             [user updateObjectWithDictionary:responseBody inContext:context];
-            user.sessionToken = self.currentUser.sessionToken;
+            user.sessionToken = weakSelf.currentUser.sessionToken;
             
             dispatch_group_leave(group);
             
@@ -813,12 +803,15 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSString *newsUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBNewsEntityName];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:newsUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             NSMutableArray *newsDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
-            NSMutableArray *newsArray = [ [self.coreDataManager allObjectsForName:ITBNewsEntityName usingContext:context] mutableCopy];
+            NSMutableArray *newsArray = [ [weakSelf.coreDataManager allObjectsForName:ITBNewsEntityName usingContext:context] mutableCopy];
             
-            [self getFromServerUpdatedDictsArray:updatedNewsDicts withUpdatedLocalObjectsArray:updatedNews usingFromServerDictsArray:newsDicts withLocalObjectsArray:newsArray forClass:[ITBNews class] inContext:context];
+            NSDictionary *resultDict = [weakSelf getFromServerUpdatedDictsArray:updatedNewsDicts withUpdatedLocalObjectsArray:updatedNews usingFromServerDictsArray:newsDicts withLocalObjectsArray:newsArray forEntity:ITBNewsEntityName inContext:context];
+            
+            updatedNews = [resultDict objectForKey:updatedArrayDictKey];
+            updatedNewsDicts = [resultDict objectForKey:updatedDictsArrayDictKey];
             
             dispatch_group_leave(group);
             
@@ -830,12 +823,15 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSString *categoryUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBCategoryEntityName];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:categoryUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             NSMutableArray *categoryDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
-            NSMutableArray *categoriesArray = [ [self.coreDataManager allObjectsForName:ITBCategoryEntityName usingContext:context] mutableCopy];
+            NSMutableArray *categoriesArray = [ [weakSelf.coreDataManager allObjectsForName:ITBCategoryEntityName usingContext:context] mutableCopy];
             
-            [self getFromServerUpdatedDictsArray:updatedCategoryDicts withUpdatedLocalObjectsArray:updatedCategories usingFromServerDictsArray:categoryDicts withLocalObjectsArray:categoriesArray forClass:[ITBCategory class] inContext:context];
+            NSDictionary *resultDict = [weakSelf getFromServerUpdatedDictsArray:updatedCategoryDicts withUpdatedLocalObjectsArray:updatedCategories usingFromServerDictsArray:categoryDicts withLocalObjectsArray:categoriesArray forEntity:ITBCategoryEntityName inContext:context];
+            
+            updatedCategories = [resultDict objectForKey:updatedArrayDictKey];
+            updatedCategoryDicts = [resultDict objectForKey:updatedDictsArrayDictKey];
             
             dispatch_group_leave(group);
             
@@ -847,12 +843,15 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
         NSString *photoUrlString = [NSString stringWithFormat:@"%@%@", classesUrl, ITBPhotoEntityName];
         
         dispatch_group_enter(group);
-        [self.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
+        [weakSelf.restClient makeRequestToServerForUrlString:photoUrlString withHeaders:getHeaders() withFields:nil withHTTPBody:nil withHTTPMethod:@"GET" onSuccess:^(NSDictionary *responseBody) {
             
             NSMutableArray *photoDicts = [[responseBody objectForKey:resultsDictKey] mutableCopy];
-            NSMutableArray *photosArray = [ [self.coreDataManager allObjectsForName:ITBPhotoEntityName usingContext:context] mutableCopy];
+            NSMutableArray *photosArray = [ [weakSelf.coreDataManager allObjectsForName:ITBPhotoEntityName usingContext:context] mutableCopy];
             
-            [self getFromServerUpdatedDictsArray:updatedPhotoDicts withUpdatedLocalObjectsArray:updatedPhotos usingFromServerDictsArray:photoDicts withLocalObjectsArray:photosArray forClass:[ITBPhoto class] inContext:context];
+            NSDictionary *resultDict = [weakSelf getFromServerUpdatedDictsArray:updatedPhotoDicts withUpdatedLocalObjectsArray:updatedPhotos usingFromServerDictsArray:photoDicts withLocalObjectsArray:photosArray forEntity:ITBPhotoEntityName inContext:context];
+            
+            updatedPhotos = [resultDict objectForKey:updatedArrayDictKey];
+            updatedPhotoDicts = [resultDict objectForKey:updatedDictsArrayDictKey];
             
             dispatch_group_leave(group);
             
@@ -861,10 +860,9 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             dispatch_group_leave(group);
         }];
         
-        
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
             
-            [self.coreDataManager addRelationsToLocalDBFromNewsDictsArray:updatedNewsDicts forNewsArray:updatedNews fromCategoryDictsArray:updatedCategoryDicts forCategoriesArray:updatedCategories fromPhotoDictsArray:updatedPhotoDicts forPhotosArray:updatedPhotos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
+            [weakSelf.coreDataManager addRelationsToLocalDBFromNewsDictsArray:updatedNewsDicts forNewsArray:updatedNews fromCategoryDictsArray:updatedCategoryDicts forCategoriesArray:updatedCategories fromPhotoDictsArray:updatedPhotoDicts forPhotosArray:updatedPhotos forUser:user usingContext:context onSuccess:^(BOOL isSuccess) {
                 
                 [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
                 
@@ -880,11 +878,11 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
 - (void)logOut {
     
     self.currentUser = nil;
-    [self saveCurrentUser];
     
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    [userDefaults setObject:@0 forKey:kSettingsChosenSortingType];
     [userDefaults setObject:defaultTitle forKey:kSettingsChosenSortingName];
+    
+    [self saveCurrentUser];
 }
 
 - (void)loadImageForUrlString:(NSString *)urlString onSuccess:(void(^)(NSData *data))success {
@@ -915,13 +913,39 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
     
     __block NSArray *result;
     
+    __weak ITBNewsAPI *weakSelf = self;
+    
     [context performBlockAndWait:^{
         
-        result = [self.coreDataManager fetchObjectsForName:entityName withSortDescriptor:descriptors predicate:predicate inContext:context];
+        result = [weakSelf.coreDataManager fetchObjectsForName:entityName withSortDescriptor:descriptors predicate:predicate inContext:context];
         
     }];
     
     return result;
+}
+
+- (NSArray *)fetchObjectsForMainContextForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate {
+    
+    __block NSArray *result;
+    
+    [self.coreDataManager fetchObjectsForEntity:entityName withSortDescriptors:descriptors predicate:predicate withCompletionHandler:^(NSArray *resultArray) {
+        
+        result = resultArray;
+        
+    }];
+    
+    return result;
+}
+
+- (void)deleteNewsItemInBgContextForObjectId:(NSString *)objectId {
+    
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"objectId == %@", objectId];
+    NSArray *news = [self fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:predicate];
+    ITBNews *newsItem = [news firstObject];
+    
+    [[self.coreDataManager bgManagedObjectContext] deleteObject:newsItem];
+    
+    [self saveBgContext];
 }
 
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess))success {
@@ -936,6 +960,297 @@ static NSString * const uploadPhotoError = @"There is no valid photo";
             
         }];
     }
+}
+
+- (void)hideSharingButtonsWithCompletionHandler:(void(^)(BOOL isSuccess))completionHandler {
+    
+    __weak ITBNewsAPI *weakSelf = self;
+    
+    [[self.coreDataManager bgManagedObjectContext] performBlockAndWait:^{
+        
+        NSArray *news = [weakSelf fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
+        
+        for (ITBNews *newsItem in news) {
+            newsItem.isTitlePressed = @0;
+        }
+        
+        [weakSelf.coreDataManager saveBgContext];
+        
+        completionHandler(YES);
+        
+    }];
+
+}
+
+- (void)hideSharingButtonsForNews:(NSArray *)objectIDsArray withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler {
+    
+    __weak ITBNewsAPI *weakSelf = self;
+    
+    NSPredicate *predicate = ([objectIDsArray count] > 0) ? [NSPredicate predicateWithFormat:@"self IN %@", objectIDsArray] : nil;
+    
+    [[self.coreDataManager bgManagedObjectContext] performBlockAndWait:^{
+        
+        NSArray *news = [weakSelf fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:predicate];
+        
+        for (ITBNews *newsItem in news) {
+            newsItem.isTitlePressed = @0;
+        }
+        
+        [weakSelf.coreDataManager saveBgContext];
+        
+        completionHandler(YES);
+        
+    }];
+}
+
+- (void)showLocalDatabaseForNews:(NSArray *)objectIDsArray withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler {
+    
+    NSArray *allLocalNews = [self fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
+    if ([allLocalNews count] > 0) {
+        
+        [self hideSharingButtonsForNews:objectIDsArray withCompletionHandler:^(BOOL isSuccess) {
+            
+            completionHandler(isSuccess);
+        }];
+        
+    } else {
+        
+        [self createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+            
+            completionHandler(isSuccess);
+        }];
+    }
+}
+
+- (void)refreshNewsWithCompletionHandler:(void(^)(BOOL isSuccess))completionHandler {
+    
+    NSArray *allLocalNews = [self fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
+    
+    if ([allLocalNews count] > 0) {
+        
+        [self updateCurrentUserFromLocalToServerOnSuccess:^(BOOL isSuccess) {
+            
+            [self updateLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+                
+                completionHandler(isSuccess);
+            }];
+            
+        }];
+        
+    } else {
+        
+        [self createLocalDataSourceOnSuccess:^(BOOL isSuccess) {
+            
+            completionHandler(isSuccess);
+            
+        }];
+    }
+}
+
+- (NSFetchRequest *)prepareFetchRequestForFRC {
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    NSNumber *sortingTypeNumber = [userDefaults objectForKey:kSettingsChosenSortingType];
+    ITBSortingType sortingType = [sortingTypeNumber intValue];
+    
+    NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+    
+    NSEntityDescription *description = [NSEntityDescription entityForName:ITBNewsEntityName inManagedObjectContext:self.coreDataManager.mainManagedObjectContext];
+    
+    [fetchRequest setEntity:description];
+    
+    NSString *descriptorKey = nil;
+    NSPredicate *predicate = nil;
+    NSArray *descriptorsArray = [NSArray array];
+    
+    if ([self.currentUser.selectedCategories count] != 0) {
+        
+        predicate = [NSPredicate predicateWithFormat:@"category IN %@", self.currentUser.selectedCategories];
+        
+    } else {
+        
+        predicate = [NSPredicate predicateWithFormat:@"category == %@", self.currentUser.objectID];
+    }
+    
+    switch (sortingType) {
+            
+        case ITBSortingTypeHot:
+            descriptorKey = frcRatingDescriptorKey;
+            break;
+            
+        case ITBSortingTypeNew:
+            descriptorKey = createdAtDescriptorKey;
+            break;
+            
+        case ITBSortingTypeCreated: {
+            descriptorKey = titleDescriptorKey;
+            
+            if ([self.currentUser.selectedCategories count] != 0) {
+                
+                predicate = [NSPredicate predicateWithFormat:@"(category IN %@) AND (author == %@)", self.currentUser.selectedCategories, self.currentUser.objectID];
+                
+            } else {
+                
+                predicate = [NSPredicate predicateWithFormat:@"(category == %@) AND (author == %@)", self.currentUser.objectID, self.currentUser.objectID];
+                
+            }
+            break;
+        }
+            
+        case ITBSortingTypeFavourites: {
+            descriptorKey = titleDescriptorKey;
+            
+            if ([self.currentUser.favouriteNews count] != 0) {
+                
+                predicate = [NSPredicate predicateWithFormat:@"SELF IN %@", self.currentUser.favouriteNews];
+                
+            } else {
+                
+                predicate = [NSPredicate predicateWithFormat:@"self == %@", self.currentUser.objectID];
+                
+            }
+            break;
+        }
+            
+        case ITBSortingTypeGeolocation:
+            descriptorKey = titleDescriptorKey;
+            
+            if ([self.currentUser.selectedCategories count] != 0) {
+                
+                predicate = [NSPredicate predicateWithFormat:@"(category IN %@) AND (isValidByGeolocation != %@)", self.currentUser.selectedCategories, @0];
+                
+            } else {
+                
+                predicate = [NSPredicate predicateWithFormat:@"(category == %@) AND (isValidByGeolocation != %@)", self.currentUser.objectID, @0];
+                
+            }
+            break;
+    }
+    
+    NSSortDescriptor *descriptor = [[NSSortDescriptor alloc] initWithKey:descriptorKey ascending:NO];
+    
+    if (sortingType == ITBSortingTypeHot) {
+        
+        NSSortDescriptor *titleDescriptor = [[NSSortDescriptor alloc] initWithKey:titleDescriptorKey ascending:NO];
+        descriptorsArray = @[descriptor, titleDescriptor];
+        
+    } else {
+        
+        descriptorsArray = @[descriptor];
+        
+    }
+    
+    [fetchRequest setSortDescriptors:descriptorsArray];
+    if (predicate != nil) {
+        
+        [fetchRequest setPredicate:predicate];
+        
+    }
+    
+    return fetchRequest;
+    
+}
+
+- (void)getNewsCellForNewsObjectID:(NSManagedObjectID *)objectID {
+    
+    NSPredicate *newsPredicate = [NSPredicate predicateWithFormat:@"self == %@", objectID];
+    NSArray *news = [self fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:newsPredicate];
+    ITBNews *newsItem = [news firstObject];
+    
+    NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"self == %@", self.currentUser.objectID];
+    NSArray *users = [self fetchObjectsInBackgroundForEntity:ITBUserEntityName withSortDescriptors:nil predicate:userPredicate];
+    ITBUser *currentUser = [users firstObject];
+    
+    BOOL isLikedByCurrentUser = [newsItem.isLikedByCurrentUser boolValue];
+    
+    NSInteger ratingInt = [newsItem.rating integerValue];
+    
+    if (isLikedByCurrentUser) {
+        
+        [newsItem removeLikeAddedUsersObject:currentUser];
+        --ratingInt;
+        newsItem.isLikedByCurrentUser = @0;
+        
+    } else {
+        
+        [newsItem addLikeAddedUsersObject:currentUser];
+        ++ratingInt;
+        newsItem.isLikedByCurrentUser = @1;
+        
+    }
+    
+    newsItem.rating = [NSNumber numberWithInteger:ratingInt];
+    
+    [self saveBgContext];
+}
+
+- (void)newsCellDidSelectTitleForNewsObjectID:(NSManagedObjectID *)objectID withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler {
+    
+    NSPredicate *newsPredicate = [NSPredicate predicateWithFormat:@"self == %@", objectID];
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:newsPredicate];
+    ITBNews *newsItem = [news firstObject];
+    
+    newsItem.isTitlePressed = [NSNumber numberWithBool:YES];
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
+    
+    completionHandler(YES);
+}
+
+- (void)newsCellDidSelectHide:(NSManagedObjectID *)objectID withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler {
+    
+    NSPredicate *newsPredicate = [NSPredicate predicateWithFormat:@"self == %@", objectID];
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:newsPredicate];
+    ITBNews *newsItem = [news firstObject];
+    
+    newsItem.isTitlePressed = [NSNumber numberWithBool:NO];
+    
+    [[ITBNewsAPI sharedInstance] saveBgContext];
+    
+    completionHandler(YES);
+}
+
+- (void)newsCellDidAddToFavouritesForNewsObjectID:(NSManagedObjectID *)objectID {
+    
+    NSPredicate *newsPredicate = [NSPredicate predicateWithFormat:@"self == %@", objectID];
+    NSArray *news = [self fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:newsPredicate];
+    ITBNews *newsItem = [news firstObject];
+    
+    NSPredicate *userPredicate = [NSPredicate predicateWithFormat:@"self == %@", self.currentUser.objectID];
+    NSArray *users = [self fetchObjectsInBackgroundForEntity:ITBUserEntityName withSortDescriptors:nil predicate:userPredicate];
+    ITBUser *currentUser = [users firstObject];
+    
+    if (![currentUser.favouriteNews containsObject:newsItem]) {
+        
+        [currentUser addFavouriteNewsObject:newsItem];
+        
+        [self saveBgContext];
+        
+    }
+}
+
+- (void)prefetchValidByGeolocationNewsWithCompletionHandler:(void(^)(NSArray *newsArray))completion {
+    
+    NSArray *resultArray = [self fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:nil];
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    NSNumber *latNumber = [userDefaults objectForKey:kSettingsLatitude];
+    NSNumber *longNumber = [userDefaults objectForKey:kSettingsLongitude];
+    
+    CLLocation *currentUserLocation = [[CLLocation alloc] initWithLatitude:[latNumber doubleValue] longitude:[longNumber doubleValue]];
+    
+    for (ITBNews *newsItem in resultArray) {
+        
+        CLLocation *newsItemLocation = [[CLLocation alloc] initWithLatitude:[newsItem.latitude doubleValue] longitude:[newsItem.longitude doubleValue]];
+        
+        CLLocationDistance distance = [newsItemLocation distanceFromLocation:currentUserLocation];
+        
+        BOOL isValid = (distance <= maxDistance) ? YES : NO;
+        newsItem.isValidByGeolocation = [NSNumber numberWithBool:isValid];
+    }
+    
+    completion(resultArray);
+    
 }
 
 @end

@@ -16,13 +16,12 @@
 
 @property (strong, nonatomic) ITBUser *currentUser;
 
-@property (strong, nonatomic) NSManagedObjectContext *mainManagedObjectContext;
-@property (strong, nonatomic) NSManagedObjectContext *bgManagedObjectContext;
+@property (assign, nonatomic) BOOL isSomethingInDBSaving;
 
 + (ITBNewsAPI *)sharedInstance;
 
-- (void)saveMainContext;
 - (void)saveBgContext;
+- (NSManagedObjectContext *)getMainContext;
 
 - (void)saveCurrentUser;
 - (void)loadCurrentUser;
@@ -30,7 +29,7 @@
 - (void)logOut;
 
 - (void)checkNetworkConnectionOnSuccess:(void(^)(BOOL isConnected))success;
-- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(ITBUser *user, BOOL isConnected))success;
+- (void)authorizeWithUsername:(NSString *)username password:(NSString *)password rememberSwitchValue:(BOOL)isRemember onSuccess:(void(^)(ITBUser *user, BOOL isConnected))success;
 - (void)registerWithUsername:(NSString *)username password:(NSString *)password onSuccess:(void(^)(BOOL isConnected))success;
 - (void)getUsersOnSuccess:(void(^)(NSSet *usernames, BOOL isConnected))success;
 
@@ -48,6 +47,22 @@
 
 - (NSArray *)fetchObjectsInBackgroundForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate;
 
+- (NSArray *)fetchObjectsForMainContextForEntity:(NSString *)entityName withSortDescriptors:(NSArray *)descriptors predicate:(NSPredicate *)predicate;
+
+- (void)deleteNewsItemInBgContextForObjectId:(NSString *)objectId;
+
 - (void)updateCurrentUserFromLocalToServerOnSuccess:(void(^)(BOOL isSuccess))success;
+
+- (void)hideSharingButtonsForNews:(NSArray *)objectIDsArray withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler;
+- (void)showLocalDatabaseForNews:(NSArray *)objectIDsArray withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler;
+- (void)refreshNewsWithCompletionHandler:(void(^)(BOOL isSuccess))completionHandler;
+
+- (NSFetchRequest *)prepareFetchRequestForFRC;
+
+- (void)getNewsCellForNewsObjectID:(NSManagedObjectID *)objectID;
+- (void)newsCellDidSelectTitleForNewsObjectID:(NSManagedObjectID *)objectID withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler;
+- (void)newsCellDidSelectHide:(NSManagedObjectID *)objectID withCompletionHandler:(void(^)(BOOL isSuccess))completionHandler;
+- (void)newsCellDidAddToFavouritesForNewsObjectID:(NSManagedObjectID *)objectID;
+- (void)prefetchValidByGeolocationNewsWithCompletionHandler:(void(^)(NSArray *newsArray))completion;
 
 @end

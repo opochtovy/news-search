@@ -56,6 +56,10 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
     
     self.newsItem = [self.delegate sendNewsItemTo:self];
     
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"self == %@", self.newsItem.objectID];
+    NSArray *news = [[ITBNewsAPI sharedInstance] fetchObjectsInBackgroundForEntity:ITBNewsEntityName withSortDescriptors:nil predicate:predicate];
+    self.newsItem = [news firstObject];
+    
     self.titleLabel.text = self.newsItem.title;
     self.messageTextView.text = self.newsItem.message;
     
@@ -127,6 +131,8 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     
+    __weak ITBCustomNewsDetailViewController *weakSelf = self;
+    
     if (!self.closePhotoViewButton.enabled) {
         
         self.closePhotoViewButton.enabled = YES;
@@ -138,13 +144,11 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
         
         [UIView animateWithDuration:0.25 animations:^{
             
-            [self.photoView setHidden:NO];
-            self.photoView.alpha = 1.0f;
+            [weakSelf.photoView setHidden:NO];
+            weakSelf.photoView.alpha = 1.0f;
             
         } completion:^(BOOL finished) {
         }];
-        
-        __weak ITBCustomNewsDetailViewController *weakSelf = self;
         
         ITBPhoto *photo = [self.photosArray objectAtIndex:indexPath.row];
 
@@ -159,13 +163,7 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
                     UIImage *image = [[UIImage alloc] initWithData:data];
                     photo.imageData = data;
                     
-                    NSError *error = nil;
-                    BOOL saved = [[ITBNewsAPI sharedInstance].mainManagedObjectContext save:&error];
-                    
-                    if (!saved) {
-                        
-                        NSLog(@"%@ %@\n%@", contextSavingError, [error localizedDescription], [error userInfo]);
-                    }
+                    [[ITBNewsAPI sharedInstance] saveBgContext];
                     
                     dispatch_async(dispatch_get_main_queue(), ^{
                         
@@ -179,8 +177,8 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
             
         } else {
             
-            [weakSelf.activityIndicator stopAnimating];
-            weakSelf.photoImageView.image = [UIImage imageWithData:photo.imageData];
+            [self.activityIndicator stopAnimating];
+            self.photoImageView.image = [UIImage imageWithData:photo.imageData];
         }
         
     }
@@ -217,14 +215,16 @@ static NSString * const ITBThumbnailPhotoCellReuseIdentifier = @"ITBThumbnailPho
 
 - (IBAction)actionClosePhotoView:(UIButton *)sender {
     
+    __weak ITBCustomNewsDetailViewController *weakSelf = self;
+    
     self.closePhotoViewButton.enabled = NO;
     
     [self.activityIndicator stopAnimating];
     
     [UIView animateWithDuration:0.25 animations:^{
         
-        [self.photoView setHidden:YES];
-        self.photoView.alpha = 0.0f;
+        [weakSelf.photoView setHidden:YES];
+        weakSelf.photoView.alpha = 0.0f;
         
     } completion:^(BOOL finished) {
     }];

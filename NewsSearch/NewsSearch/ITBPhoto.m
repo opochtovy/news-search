@@ -12,24 +12,26 @@
 #import "ITBUtils.h"
 #import "ITBNewsAPI.h"
 
+#import "NSManagedObject+ITBUpdateObjectWithDict.h"
+
 @implementation ITBPhoto
 
-+ (id)initObjectWithDictionary:(NSDictionary *)photoDict inContext:(NSManagedObjectContext *)context {
++ (id)initObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    ITBPhoto *photo = [NSEntityDescription insertNewObjectForEntityForName:@"ITBPhoto" inManagedObjectContext:context];
+    ITBPhoto *photo = [NSEntityDescription insertNewObjectForEntityForName:ITBPhotoEntityName inManagedObjectContext:context];
     
-    photo.name = [photoDict objectForKey:@"name"];
-    photo.url = [photoDict objectForKey:@"url"];
-    photo.objectId = [photoDict objectForKey:@"objectId"];
+    photo.name = [dict objectForKey:nameDictKey];
+    photo.url = [dict objectForKey:urlDictKey];
+    photo.objectId = [dict objectForKey:objectIdDictKey];
     
     return photo;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)photoDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.name = [photoDict objectForKey:@"name"];
-    self.url = [photoDict objectForKey:@"url"];
-    self.objectId = [photoDict objectForKey:@"objectId"];
+    self.name = [dict objectForKey:nameDictKey];
+    self.url = [dict objectForKey:urlDictKey];
+    self.objectId = [dict objectForKey:objectIdDictKey];
 }
 
 @end

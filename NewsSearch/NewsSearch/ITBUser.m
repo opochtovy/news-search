@@ -12,38 +12,38 @@
 
 #import "ITBUtils.h"
 
+#import "NSManagedObject+ITBUpdateObjectWithDict.h"
+
 @implementation ITBUser
 
-+ (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
++ (id)initObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    NSLog(@"user was created");
+    ITBUser *user = [NSEntityDescription insertNewObjectForEntityForName:ITBUserEntityName inManagedObjectContext:context];
     
-    ITBUser *user = [NSEntityDescription insertNewObjectForEntityForName:@"ITBUser" inManagedObjectContext:context];
+    user.username = [dict objectForKey:usernameDictKey];
+    user.objectId = [dict objectForKey:objectIdDictKey];
+    user.sessionToken = [dict objectForKey:sessionTokenDictKey];
     
-    user.username = [userDict objectForKey:@"username"];
-    user.objectId = [userDict objectForKey:@"objectId"];
-    user.sessionToken = [userDict objectForKey:@"sessionToken"];
+    user.createdAt = convertToNSDateFromUTC([dict objectForKey:createdAtDictKey]);
+    user.updatedAt = convertToNSDateFromUTC([dict objectForKey:updatedAtDictKey]);
     
-    user.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    user.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
-    
-    user.code = [userDict objectForKey:@"code"];
-    user.error = [userDict objectForKey:@"error"];
+    user.code = [dict objectForKey:codeDictKey];
+    user.error = [dict objectForKey:errorDictKey];
     
     return user;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.username = [userDict objectForKey:@"username"];
-    self.objectId = [userDict objectForKey:@"objectId"];
-    self.sessionToken = [userDict objectForKey:@"sessionToken"];
+    self.username = [dict objectForKey:usernameDictKey];
+    self.objectId = [dict objectForKey:objectIdDictKey];
+    self.sessionToken = [dict objectForKey:sessionTokenDictKey];
     
-    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    self.createdAt = convertToNSDateFromUTC([dict objectForKey:createdAtDictKey]);
+    self.updatedAt = convertToNSDateFromUTC([dict objectForKey:updatedAtDictKey]);
     
-    self.code = [userDict objectForKey:@"code"];
-    self.error = [userDict objectForKey:@"error"];
+    self.code = [dict objectForKey:codeDictKey];
+    self.error = [dict objectForKey:errorDictKey];
 }
 
 @end

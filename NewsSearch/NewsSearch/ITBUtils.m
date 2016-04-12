@@ -56,14 +56,21 @@ NSString * const titleDescriptorKey = @"title";
 NSString * const bgImage = @"bg_cork.png";
 
 NSString * const resultsDictKey = @"results";
-NSString * const codeDictKey = @"code";
 NSString * const objectIdDictKey = @"objectId";
+NSString * const createdAtDictKey = @"createdAt";
+NSString * const updatedAtDictKey = @"updatedAt";
+
+NSString * const codeDictKey = @"code";
+NSString * const errorDictKey = @"error";
+NSString * const sessionTokenDictKey = @"sessionToken";
 NSString * const usernameDictKey = @"username";
 NSString * const passwordDictKey = @"password";
 NSString * const likedNewsDictKey = @"likedNews";
 NSString * const selectedCategoriesDictKey = @"selectedCategories";
+
 NSString * const titleDictKey = @"title";
 NSString * const messageDictKey = @"message";
+NSString * const newsURLDictKey = @"newsURL";
 NSString * const latitudeDictKey = @"latitude";
 NSString * const longitudeDictKey = @"longitude";
 NSString * const authorDictKey = @"author";
@@ -72,6 +79,7 @@ NSString * const likeAddedUsersDictKey = @"likeAddedUsers";
 NSString * const photosDictKey = @"photos";
 NSString * const thumbnailPhotosDictKey = @"thumbnailPhotos";
 NSString * const signedUsersDictKey = @"signedUsers";
+
 NSString * const nameDictKey = @"name";
 NSString * const urlDictKey = @"url";
 
@@ -136,4 +144,19 @@ NSDictionary* classDict(NSString *classNameType, NSString *objectId) {
                                @"objectId": objectId };
     
     return dict;
+}
+
+UIAlertController* showAlertWithTitle(NSString *title, NSString *message) {
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *ok = [UIAlertAction actionWithTitle:okAction style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        
+        [alert dismissViewControllerAnimated:YES completion:nil];
+    }];
+    
+    [alert addAction:ok];
+    
+    return alert;
+    
 }

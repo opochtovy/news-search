@@ -12,28 +12,30 @@
 
 #import "ITBUtils.h"
 
+#import "NSManagedObject+ITBUpdateObjectWithDict.h"
+
 @implementation ITBCategory
 
-+ (id)initObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
++ (id)initObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    ITBCategory *category = [NSEntityDescription insertNewObjectForEntityForName:@"ITBCategory" inManagedObjectContext:context];
+    ITBCategory *category = [NSEntityDescription insertNewObjectForEntityForName:ITBCategoryEntityName inManagedObjectContext:context];
     
-    category.title = [userDict objectForKey:@"title"];
-    category.objectId = [userDict objectForKey:@"objectId"];
+    category.title = [dict objectForKey:titleDictKey];
+    category.objectId = [dict objectForKey:objectIdDictKey];
     
-    category.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    category.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    category.createdAt = convertToNSDateFromUTC([dict objectForKey:createdAtDictKey]);
+    category.updatedAt = convertToNSDateFromUTC([dict objectForKey:updatedAtDictKey]);
     
     return category;
 }
 
-- (void)updateObjectWithDictionary:(NSDictionary *)userDict inContext:(NSManagedObjectContext *)context {
+- (void)updateObjectWithDictionary:(NSDictionary *)dict inContext:(NSManagedObjectContext *)context {
     
-    self.title = [userDict objectForKey:@"title"];
-    self.objectId = [userDict objectForKey:@"objectId"];
+    self.title = [dict objectForKey:titleDictKey];
+    self.objectId = [dict objectForKey:objectIdDictKey];
     
-    self.createdAt = convertToNSDateFromUTC([userDict objectForKey:@"createdAt"]);
-    self.updatedAt = convertToNSDateFromUTC([userDict objectForKey:@"updatedAt"]);
+    self.createdAt = convertToNSDateFromUTC([dict objectForKey:createdAtDictKey]);
+    self.updatedAt = convertToNSDateFromUTC([dict objectForKey:updatedAtDictKey]);
 }
 
 @end
